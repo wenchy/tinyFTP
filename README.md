@@ -2,41 +2,43 @@
 Implementation of a tiny FTP client and server
 
 ## Basic command
+
 ftp [hostname | ip-address]
-1. **GET**:     get [remote-file] [local-file]
-2. **MGET**:    mget [remote-files]
-3. **PUT**:     put [local-file] [remote-file]
-4. **MPUT**:    mput [local-files]
-5. **EXIT**:    ftp> bye(or quit)
+
+- **GET**:     get [remote-file] [local-file]
+- **MGET**:    mget [remote-files]
+- **PUT**:     put [local-file] [remote-file]
+- **MPUT**:    mput [local-files]
+- **EXIT**:    ftp> bye(or quit)
 
 ##  FTP model
 
-'''
-                                            -------------
-                                            |/---------\|
-                                            ||   User  ||    --------
-                                            ||Interface|<--->| User |
-                                            |\----^----/|    --------
-                  ----------                |     |     |
-                  |/------\|  FTP Commands  |/----V----\|
-                  ||Server|<---------------->|  Client ||
-                  ||  PI  ||  FTP Replies   ||    PI   ||
-                  |\--^---/|                |\----^----/|
-                  |   |    |                |     |     |
-      --------    |/--V---\|      Data      |/----V----\|    --------
-      | File |<--->|Server|<---------------->|  Client |<--->| File |
-      |System|    || DTP  ||   Connection   ||   DTP   ||    |System|
-      --------    |\------/|                |\---------/|    --------
-                  ----------                -------------
+```
+                                          -------------
+                                          |/---------\|
+                                          ||   User  ||    --------
+                                          ||Interface|<--->| User |
+                                          |\----^----/|    --------
+                ----------                |     |     |
+                |/------\|  FTP Commands  |/----V----\|
+                ||Server|<---------------->|  Client ||
+                ||  PI  ||  FTP Replies   ||    PI   ||
+                |\--^---/|                |\----^----/|
+                |   |    |                |     |     |
+    --------    |/--V---\|      Data      |/----V----\|    --------
+    | File |<--->|Server|<---------------->|  Client |<--->| File |
+    |System|    || DTP  ||   Connection   ||   DTP   ||    |System|
+    --------    |\------/|                |\---------/|    --------
+                ----------                -------------
 
-                  Server-FTP                   Client-FTP
+                Server-FTP                   Client-FTP
 
-      NOTES: 1. The data connection may be used in either direction.
-             2. The data connection need not exist all of the time.
+    NOTES: 1. The data connection may be used in either direction.
+           2. The data connection need not exist all of the time.
 
-                      Figure 1  Model for FTP Use
+                    Figure 1  Model for FTP Use
 
-'''
+```
 
 In the model described in Figure 1, the user-protocol interpreter
 initiates the control connection.  The control connection follows
