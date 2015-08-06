@@ -1,5 +1,5 @@
 CC := g++
-CFLAGS := -g -Wall -O3 -std=c++11
+CFLAGS := -std=c++11 -g -Wall -O3 -pthread
 CPPFLAGS := $(CFLAGS)
 
 SRV_EXE := server/server
@@ -21,9 +21,9 @@ all: depend $(EXE)
 .PHONY: all
 
 $(SRV_EXE): $(SRV_OBJ) $(COM_OBJ)
-	$(CC) $^ -o $@
+	$(CC) $(CPPFLAGS) $^ -o $@
 $(CLI_EXE): $(CLI_OBJ) $(COM_OBJ)
-	$(CC) $^ -o $@
+	$(CC) $(CPPFLAGS) $^ -o $@
 depend:
 	$(CC) -MM $(SRC) > .depend
 -include .depend

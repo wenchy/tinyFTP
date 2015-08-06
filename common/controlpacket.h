@@ -19,6 +19,8 @@ public:
 		cpack->bsize = bsize;
 		memcpy(cpack->body, body, CBODYCAP);  
 	};
+	void reset(PacketStoreType pstype);
+	void zero();
 
 	// network byte order to host byte order 
 	void ntohp();

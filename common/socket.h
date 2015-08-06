@@ -15,17 +15,17 @@ public:
         this->host = host;
         this->port = port; 
     };
-    int     init();
-    int     tcpAccept(int fd, struct sockaddr *sa, socklen_t *salenptr);
-    void    tcpBind(int fd, const struct sockaddr *sa, socklen_t salen);
-    void    tcpConnect(int fd, const struct sockaddr *sa, socklen_t salen);
-    void    tcpListen(int fd, int backlog);
-    ssize_t tcpRecv(int fd, void *ptr, size_t nbytes, int flags);
-    void    tcpSend(int fd, const void *ptr, size_t nbytes, int flags);
-    void    tcpSetsockopt(int fd, int level, int optname, const void *optval, socklen_t optlen);
-    void    tcpShutdown(int fd, int how);
-    int     tcpSocket(int family, int type, int protocol);
-    void    tcpClose(int fd);
+        int     init();
+static  int     tcpAccept(int fd, struct sockaddr *sa, socklen_t *salenptr);
+        void    tcpBind(int fd, const struct sockaddr *sa, socklen_t salen);
+        void    tcpConnect(int fd, const struct sockaddr *sa, socklen_t salen);
+        void    tcpListen(int fd, int backlog);
+        ssize_t tcpRecv(int fd, void *ptr, size_t nbytes, int flags);
+        void    tcpSend(int fd, const void *ptr, size_t nbytes, int flags);
+        void    tcpSetsockopt(int fd, int level, int optname, const void *optval, socklen_t optlen);
+        void    tcpShutdown(int fd, int how);
+        int     tcpSocket(int family, int type, int protocol);
+        void    tcpClose(int fd);
 
 private:
     SockType socktype; // client or server socket indicator

@@ -9,9 +9,10 @@ CliPI::CliPI(int cliCtrConnfd, int cliDatConnfd):controlPacket(HPACKET)
 
 void CliPI::cmd2pack(uint16_t cmdid, std::vector<string> & cmdVector)
 {
+	controlPacket.reset(HPACKET);
+
 	uint32_t sesid = 1;
 	uint16_t bsize = 18;
-
 	char body[CBODYCAP] = "Hello, ctr packet.";
 	controlPacket.init(sesid, cmdid, bsize, body);
 }

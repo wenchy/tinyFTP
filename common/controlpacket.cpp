@@ -5,6 +5,15 @@ ControlPacket::ControlPacket(PacketStoreType pstype)
 	this->pstype = pstype;
 	cpack = (CPacket*) Malloc(CPACKSIZE); 
 }
+void ControlPacket::reset(PacketStoreType pstype)
+{
+	zero();
+	this->pstype = pstype;
+}
+void ControlPacket::zero()
+{
+	memset(cpack, 0, CPACKSIZE);
+}
 
 void ControlPacket::ntohp()
 {
@@ -30,7 +39,7 @@ void ControlPacket::ntohp()
 void ControlPacket::htonp()
 {
 	if (pstype == NPACKET)
-		Error::msg("already in HOST byte order");
+		Error::msg("already in NETWORK byte order");
 
 	CPacket* hp = cpack;
 	CPacket* np = (CPacket*) Malloc(CPACKSIZE);
