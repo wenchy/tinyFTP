@@ -32,3 +32,6 @@
 
 # Debug files
 *.dSYM/
+
+# Other files
+.depend

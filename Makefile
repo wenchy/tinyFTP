@@ -2,8 +2,8 @@ CC := g++
 CFLAGS := -std=c++11 -g -Wall -O3 -pthread
 CPPFLAGS := $(CFLAGS)
 
-SRV_EXE := server/server
-CLI_EXE := client/client
+SRV_EXE := server/server.out
+CLI_EXE := client/client.out
 EXE := $(SRV_EXE) $(CLI_EXE)
 
 SRV_SRC = $(wildcard server/*.cpp)

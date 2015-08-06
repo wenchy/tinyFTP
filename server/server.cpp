@@ -60,6 +60,9 @@ void * dataDaemon(void * arg)
     return(NULL);
 }
 
+std::map< uint32_t, std::pair<int, int> > sessionMap;
+static uint32_t sessionID = 1;
+
 int main(int argc, char **argv)
 {
     struct sockaddr_in  cliaddr;
@@ -67,6 +70,8 @@ int main(int argc, char **argv)
     char buff[MAXLINE];
 
     int ctrListenfd, datListenfd;
+    // session id to control socket fd and data socket fd
+    
 
     Socket ctrListenSocket(SRV_SOCKET, NULL, CTRPORT);
     ctrListenfd = ctrListenSocket.init();
@@ -81,14 +86,19 @@ int main(int argc, char **argv)
     threadArg.fd =  datListenfd; 
     Pthread_create(&tid, NULL, &dataDaemon, &threadArg);
 
-    
+    int srvCtrConnfd;
     while (1)
     {  
-        threadArg.fd = ctrListenSocket.tcpAccept(ctrListenfd, (SA *) &cliaddr, &len);
+        srvCtrConnfd = ctrListenSocket.tcpAccept(ctrListenfd, (SA *) &cliaddr, &len);
+        sessionMap.insert( std::pair< uint32_t, std::pair<int, int> >(sessionID++, std::pair<int, int>(srvCtrConnfd, -1)) );
+        
+        for (std::map< uint32_t, std::pair<int, int> >::iterator it = sessionMap.begin(); it!=sessionMap.end(); ++it)
+            std::cout << it->first << " => " << std::endl;
+
         printf("control conection from %s, port %d\n",
                 inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, buff, sizeof(buff)), ntohs(cliaddr.sin_port));
         
-
+        threadArg.fd = srvCtrConnfd;
         Pthread_create(&tid, NULL, &controlConnect, &threadArg);
     }
     return 0;   

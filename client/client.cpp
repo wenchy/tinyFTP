@@ -25,10 +25,6 @@ int main(int argc, char **argv)
     UI userInterface(cliCtrConnfd, cliDatConnfd);
     userInterface.run();
 
-    
-
-   
-
     // while ( (n  = cliSocket.tcpRecv(connfd, recvline, MAXLINE, 0)) > 0)
     // {
     //     recvline[n] = 0; // null terminate

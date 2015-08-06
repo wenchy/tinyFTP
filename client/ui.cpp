@@ -33,7 +33,7 @@ void UI::run()
 	string inputline;
 
 	// user interface: first cout prompt (use "," operator)
-	while (std::cout << "tinyFTP > ", getline(std::cin, inputline))
+	while (std::cout << "tinyFTP> ", getline(std::cin, inputline))
 	{
 		// clear cmdVector each time when user input
 		cmdVector.clear();
