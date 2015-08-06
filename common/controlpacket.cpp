@@ -22,7 +22,7 @@ void ControlPacket::ntohp()
 	this->pstype = HPACKET;
 	cpack = hp;
 
-	free(np)
+	free(np);
 	
 }
 
@@ -43,7 +43,7 @@ void ControlPacket::htonp()
 	this->pstype = NPACKET;
 	cpack = np;
 
-	free(hp)
+	free(hp);
 	
 }
 
