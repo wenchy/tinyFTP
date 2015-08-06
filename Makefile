@@ -1,5 +1,5 @@
 CC := g++
-CFLAGS := -g -Wall -O3
+CFLAGS := -g -Wall -O3 -std=c++11
 CPPFLAGS := $(CFLAGS)
 
 SRV_EXE := server/server

@@ -47,3 +47,15 @@ Fputs(const char *ptr, FILE *stream)
 	if (fputs(ptr, stream) == EOF)
 		Error::sys("fputs error");
 }
+void *
+Malloc(size_t size)
+{
+	void	*ptr;
+
+	if ( (ptr = malloc(size)) == NULL)
+		Error::sys("malloc error");
+	memset(ptr, 0, size);
+	return(ptr);
+}
+
+

@@ -2,35 +2,32 @@
 #include "../common/error.h"
 #include "../common/socket.h"
 #include "../common/sockstream.h"
-#include "../common/ftppacket.h"
 
-void
-str_cli(int sockfd)
-{
-    char    sendline[MAXLINE], recvline[MAXLINE];
-    SockStream connSockStream(sockfd);
-    while (Fgets(sendline, MAXLINE, stdin) != NULL) {
+#include "ui.h"
 
-        connSockStream.Writen(sendline, strlen(sendline));
-
-        if (connSockStream.Readline(recvline, MAXLINE) == 0)
-            Error::quit("str_cli: server terminated prematurely");
-
-        Fputs(recvline, stdout);
-    }
-}
 
 int main(int argc, char **argv)
 {
-    int connfd;// , n
+    
     //char recvline[MAXLINE + 1];
     if (argc != 2 )
-        Error::quit("usage: ./cli <IPaddress>");
-    
-    Socket cliSocket(CLI_SOCKET, argv[1], PORT);
-    connfd = cliSocket.init();
+        Error::quit("usage: ./client <IPaddress>");
 
-    str_cli(connfd);
+    int cliCtrConnfd, cliDatConnfd = 1;
+    
+    
+    Socket cliCtrSocket(CLI_SOCKET, argv[1], CTRPORT);
+    //Socket cliDatSocket(CLI_SOCKET, argv[1], DATPORT);
+
+    cliCtrConnfd = cliCtrSocket.init();
+    //cliDatConnfd = cliDatSocket.init();
+
+    UI userInterface(cliCtrConnfd, cliDatConnfd);
+    userInterface.run();
+
+    
+
+   
 
     // while ( (n  = cliSocket.tcpRecv(connfd, recvline, MAXLINE, 0)) > 0)
     // {
