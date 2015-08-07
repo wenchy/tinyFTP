@@ -21,10 +21,10 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"INFO",    INFO},
                                                     {"EOT",     EOT}        };
 
-UI::UI(int cliCtrConnfd, int cliDatConnfd): cliPI(cliCtrConnfd, cliDatConnfd)
-{
-	this->cliCtrConnfd = cliCtrConnfd;
-	this->cliDatConnfd = cliDatConnfd;
+UI::UI(const char *host)
+{  
+    cliPI.init(host);
+
 }
 
 void UI::run()
@@ -33,6 +33,7 @@ void UI::run()
 	string inputline;
 
 	// user interface: first cout prompt (use "," operator)
+	std::cout << inputline << std::endl;
 	while (std::cout << "tinyFTP> ", getline(std::cin, inputline))
 	{
 		// clear cmdVector each time when user input
@@ -48,8 +49,9 @@ void UI::run()
 		{
 			continue;
 		} else {
-			cliPI.cmd2pack(cmdid, cmdVector);
-			cliPI.getCmd();
+
+			cliPI.run(this->cmdid, this->cmdVector);
+			
 			//str_cli(cliCtrConnfd, cmdVector[0]);
 		}
 
@@ -57,10 +59,7 @@ void UI::run()
   //   		std::cout << *it << std::endl;
     	// for (std::vector<string>::size_type i = 0; i < cmdVector.size(); i++)
     	// 	std::cout << cmdVector[i] << std::endl;
-	}
-	
-	                                                     
-	    
+	}                                                         
 	
 }
 

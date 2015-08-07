@@ -13,16 +13,8 @@ int main(int argc, char **argv)
     if (argc != 2 )
         Error::quit("usage: ./client <IPaddress>");
 
-    int cliCtrConnfd, cliDatConnfd = 1;
-    
-    
-    Socket cliCtrSocket(CLI_SOCKET, argv[1], CTRPORT);
-    //Socket cliDatSocket(CLI_SOCKET, argv[1], DATPORT);
 
-    cliCtrConnfd = cliCtrSocket.init();
-    //cliDatConnfd = cliDatSocket.init();
-
-    UI userInterface(cliCtrConnfd, cliDatConnfd);
+    UI userInterface(argv[1]);
     userInterface.run();
 
     // while ( (n  = cliSocket.tcpRecv(connfd, recvline, MAXLINE, 0)) > 0)

@@ -9,7 +9,7 @@ class ControlPacket
 {
 public:
 
-	ControlPacket(PacketStoreType pstype);
+	ControlPacket(PacketStoreType pstype = HPACKET);
 
 	void init(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[CBODYCAP])
 	{ 

@@ -23,13 +23,13 @@ void ControlPacket::ntohp()
 	CPacket* np = cpack;
 	CPacket* hp = (CPacket*) Malloc(CPACKSIZE);
 	
-	hp->sesid = ntohl(cpack->sesid);
-	hp->cmdid = ntohs(cpack->cmdid);
-	hp->bsize = ntohs(cpack->bsize);
-	memcpy(hp->body, cpack->body, CBODYCAP);
-
-	this->pstype = HPACKET;
+	hp->sesid = ntohl(np->sesid);
+	hp->cmdid = ntohs(np->cmdid);
+	hp->bsize = ntohs(np->bsize);
+	memcpy(hp->body, np->body, CBODYCAP);
+	
 	cpack = hp;
+	this->pstype = HPACKET;
 
 	free(np);
 	
@@ -44,13 +44,13 @@ void ControlPacket::htonp()
 	CPacket* hp = cpack;
 	CPacket* np = (CPacket*) Malloc(CPACKSIZE);
 	
-	np->sesid = htonl(cpack->sesid);
-	np->cmdid = htons(cpack->cmdid);
-	np->bsize = htons(cpack->bsize);
-	memcpy(np->body, cpack->body, CBODYCAP);
+	np->sesid = htonl(hp->sesid);
+	np->cmdid = htons(hp->cmdid);
+	np->bsize = htons(hp->bsize);
+	memcpy(np->body, hp->body, CBODYCAP);
 
-	this->pstype = NPACKET;
 	cpack = np;
+	this->pstype = NPACKET;
 
 	free(hp);
 	

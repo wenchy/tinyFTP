@@ -5,6 +5,7 @@
 #include    "../common/error.h"
 #include    "../common/controlpacket.h"
 #include    "../common/sockstream.h"
+#include    "../common/socket.h"
 	// USER = 1,
 	// PASS,
 	// GET,
@@ -30,16 +31,22 @@
 class CliPI
 {
 public:
-	CliPI(int cliCtrConnfd, int cliDatConnfd);
-	void cmd2pack(uint16_t cmdid, std::vector<string> & cmdVector);
+	void init(const char *host);
+	void run(uint16_t cmdid, std::vector<string> & cmdVector);
+	void cmd2pack(uint32_t sesid = 0, uint16_t cmdid = 0);
 	void getCmd();
 	void infoCmd();
+	void sessionCmd();
 	
 
 
 private:
 	ControlPacket controlPacket;
-	int cliCtrConnfd, cliDatConnfd;
+
+	SockStream ctrConnStream;
+	SockStream datConnStream;
+	uint16_t cmdid;
+	std::vector<string> cmdVector;
 
 };
 

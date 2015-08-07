@@ -1,6 +1,10 @@
 #include "server.h"
 
-void str_echo(int sockfd)
+std::map< uint32_t, std::pair<int, int> > gsessionMap;
+static uint32_t gsessionID = 1;
+static int gctrListenfd, gdatListenfd;
+
+void str_echo(int sockfd )
 {
     ssize_t     n;
     ControlPacket controlPacket(NPACKET);
@@ -9,7 +13,7 @@ void str_echo(int sockfd)
     while (1)
     {
         if ( (n = connSockStream.Readn(controlPacket.cpack, CPACKSIZE)) == 0)
-            Error::quit("str_echo: client terminated prematurely");
+            Error::ret("str_echo: client terminated prematurely");
         controlPacket.ntohp();
         controlPacket.print();
         //Fputs(cpack, stdout);
@@ -22,7 +26,24 @@ void str_echo(int sockfd)
 void * controlConnect(void * arg)
 {
     ThreadArg * ptarg = (ThreadArg *)arg;
-    str_echo(ptarg->fd);
+
+    ssize_t     n;
+    ControlPacket controlPacket(NPACKET);
+    SockStream connSockStream(ptarg->fd);
+
+    // transfer session ID
+    // SrvPI srvPI;
+    // srvPI.cmd2pack(ptarg->sesid, INFO, "session id");
+    // srvPI.infoCmd();
+
+
+    while (1)
+    {
+        if ( (n = connSockStream.Readn(controlPacket.cpack, CPACKSIZE)) == 0)
+            Error::quit_pthread("Control connect: client terminated prematurely");
+        controlPacket.ntohp();
+        controlPacket.print();
+    }
 
     return(NULL);
 }
@@ -37,31 +58,41 @@ void * dataConnect(void * arg)
 
 void * dataDaemon(void * arg)
 {
-    ThreadArg * ptarg = (ThreadArg *)arg;
-    int datListenfd = ptarg->fd;
-
     struct sockaddr_in  cliaddr;
     socklen_t len = sizeof(cliaddr);
     char buff[MAXLINE];
+    DataPacket dataPacket(NPACKET);
+    int n;
 
-    pthread_t tid;
+    // pthread_t tid;
     ThreadArg threadArg;
    
     std::cout << "Data listen socket port: " << DATPORT << std::endl;
     while (1)
     {  
-        threadArg.fd = Socket::tcpAccept(datListenfd, (SA *) &cliaddr, &len);
+        threadArg.fd = Socket::tcpAccept(gdatListenfd, (SA *) &cliaddr, &len);
         printf("data conection from %s, port %d\n",
                 inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, buff, sizeof(buff)), ntohs(cliaddr.sin_port));
+
+        // add data connfd to sessionMap by the received session id
+        SockStream connSockStream(threadArg.fd);
+        if ( (n = connSockStream.Readn(dataPacket.dpack, CPACKSIZE)) == 0)
+            Error::ret("Data connect: client terminated prematurely");
+        dataPacket.ntohp();
+        dataPacket.print();
+
+        std::map< uint32_t, std::pair<int, int> >::iterator it = gsessionMap.find(dataPacket.dpack->sesid);
+        if (it == gsessionMap.end())
+            Error::ret("can not find sesid %u", dataPacket.dpack->sesid);
         
-        Pthread_create(&tid, NULL, &dataConnect, &threadArg);
+        uint32_t sesid = dataPacket.dpack->sesid;
+        gsessionMap[sesid].second = threadArg.fd;
+        //Pthread_create(&tid, NULL, &dataConnect, &threadArg);
     }
 
     return(NULL);
 }
 
-std::map< uint32_t, std::pair<int, int> > sessionMap;
-static uint32_t sessionID = 1;
 
 int main(int argc, char **argv)
 {
@@ -69,36 +100,40 @@ int main(int argc, char **argv)
     socklen_t len = sizeof(cliaddr);
     char buff[MAXLINE];
 
-    int ctrListenfd, datListenfd;
+    
     // session id to control socket fd and data socket fd
     
 
     Socket ctrListenSocket(SRV_SOCKET, NULL, CTRPORT);
-    ctrListenfd = ctrListenSocket.init();
+    gctrListenfd = ctrListenSocket.init();
 
     Socket datListenSocket(SRV_SOCKET, NULL, DATPORT);
-    datListenfd = datListenSocket.init();
+    gdatListenfd = datListenSocket.init();
 
     std::cout << "Control listen socket port: " << CTRPORT << std::endl;
 
-    pthread_t tid;
+    pthread_t tid; 
     ThreadArg threadArg;
-    threadArg.fd =  datListenfd; 
-    Pthread_create(&tid, NULL, &dataDaemon, &threadArg);
+
+    Pthread_create(&tid, NULL, &dataDaemon, NULL);
 
     int srvCtrConnfd;
     while (1)
     {  
-        srvCtrConnfd = ctrListenSocket.tcpAccept(ctrListenfd, (SA *) &cliaddr, &len);
-        sessionMap.insert( std::pair< uint32_t, std::pair<int, int> >(sessionID++, std::pair<int, int>(srvCtrConnfd, -1)) );
+        srvCtrConnfd = ctrListenSocket.tcpAccept(gctrListenfd, (SA *) &cliaddr, &len);
+
+        uint32_t curSessionID = gsessionID++;
+        gsessionMap.insert( std::pair< uint32_t, std::pair<int, int> >(curSessionID, std::pair<int, int>(srvCtrConnfd, -1)) );
         
-        for (std::map< uint32_t, std::pair<int, int> >::iterator it = sessionMap.begin(); it!=sessionMap.end(); ++it)
+        for (std::map< uint32_t, std::pair<int, int> >::iterator it = gsessionMap.begin(); it!=gsessionMap.end(); ++it)
             std::cout << it->first << " => " << std::endl;
 
         printf("control conection from %s, port %d\n",
                 inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, buff, sizeof(buff)), ntohs(cliaddr.sin_port));
         
+
         threadArg.fd = srvCtrConnfd;
+        threadArg.sesid = curSessionID;
         Pthread_create(&tid, NULL, &controlConnect, &threadArg);
     }
     return 0;   

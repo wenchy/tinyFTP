@@ -30,6 +30,8 @@ public:
      *  * Print message and terminate */
     static void quit(const char *fmt, ...);
 
+    static void quit_pthread(const char *fmt, ...);
+
 private:
     static void doit(int, int, const char *, va_list);
     static bool daemon_proc;        /* set true by daemon_init() */

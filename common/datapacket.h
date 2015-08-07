@@ -9,32 +9,28 @@ class DataPacket
 {
 public:
 
-	DataPacket(PacketStoreType pstype)
-	{ 
-		this->pstype = pstype;
-		zero(&dpack);  
-	};	
+	DataPacket(PacketStoreType pstype = HPACKET);	
 	void init(uint32_t sesid, uint16_t nslice, uint16_t sindex, uint16_t bsize, char body[CBODYCAP])
 	{ 
 		
-		dpack.sesid = sesid;
-		dpack.nslice = nslice;
-		dpack.sindex = sindex;
-		dpack.bsize  = bsize;
-		memcpy(dpack.body, body, DBODYCAP);   
+		dpack->sesid = sesid;
+		dpack->nslice = nslice;
+		dpack->sindex = sindex;
+		dpack->bsize  = bsize;
+		memcpy(dpack->body, body, DBODYCAP);   
 	};
+	void reset(PacketStoreType pstype);
+	void zero();
 
-	void zero(DPacket* p);
+	void ntohp();
 
-	DPacket* ntohp(DPacket* np);
-
-	DPacket* htonp(DPacket* hp);
+	void htonp();
 
 	void print();
 
 
 //private:
-	DPacket	dpack;
+	DPacket	*dpack;
 	PacketStoreType pstype;
 
 };

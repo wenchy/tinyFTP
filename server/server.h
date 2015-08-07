@@ -7,9 +7,14 @@
 #include    "../common/sockstream.h"
 #include    "../common/socket.h"
 
+#include    "srvpi.h"
+
+
+
 typedef struct threadArg
 {
     int fd;
+    uint32_t sesid;
     
 } ThreadArg;
 

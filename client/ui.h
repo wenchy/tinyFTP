@@ -19,14 +19,13 @@ typedef struct command
 class UI
 {
 public:
-	UI(int cliCtrConnfd, int cliDatConnfd);
+	UI(const char *host);
 	void run();
 
 	void str_cli(int sockfd, string msg);
 
 private:
 	// first elemment is command. other is options
-	int cliCtrConnfd, cliDatConnfd;
 	std::vector<string> cmdVector;
 	uint16_t cmdid;
 	CliPI cliPI;

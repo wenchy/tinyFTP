@@ -8,7 +8,10 @@
 class SockStream
 {
 public:
+    SockStream(){};
     SockStream(int fd){ this->fd = fd; };
+
+    void init(int fd){ this->fd = fd; };
 
     /* Wrapper for readn */
     ssize_t Readn(void *ptr, size_t nbytes);
