@@ -12,19 +12,20 @@ class SrvPI
 public:
 	//SrvPI(int srvCtrConnfd, int srvDatConnfd);
 	SrvPI(){};
-	void run(uint32_t sesid, uint16_t cmdid);
+	void run(int connfd);
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[PBODYCAP]);
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, string str);
+
+	void cmdGET();
+	void cmdPUT();
 	void infoCmd();
 	
 
 
 private:
 	Packet packet;
-	int cliConnfd;
-	uint32_t sesid;
-	uint16_t cmdid;
+	SockStream connSockStream;
 
 
 };

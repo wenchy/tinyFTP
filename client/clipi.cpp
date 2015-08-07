@@ -13,23 +13,35 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	this->cmdid = cmdid;
 	this->cmdVector = cmdVector;
-	cmd2pack(0, cmdid);
-	getCmd();
 
-	int n;
-	packet.reset(NPACKET);
-	if ( (n = connSockStream.Readn(packet.ps, PACKSIZE)) == 0)
-        Error::ret("str_echo: client terminated prematurely");
-    packet.ntohp();
-    packet.print();
+	switch(cmdid)
+	{
+		case GET:
+			cmdGET();
+			break;
+		case PUT:
+			cmdPUT();
+			break;
+		default:
+			Error::msg("unknown command");
+			break;
+	}
+	
 }
 void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid)
 {
 	packet.reset(HPACKET);
 
-	uint16_t bsize = 18;
-	char body[PBODYCAP] = "Hello, packet.";
-	packet.init(sesid, INFO, bsize, cmdid, 0, 0, body); 
+	//uint16_t bsize = cmdVector[1].size();
+
+	char body[PBODYCAP];
+	std::strcpy(body,cmdVector[1].c_str()); 
+	uint16_t bsize = strlen(body);
+	Error::msg("cmdVector: %d\n", cmdVector.size());
+	// Error::msg("body: %s\n", body);
+	packet.init(sesid, INFO, bsize, cmdid, 0, 0, body);
+	packet.print();
+	packet.htonp(); 
 }
 
 // void CliPI::cmd2packet(uint32_t sesid, uint16_t cmdid = 0)
@@ -41,26 +53,43 @@ void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid)
 // 	packet.init(sesid, cmdid, bsize, body);
 // }
 
-void CliPI::getCmd()
+void CliPI::cmdGET()
 {
+	if(cmdVector.size() != 2)
+		Error::msg("command argument fault");
+	// command to packet
+	cmd2pack(0, cmdid);
+	
+    connSockStream.Writen(packet.ps,  PACKSIZE);
+
+    packet.reset(NPACKET);
+	if ( connSockStream.Readn(packet.ps, PACKSIZE) == 0)
+		Error::quit("server terminated prematurely");
+    packet.ntohp();
+
+    if (packet.ps->tagid == INFO && packet.ps->cmdid == GET && packet.ps->bsize) {
+    	packet.ps->body[packet.ps->bsize] = 0;
+		printf("\t\tGET: %s\n", packet.ps->body);
+		//receive_file(chp, data, sfd_client, f);
+		//fclose(f);
+	} else {
+		Error::msg("Error getting remote file : <%s>\n", packet.ps->body); 
+	}
+ 
+}
+void CliPI::cmdPUT()
+{
+	if(cmdVector.size() != 2)
+		Error::msg("command argument fault");
+	// command to packet
+	cmd2pack(0, cmdid);
+
 	packet.print();
 	packet.htonp();
-    connSockStream.Writen(packet.ps,  PACKSIZE); 
+    connSockStream.Writen(packet.ps,  PACKSIZE);
 }
 void CliPI::sessionCmd()
 {
-	cmd2pack();
-	getCmd();
-
-	int n;
-	packet.reset(NPACKET);
-	if ( (n = connSockStream.Readn(packet.ps, PACKSIZE)) == 0)
-        Error::ret("str_echo: client terminated prematurely");
-    packet.ntohp();
-    packet.print();
-}
-
-void CliPI::infoCmd()
-{
 
 }
+

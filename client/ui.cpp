@@ -33,7 +33,6 @@ void UI::run()
 	string inputline;
 
 	// user interface: first cout prompt (use "," operator)
-	std::cout << inputline << std::endl;
 	while (std::cout << "tinyFTP> ", getline(std::cin, inputline))
 	{
 		// clear cmdVector each time when user input
@@ -49,10 +48,7 @@ void UI::run()
 		{
 			continue;
 		} else {
-
 			cliPI.run(this->cmdid, this->cmdVector);
-			
-			//str_cli(cliCtrConnfd, cmdVector[0]);
 		}
 
 		// for (auto it = cmdVector.cbegin(); it != cmdVector.cend(); ++it)

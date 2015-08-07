@@ -34,8 +34,8 @@ public:
 	void init(const char *host);
 	void run(uint16_t cmdid, std::vector<string> & cmdVector);
 	void cmd2pack(uint32_t sesid = 0, uint16_t cmdid = 0);
-	void getCmd();
-	void infoCmd();
+	void cmdGET();
+	void cmdPUT();
 	void sessionCmd();
 	
 

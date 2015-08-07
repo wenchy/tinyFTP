@@ -26,17 +26,11 @@
 void * clientConnect(void * arg)
 {
     ThreadArg * ptarg = (ThreadArg *)arg;
-
-    ssize_t     n;
-    Packet packet(NPACKET);
-    SockStream connSockStream(ptarg->fd);
+    SrvPI srvPI;
 
     while (1)
     {
-        if ( (n = connSockStream.Readn(packet.ps, PACKSIZE)) == 0)
-            Error::quit_pthread("Control connect: client terminated prematurely");
-        packet.ntohp();
-        packet.print();
+        srvPI.run(ptarg->fd);
     }
 
     return(NULL);
