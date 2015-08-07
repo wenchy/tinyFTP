@@ -8,8 +8,10 @@
 class Packet
 {
 public:
-
-	Packet(PacketStoreType pstype = HPACKET);
+	Packet();
+	//Packet(PacketStoreType pstype = HPACKET);
+	void init(PacketStoreType pstype = HPACKET);
+	~Packet();
 
 	void init(uint32_t sesid, uint16_t tagid, uint16_t bsize, uint16_t cmdid, uint16_t nslice, uint16_t sindex, char body[PBODYCAP])
 	{ 
@@ -20,7 +22,8 @@ public:
 		ps->cmdid = cmdid;
 		ps->nslice = nslice;
 		ps->sindex = sindex;
-		memcpy(ps->body, body, PBODYCAP);  
+		if(body != NULL && bsize != 0)
+			memcpy(ps->body, body, PBODYCAP);  
 	};
 	void reset(PacketStoreType pstype);
 	void zero();

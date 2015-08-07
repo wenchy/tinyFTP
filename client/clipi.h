@@ -6,6 +6,7 @@
 #include    "../common/packet.h"
 #include    "../common/sockstream.h"
 #include    "../common/socket.h"
+#include    "clidtp.h"
 	// USER = 1,
 	// PASS,
 	// GET,
@@ -46,6 +47,7 @@ private:
 	SockStream connSockStream;
 	uint16_t cmdid;
 	std::vector<string> cmdVector;
+	CliDTP cliDTP;
 
 };
 

@@ -1,6 +1,14 @@
 #include 	"packet.h"
 
-Packet::Packet(PacketStoreType pstype)
+Packet::Packet()
+{ 
+	init(HPACKET);  
+}
+// Packet::Packet(PacketStoreType pstype)
+// { 
+// 	init(pstype); 
+// }
+void Packet::init(PacketStoreType pstype)
 { 
 	this->pstype = pstype;
 	ps = (PacketStruct*) Malloc(PACKSIZE); 
@@ -90,4 +98,9 @@ void Packet::print()
 	
 	
 	fflush(stdout);
+}
+
+Packet::~Packet()
+{ 
+	free(ps); 
 }

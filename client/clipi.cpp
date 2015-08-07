@@ -57,24 +57,35 @@ void CliPI::cmdGET()
 {
 	if(cmdVector.size() != 2)
 		Error::msg("command argument fault");
+	packet.ps->body[packet.ps->bsize] = 0;
+	char filename[MAXLINE];
+	std::strcpy(filename,cmdVector[1].c_str()); 
 	// command to packet
 	cmd2pack(0, cmdid);
-	
     connSockStream.Writen(packet.ps,  PACKSIZE);
 
-    packet.reset(NPACKET);
-	if ( connSockStream.Readn(packet.ps, PACKSIZE) == 0)
-		Error::quit("server terminated prematurely");
-    packet.ntohp();
+    // filename is on server? need test
+    cliDTP.init(connSockStream);
+	cliDTP.recvFile(filename);
+	//packet.reset(NPACKET);
+ //    int n;
+	// while ( (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0)
+	// {
+	// 	packet.ntohp();
+	// 	Error::msg("Recieved packet %d\n", packet.ps->sindex);
+	// 	//int writelen=fwrite(buff,sizeof(char),length,fd);
+	// 	packet.reset(NPACKET);
+	// }
+    
 
-    if (packet.ps->tagid == INFO && packet.ps->cmdid == GET && packet.ps->bsize) {
-    	packet.ps->body[packet.ps->bsize] = 0;
-		printf("\t\tGET: %s\n", packet.ps->body);
-		//receive_file(chp, data, sfd_client, f);
-		//fclose(f);
-	} else {
-		Error::msg("Error getting remote file : <%s>\n", packet.ps->body); 
-	}
+ //    if (packet.ps->tagid == INFO && packet.ps->cmdid == GET && packet.ps->bsize) {
+ //    	packet.ps->body[packet.ps->bsize] = 0;
+	// 	printf("\t\tGET: %s\n", packet.ps->body);
+	// 	//receive_file(chp, data, sfd_client, f);
+	// 	//fclose(f);
+	// } else {
+	// 	Error::msg("Error getting remote file : <%s>\n", packet.ps->body); 
+	// }
  
 }
 void CliPI::cmdPUT()

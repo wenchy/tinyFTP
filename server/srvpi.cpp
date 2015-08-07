@@ -1,14 +1,9 @@
 #include    "srvpi.h"
 
-// SrvPI::SrvPI(int cliCtrConnfd, int cliDatConnfd):packet(HPACKET)
-// {
-// 	this->cliCtrConnfd = cliCtrConnfd;
-// 	this->cliDatConnfd = cliDatConnfd;
-
-// }
 void SrvPI::run(int connfd)
 {
 	connSockStream.init(connfd);
+
 	packet.reset(NPACKET);
 	if ( connSockStream.Readn(packet.ps, PACKSIZE) == 0)
 	            Error::quit_pthread("client terminated prematurely");
@@ -59,18 +54,21 @@ void SrvPI::cmdGET()
 	packet.print();
 
 
-	packet.reset(HPACKET);
-	uint32_t sesid = 1;
-	uint16_t bsize = 11;
-	uint16_t cmdid = GET;
-	// uint16_t nslice = 0;
-	// uint16_t sindex = 0;
-	char body[PBODYCAP] = "server echo";
-	// Error::msg("body: %s\n", body);
-	packet.init(sesid, INFO, bsize, cmdid, 0, 0, body);
+	// packet.reset(HPACKET);
+	// uint32_t sesid = 1;
+	// uint16_t bsize = 11;
+	// uint16_t cmdid = GET;
+	// // uint16_t nslice = 0;
+	// // uint16_t sindex = 0;
+	// char body[PBODYCAP] = "server echo";
+	// // Error::msg("body: %s\n", body);
+	// packet.init(sesid, INFO, bsize, cmdid, 0, 0, body);
 	
-	packet.htonp();
-	connSockStream.Writen(packet.ps,  PACKSIZE);
+	// packet.htonp();
+	// connSockStream.Writen(packet.ps,  PACKSIZE);
+	packet.ps->body[packet.ps->bsize] = 0;
+	srvDTP.init(connSockStream);
+	srvDTP.sendFile(packet.ps->body);
 
 
 }
