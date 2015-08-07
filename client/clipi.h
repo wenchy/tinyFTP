@@ -3,7 +3,7 @@
 
 #include    "../common/common.h"
 #include    "../common/error.h"
-#include    "../common/controlpacket.h"
+#include    "../common/packet.h"
 #include    "../common/sockstream.h"
 #include    "../common/socket.h"
 	// USER = 1,
@@ -41,10 +41,9 @@ public:
 
 
 private:
-	ControlPacket controlPacket;
+	Packet packet;
 
-	SockStream ctrConnStream;
-	SockStream datConnStream;
+	SockStream connSockStream;
 	uint16_t cmdid;
 	std::vector<string> cmdVector;
 

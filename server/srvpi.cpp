@@ -1,6 +1,6 @@
 #include    "srvpi.h"
 
-// SrvPI::SrvPI(int cliCtrConnfd, int cliDatConnfd):controlPacket(HPACKET)
+// SrvPI::SrvPI(int cliCtrConnfd, int cliDatConnfd):packet(HPACKET)
 // {
 // 	this->cliCtrConnfd = cliCtrConnfd;
 // 	this->cliDatConnfd = cliDatConnfd;
@@ -16,42 +16,42 @@ void SrvPI::run(uint32_t sesid, uint16_t cmdid)
 
 	// int n;
 	// SockStream connSockStream(cliCtrConnfd);
-	// controlPacket.reset(NPACKET);
-	// if ( (n = connSockStream.Readn(controlPacket.cpack, CPACKSIZE)) == 0)
+	// packet.reset(NPACKET);
+	// if ( (n = connSockStream.Readn(packet.cpack, CPACKSIZE)) == 0)
  //        Error::ret("str_echo: client terminated prematurely");
- //    controlPacket.ntohp();
- //    controlPacket.print();
+ //    packet.ntohp();
+ //    packet.print();
 }
 void SrvPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector)
 {
-	controlPacket.reset(HPACKET);
+	packet.reset(HPACKET);
 
 	uint16_t bsize = 18;
-	char body[CBODYCAP] = "Server: echo, ctr packet.";
-	controlPacket.init(sesid, cmdid, bsize, body);
+	char body[PBODYCAP] = "Server: echo, ctr packet.";
+	//packet.init(sesid, cmdid, bsize, body);
 }
 
-void SrvPI::cmd2pack(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[CBODYCAP])
+void SrvPI::cmd2pack(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[PBODYCAP])
 {
-	controlPacket.reset(HPACKET);
-	controlPacket.init(sesid, cmdid, bsize, body);
+	packet.reset(HPACKET);
+	//packet.init(sesid, cmdid, bsize, body);
 }
 
 void SrvPI::cmd2pack(uint32_t sesid, uint16_t cmdid, string str)
 {
-	controlPacket.reset(HPACKET);
+	packet.reset(HPACKET);
 	if(str.size() > 65535)
 		Error::msg("body size overflow");
 	uint16_t bsize = str.size();
-	char body[CBODYCAP];
+	char body[PBODYCAP];
 	std::strcpy(body, str.c_str());
-	controlPacket.init(sesid, cmdid, bsize, body);
+	//packet.init(sesid, cmdid, bsize, body);
 }
 
 void SrvPI::infoCmd()
 {
-	controlPacket.print();
-	controlPacket.htonp();
-	SockStream connSockStream(cliCtrConnfd);
-    connSockStream.Writen(controlPacket.cpack,  CPACKSIZE); 
+	packet.print();
+	packet.htonp();
+	// SockStream connSockStream(cliCtrConnfd);
+ //    connSockStream.Writen(packet.ps,  PACKSIZE); 
 }

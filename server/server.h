@@ -3,7 +3,7 @@
 
 #include    "../common/common.h"
 #include    "../common/error.h"
-#include    "../common/controlpacket.h"
+#include    "../common/packet.h"
 #include    "../common/sockstream.h"
 #include    "../common/socket.h"
 

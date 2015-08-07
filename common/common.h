@@ -64,32 +64,31 @@ typedef enum packetStoreType
 	NPACKET						// Network storage type
 } PacketStoreType;
 
-// typedef enum packetType
-// {
-// 	CTRPACKET,					// control packet type
-// 	DATPCKET					// data packet type
-// } PacketType;
-
 /************************** CtrPacket **********************************/
 
-#define CHEADSIZE		8			// control packet header size
-#define	CBODYCAP		120			// control packet body capcacity
+#define PHEADSIZE		14			// control packet header size
+#define	PBODYCAP		512			// control packet body capcacity
 
 // TCP control packet definition, communication protocol
  #pragma pack(4)
-typedef struct cPacket
+typedef struct packetStruct
 {
 	/* control packet header */
 	uint32_t sesid;			// Session id
-	uint16_t cmdid;			// Command ID
-	uint16_t bsize;			// Data: the real size of body 
+	uint16_t tagid;			// different packet type: command, data, info 
+	uint16_t bsize;			// the real size of body
+
+	uint16_t cmdid;			// Command: ID
+	
+	uint16_t nslice;		// Data: whole number of file slices
+	uint16_t sindex;		// Data: slice index
 
 	/* control packet body */
-	char body[CBODYCAP];	// control packet body
+	char body[PBODYCAP];	// control packet body
 	
-} CPacket;
+} PacketStruct;
 
-#define CPACKSIZE sizeof(CPacket)
+#define PACKSIZE sizeof(PacketStruct)
 
 // different file transfer control commands
 
@@ -111,34 +110,19 @@ typedef enum cmdID
 	RMD,
 	BINARY,
 	ASCII,
-	QUIT,
-
-	INFO,
-	EOT
+	QUIT
 } CmdID;
 
-
-
-/************************** DatPacket **********************************/
-#define DHEADSIZE		10			// data packet header size
-#define	DBODYCAP		1024		// data packet body capcacity, basic file slice size
-
-// TCP data packet definition, data transfer protocol
- #pragma pack(4)
-typedef struct dPacket
+typedef enum tagID
 {
-	/* data packet header */
-	uint32_t sesid;			// Session id
-	uint16_t nslice;		// Data: whole number of file slices
-	uint16_t sindex;		// Data: slice index
-	uint16_t bsize;			// Data: the real size of body 
+	CMD = 1,
+	TERM,
+	INFO,
+	DATA,
+	DONE,
+	EOT
+} TagID;
 
-	/* data packet body */
-	char body[DBODYCAP];	// packet body
-	
-} DPacket;
-
-#define DPACKSIZE sizeof(DPacket)
 
 
 /*********************************************************

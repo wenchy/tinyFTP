@@ -2,31 +2,11 @@
 
 void CliPI::init(const char *host)
 {
-	int cliCtrConnfd, cliDatConnfd = -1;
+	int connfd;
 
-    Socket cliCtrSocket(CLI_SOCKET, host, CTRPORT);
-    cliCtrConnfd = cliCtrSocket.init();
-    ctrConnStream.init(cliCtrConnfd);
-
-    // ssize_t     n;
-    // ControlPacket controlPacket(NPACKET);
-
-
-    // if ( (n = ctrConnStream.Readn(controlPacket.cpack, CPACKSIZE)) == 0)
-    //     Error::ret("Control connect: server terminated prematurely");
-    // controlPacket.ntohp();
-    // controlPacket.print();
- 
-
-    // Socket cliDatSocket(CLI_SOCKET, host, DATPORT);
-    // cliDatConnfd = cliDatSocket.init();
-    // datConnStream.init(cliDatConnfd);
-
-
-
-
-
-
+    Socket cliSocket(CLI_SOCKET, host, CTRPORT);
+    connfd = cliSocket.init();
+    connSockStream.init(connfd);
 
 }
 void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
@@ -37,35 +17,35 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 	getCmd();
 
 	int n;
-	controlPacket.reset(NPACKET);
-	if ( (n = ctrConnStream.Readn(controlPacket.cpack, CPACKSIZE)) == 0)
+	packet.reset(NPACKET);
+	if ( (n = connSockStream.Readn(packet.ps, PACKSIZE)) == 0)
         Error::ret("str_echo: client terminated prematurely");
-    controlPacket.ntohp();
-    controlPacket.print();
+    packet.ntohp();
+    packet.print();
 }
 void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid)
 {
-	controlPacket.reset(HPACKET);
+	packet.reset(HPACKET);
 
 	uint16_t bsize = 18;
-	char body[CBODYCAP] = "Hello, ctr packet.";
-	controlPacket.init(sesid, cmdid, bsize, body);
+	char body[PBODYCAP] = "Hello, packet.";
+	packet.init(sesid, INFO, bsize, cmdid, 0, 0, body); 
 }
 
-// void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid = 0)
+// void CliPI::cmd2packet(uint32_t sesid, uint16_t cmdid = 0)
 // {
-// 	controlPacket.reset(HPACKET);
+// 	packet.reset(HpacketET);
 
 // 	uint16_t bsize = 18;
-// 	char body[CBODYCAP] = "Hello, ctr packet.";
-// 	controlPacket.init(sesid, cmdid, bsize, body);
+// 	char body[PBODYCAP] = "Hello, ctr packetet.";
+// 	packet.init(sesid, cmdid, bsize, body);
 // }
 
 void CliPI::getCmd()
 {
-	controlPacket.print();
-	controlPacket.htonp();
-    ctrConnStream.Writen(controlPacket.cpack,  CPACKSIZE); 
+	packet.print();
+	packet.htonp();
+    connSockStream.Writen(packet.ps,  PACKSIZE); 
 }
 void CliPI::sessionCmd()
 {
@@ -73,11 +53,11 @@ void CliPI::sessionCmd()
 	getCmd();
 
 	int n;
-	controlPacket.reset(NPACKET);
-	if ( (n = ctrConnStream.Readn(controlPacket.cpack, CPACKSIZE)) == 0)
+	packet.reset(NPACKET);
+	if ( (n = connSockStream.Readn(packet.ps, PACKSIZE)) == 0)
         Error::ret("str_echo: client terminated prematurely");
-    controlPacket.ntohp();
-    controlPacket.print();
+    packet.ntohp();
+    packet.print();
 }
 
 void CliPI::infoCmd()
