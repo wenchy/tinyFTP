@@ -13,6 +13,18 @@ void Packet::init(PacketStoreType pstype)
 	this->pstype = pstype;
 	ps = (PacketStruct*) Malloc(PACKSIZE); 
 }
+void Packet::fill(uint32_t sesid, uint16_t tagid, uint16_t bsize, uint16_t cmdid, uint16_t nslice, uint16_t sindex, char body[PBODYCAP])
+{ 
+
+	ps->sesid = sesid;
+	ps->tagid = tagid;
+	ps->bsize = bsize;
+	ps->cmdid = cmdid;
+	ps->nslice = nslice;
+	ps->sindex = sindex;
+	if(body != NULL && bsize != 0)
+		memcpy(ps->body, body, PBODYCAP);  
+}
 void Packet::reset(PacketStoreType pstype)
 {
 	zero();

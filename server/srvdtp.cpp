@@ -7,16 +7,37 @@ void SrvDTP::init(SockStream & connSockStream)
 }
 void SrvDTP::sendFile(const char *filename)
 {
-	Error::msg("Sendfile now %s", filename);
-	FILE* fp = Fopen(filename, "rb");	// Yo!
 	int n;
 	int sindex = 0;
-	char body[PBODYCAP];
+	FILE* fp;	// Yo!
+	char buf[MAXLINE];
 
+	if ( (fp = fopen(filename, "rb")) == NULL)
+	{
+		// send Response
+		packet.reset(HPACKET);
+		snprintf(buf, MAXLINE, "%s", strerror(errno));
+		packet.fill(0, INFO, strlen(buf), GET, 0, 0, buf);
+		//packet.print();
+		packet.htonp();
+		connSockStream.Writen(packet.ps, PACKSIZE);
+		return;
+	} else {
+		// send Response
+		packet.reset(HPACKET);
+		snprintf(buf, MAXLINE, "200 ok start to transfer");
+		packet.fill(0, INFO, strlen(buf), GET, 0, 0, buf);
+		packet.print();
+		packet.htonp();
+		connSockStream.Writen(packet.ps, PACKSIZE);
+	}
+
+	Error::msg("Sendfile now %s", filename);
+	char body[PBODYCAP];
 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 	{
 		packet.reset(HPACKET);
-		packet.init(0, DATA, n, GET, 0, ++sindex, body);
+		packet.fill(0, DATA, n, GET, 0, ++sindex, body);
 		//packet.print();
 		packet.htonp();
 		connSockStream.Writen(packet.ps, PACKSIZE);
@@ -25,7 +46,7 @@ void SrvDTP::sendFile(const char *filename)
 
 	// send EOT
 	packet.reset(HPACKET);
-	packet.init(0, EOT, n, GET, 0, 0, NULL);
+	packet.fill(0, EOT, n, GET, 0, 0, NULL);
 	packet.print();
 	packet.htonp();
 	connSockStream.Writen(packet.ps, PACKSIZE);

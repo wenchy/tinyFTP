@@ -39,7 +39,7 @@ void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid)
 	uint16_t bsize = strlen(body);
 	Error::msg("cmdVector: %d\n", cmdVector.size());
 	// Error::msg("body: %s\n", body);
-	packet.init(sesid, INFO, bsize, cmdid, 0, 0, body);
+	packet.fill(sesid, INFO, bsize, cmdid, 0, 0, body);
 	packet.print();
 	packet.htonp(); 
 }

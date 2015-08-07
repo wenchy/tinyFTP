@@ -18,7 +18,7 @@ void CliDTP::sendFile(const char *filename)
 		Error::msg("Sendfile now %s", filename);
 		packet.reset(HPACKET);
 		Error::msg("Sendfile now %s", filename);
-		packet.init(0, DATA, n, GET, 0, ++sindex, body);
+		packet.fill(0, DATA, n, GET, 0, ++sindex, body);
 		Error::msg("Sendfile now %s", filename);
 		packet.print();
 		packet.htonp();
@@ -29,9 +29,22 @@ void CliDTP::sendFile(const char *filename)
 }
 void CliDTP::recvFile(const char *filename)
 {
+	
+	int n, m;
+	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
+	{
+		packet.ntohp();
+		if(packet.ps->tagid == INFO) {
+			packet.ps->body[packet.ps->bsize] = 0;
+			printf("%s\n", packet.ps->body);
+			return;
+		} else {
+
+		}
+
+	}
 	Error::msg("Recieved now %s", filename);
 	FILE* fp = Fopen(filename, "wb");	// Yo!
-	int n, m;
 	while (packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0)
 	{
 		packet.ntohp();
@@ -39,8 +52,12 @@ void CliDTP::recvFile(const char *filename)
 		if(packet.ps->tagid == DATA) {
 			m = fwrite(packet.ps->body, sizeof(char), packet.ps->bsize, fp);
 			printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.ps->bsize, m);
+		} else if(packet.ps->tagid == INFO) {
+			packet.ps->body[packet.ps->bsize] = 0;
+			printf("%s", packet.ps->body);
+			return;
 		} else if(packet.ps->tagid == EOT) {
-			break;
+			break;	
 		} else {
 			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
 			return;
