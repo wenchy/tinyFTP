@@ -4,6 +4,7 @@
 #define _TINYFTP_COMMON_H_
 
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>     // sockaddr_in{} and other Internet definitions
 #include <arpa/inet.h>      // inet(3) functions
@@ -66,32 +67,66 @@ typedef enum packetStoreType
 
 /************************** CtrPacket **********************************/
 
-#define PHEADSIZE		14			// control packet header size
-#define	PBODYCAP		512			// control packet body capcacity
-
+#define PHEADSIZE		18			// packet header size
+#define	PBODYCAP		512			// packet body capcacity
+#define	SLICECAP		512			// slice capcacity
+#define	MAXNSLICE		4294967295	// max slice count: the maximum positive integer value
 // TCP control packet definition, communication protocol
  #pragma pack(4)
 typedef struct packetStruct
 {
-	/* control packet header */
+	/* packet header */
 	uint32_t sesid;			// Session id
-	uint16_t tagid;			// different packet type: command, data, info 
-	uint16_t bsize;			// the real size of body
+	uint16_t tagid;			// different packet type: CMD, DATA, INFO 
 
 	uint16_t cmdid;			// Command: ID
-	
-	uint16_t nslice;		// Data: whole number of file slices
-	uint16_t sindex;		// Data: slice index
+	uint16_t statid;		// status code id
 
-	/* control packet body */
-	char body[PBODYCAP];	// control packet body
+	uint32_t nslice;		// Data: whole number of file slices
+	uint32_t sindex;		// Data: slice index
+
+	uint16_t bsize;			// the real size of body
+	/* packet body */
+	char body[PBODYCAP];	// packet body
 	
 } PacketStruct;
 
+// // tagid: CMD
+// #pragma pack(4)
+// typedef struct cmdBodyStruct
+// {
+// 	uint16_t cmdid;			// Command: ID
+	
+// } CmdBodyStruct;
+
+// // tagid: INFO
+// #pragma pack(4)
+// typedef struct infoBodyStruct
+// {
+// 	uint16_t status;			// status code
+	
+// } InfoBodyStruct;
+
+// // tagid: Data
+// #pragma pack(4)
+// typedef struct dataBodyStruct
+// {
+// 	uint16_t nslice;		// Data: whole number of file slices
+// 	uint16_t sindex;		// Data: slice index
+// 	char slice[SLICECAP];	// packet body
+	
+// } DataBodyStruct;
+
 #define PACKSIZE sizeof(PacketStruct)
 
-// different file transfer control commands
+typedef enum tagID
+{
+	TAG_CMD = 1,
+	TAG_INFO,
+	TAG_DATA
+} TagID;
 
+// different file transfer control commands
 typedef enum cmdID
 {
 	USER = 1,
@@ -113,17 +148,14 @@ typedef enum cmdID
 	QUIT
 } CmdID;
 
-typedef enum tagID
+typedef enum statID
 {
-	CMD = 1,
-	TERM,
-	INFO,
-	DATA,
-	DONE,
-	EOT
-} TagID;
-
-
+	STAT_OK = 1,
+	STAT_ERR,
+	STAT_TERM,
+	STAT_DONE,
+	STAT_EOT
+} StatID;
 
 /*********************************************************
  ******************* functions ***************************

@@ -5,89 +5,73 @@ void CliDTP::init(SockStream & connSockStream)
 	this->connSockStream = connSockStream;
 	packet.init();
 }
-void CliDTP::sendFile(const char *filename)
+void CliDTP::sendFile(const char *pathname)
 {
 
-	FILE* fp = Fopen(filename, "rb");	// Yo!
-	int n;
-	int sindex = 0;
-	char body[PBODYCAP];
-	Error::msg("Sendfile now %s", filename);
-	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
-	{
-		Error::msg("Sendfile now %s", filename);
-		packet.reset(HPACKET);
-		Error::msg("Sendfile now %s", filename);
-		packet.fill(0, DATA, n, GET, 0, ++sindex, body);
-		Error::msg("Sendfile now %s", filename);
-		packet.print();
-		packet.htonp();
-		connSockStream.Writen(packet.ps, PACKSIZE);
+	// FILE* fp = Fopen(pathname, "rb");	// Yo!
+	// int n;
+	// int sindex = 0;
+	// char body[PBODYCAP];
+	// Error::msg("Sendfile now %s", pathname);
+	// while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
+	// {
+	// 	Error::msg("Sendfile now %s", pathname);
+	// 	packet.reset(HPACKET);
+	// 	Error::msg("Sendfile now %s", pathname);
+	// 	packet.fill(0, DATA, n, GET, 0, ++sindex, body);
+	// 	Error::msg("Sendfile now %s", pathname);
+	// 	packet.print();
+	// 	packet.htonp();
+	// 	connSockStream.Writen(packet.ps, PACKSIZE);
 
-		printf("file_block_length:%d\n",n);
-	}
+	// 	printf("file_block_length:%d\n",n);
+	// }
 }
-void CliDTP::recvFile(const char *filename)
+void CliDTP::recvFile(const char *pathname)
 {
 	
 	int n, m;
+	// first receive response
 	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
 	{
 		packet.ntohp();
-		if(packet.ps->tagid == INFO) {
-			packet.ps->body[packet.ps->bsize] = 0;
-			printf("%s\n", packet.ps->body);
-			return;
-		} else {
-
-		}
-
-	}
-	Error::msg("Recieved now %s", filename);
-	FILE* fp = Fopen(filename, "wb");	// Yo!
-	while (packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0)
-	{
-		packet.ntohp();
-		//packet.print();
-		if(packet.ps->tagid == DATA) {
-			m = fwrite(packet.ps->body, sizeof(char), packet.ps->bsize, fp);
-			printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.ps->bsize, m);
-		} else if(packet.ps->tagid == INFO) {
-			packet.ps->body[packet.ps->bsize] = 0;
-			printf("%s", packet.ps->body);
-			return;
-		} else if(packet.ps->tagid == EOT) {
-			break;	
+		if (packet.ps->tagid == TAG_INFO) {
+			if (packet.ps->statid == STAT_OK) {
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stdout, "%s\n", packet.ps->body);
+			} else if (packet.ps->statid == STAT_ERR){
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stderr, "%s\n", packet.ps->body);
+				return;
+			} else {
+				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
+				return;
+			}
+			
 		} else {
 			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
 			return;
 		}
 	}
-	fclose(fp);
-	// int x;
-	// int i = 0, j = 0;
-	// if((x = recv(sfd, data, size_packet, 0)) <= 0)
-	// 	er("recv()", x);
-	// j++;
-	// hp = ntohp(data);
-	// //printpacket(hp, HP);
-	// while(hp->type == DATA)
-	// {
-	// 	i += fwrite(hp->buffer, 1, hp->datalen, f);
-	// 	if((x = recv(sfd, data, size_packet, 0)) <= 0)
-	// 		er("recv()", x);
-	// 	j++;
-	// 	hp = ntohp(data);
-	// 	//printpacket(hp, HP);
-	// }
-	// fprintf(stderr, "\t%d data packet(s) received.\n", --j);	// j decremented because the last packet is EOT.
-	// fprintf(stderr, "\t%d byte(s) written.\n", i);
-	// if(hp->type == EOT)
-	// 	return;
-	// else
-	// {
-	// 	fprintf(stderr, "Error occured while downloading remote file.\n");
-	// 	exit(2);
-	// }
-	// fflush(stderr);
+
+	// second transfer file
+	fprintf(stdout, "Recieve file now: %s\n", pathname);
+	FILE* fp = Fopen(pathname, "wb");	// Yo!
+	while (packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0)
+	{
+		packet.ntohp();
+		//packet.print();
+		if(packet.ps->tagid == TAG_DATA) {
+			m = fwrite(packet.ps->body, sizeof(char), packet.ps->bsize, fp);
+			//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.ps->bsize, m);
+		} else if(packet.ps->tagid == TAG_INFO && packet.ps->statid == STAT_EOT) {
+			fclose(fp);
+			packet.ps->body[packet.ps->bsize] = 0;
+			printf("%s\n", packet.ps->body);
+			return;
+		} else {
+			Error::msg("CliDTP::recvFile: unknown tagid %d with statid %d", packet.ps->tagid, packet.ps->statid);
+			return;
+		}
+	}
 }

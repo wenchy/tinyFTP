@@ -5,19 +5,32 @@ void SrvDTP::init(SockStream & connSockStream)
 	this->connSockStream = connSockStream;
 	packet.init();
 }
-void SrvDTP::sendFile(const char *filename)
+void SrvDTP::sendFile(const char *pathname)
 {
 	int n;
-	int sindex = 0;
+	uint32_t nslice =0, sindex = 0;
 	FILE* fp;	// Yo!
 	char buf[MAXLINE];
 
-	if ( (fp = fopen(filename, "rb")) == NULL)
+	if ( (fp = fopen(pathname, "rb")) == NULL)
 	{
 		// send Response
 		packet.reset(HPACKET);
 		snprintf(buf, MAXLINE, "%s", strerror(errno));
-		packet.fill(0, INFO, strlen(buf), GET, 0, 0, buf);
+		packet.fillInfo(0, STAT_ERR, strlen(buf), buf);
+		//packet.print();
+		packet.htonp();
+		connSockStream.Writen(packet.ps, PACKSIZE);
+		return;
+	} else if ( (n = getFileNslice(pathname, &nslice)) < 0)  {
+		// send Response
+		packet.reset(HPACKET);
+		if ( n == -2) {
+			snprintf(buf, MAXLINE, "too large file size");
+		} else {
+			snprintf(buf, MAXLINE, "file stat error");
+		}
+		packet.fillInfo(0, STAT_ERR, strlen(buf), buf);
 		//packet.print();
 		packet.htonp();
 		connSockStream.Writen(packet.ps, PACKSIZE);
@@ -25,28 +38,29 @@ void SrvDTP::sendFile(const char *filename)
 	} else {
 		// send Response
 		packet.reset(HPACKET);
-		snprintf(buf, MAXLINE, "200 ok start to transfer");
-		packet.fill(0, INFO, strlen(buf), GET, 0, 0, buf);
+		snprintf(buf, MAXLINE, "OK start to transfer");
+		packet.fillInfo(0, STAT_OK, strlen(buf), buf);
 		packet.print();
 		packet.htonp();
 		connSockStream.Writen(packet.ps, PACKSIZE);
 	}
 
-	Error::msg("Sendfile now %s", filename);
 	char body[PBODYCAP];
+	printf("Sendfile [%s] now\n", pathname);
 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 	{
 		packet.reset(HPACKET);
-		packet.fill(0, DATA, n, GET, 0, ++sindex, body);
+		packet.fillData(0, nslice, ++sindex, n, body);
 		//packet.print();
 		packet.htonp();
 		connSockStream.Writen(packet.ps, PACKSIZE);
-		printf("file_block_length:%d\n",n);
+		//printf("file_block_length:%d\n",n);
 	}
 
 	// send EOT
 	packet.reset(HPACKET);
-	packet.fill(0, EOT, n, GET, 0, 0, NULL);
+	snprintf(buf, MAXLINE, "End of Tansfer. (%d slices, last size %d)", nslice, n);
+	packet.fillInfo(0, STAT_EOT, strlen(buf), buf);
 	packet.print();
 	packet.htonp();
 	connSockStream.Writen(packet.ps, PACKSIZE);
@@ -79,4 +93,29 @@ void SrvDTP::recvFile(FILE* f)
 	// 	exit(2);
 	// }
 	// fflush(stderr);
+}
+
+int SrvDTP::getFileNslice(const char *pathname,uint32_t *pnslice_o)  
+{  
+ 
+    unsigned long filesize = 0, n = MAXNSLICE;
+
+
+    struct stat statbuff;  
+    if(stat(pathname, &statbuff) < 0){  
+        return -1;  // error
+    } else {  
+        filesize = statbuff.st_size;  
+    }  
+    if (filesize % SLICECAP == 0)
+	{
+		 *pnslice_o = filesize/SLICECAP; 
+	} else if ( (n = filesize/SLICECAP + 1) > MAXNSLICE ){
+		Error::msg("too large file size: %d\n (MAX: %d)", n, MAXNSLICE);
+		return -2; 
+	} else {
+		 *pnslice_o = filesize/SLICECAP + 1; 
+	}
+  
+    return 1;  
 }

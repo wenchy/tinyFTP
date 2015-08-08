@@ -13,15 +13,67 @@ void Packet::init(PacketStoreType pstype)
 	this->pstype = pstype;
 	ps = (PacketStruct*) Malloc(PACKSIZE); 
 }
-void Packet::fill(uint32_t sesid, uint16_t tagid, uint16_t bsize, uint16_t cmdid, uint16_t nslice, uint16_t sindex, char body[PBODYCAP])
+void Packet::fill(uint32_t sesid, uint16_t tagid, uint16_t cmdid, uint16_t statid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
 { 
-
 	ps->sesid = sesid;
 	ps->tagid = tagid;
-	ps->bsize = bsize;
+
 	ps->cmdid = cmdid;
+
+	ps->statid = statid;
+
 	ps->nslice = nslice;
 	ps->sindex = sindex;
+
+	ps->bsize = bsize;
+	if(body != NULL && bsize != 0)
+		memcpy(ps->body, body, PBODYCAP);  
+}
+void Packet::fillInfo(uint32_t sesid, uint16_t statid, uint16_t bsize, char body[PBODYCAP])
+{ 
+	ps->sesid = sesid;
+	ps->tagid = TAG_INFO;
+
+	ps->cmdid = 0;
+
+	ps->statid = statid;
+
+	ps->nslice = 0;
+	ps->sindex = 0;
+
+	ps->bsize = bsize;
+	if(body != NULL && bsize != 0)
+		memcpy(ps->body, body, PBODYCAP);  
+}
+void Packet::fillCmd(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[PBODYCAP])
+{ 
+	ps->sesid = sesid;
+	ps->tagid = TAG_CMD;
+
+	ps->cmdid = cmdid;
+
+	ps->statid = 0;
+
+	ps->nslice = 0;
+	ps->sindex = 0;
+
+	ps->bsize = bsize;
+	if(body != NULL && bsize != 0)
+		memcpy(ps->body, body, PBODYCAP);  
+}
+void Packet::fillData(uint32_t sesid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
+{ 
+	ps->sesid = sesid;
+	ps->tagid = TAG_DATA;
+
+	ps->cmdid = 0;
+
+	ps->statid = 0;
+
+	ps->nslice = nslice;
+	ps->sindex = sindex;
+
+	ps->bsize = bsize;
 	if(body != NULL && bsize != 0)
 		memcpy(ps->body, body, PBODYCAP);  
 }
@@ -38,17 +90,21 @@ void Packet::zero()
 void Packet::ntohp()
 {
 	if (pstype == HPACKET)
-		Error::msg("already in HOST byte order");
+		Error::msg("already in HOST byte order\n");
 
 	PacketStruct* np = ps;
 	PacketStruct* hp = (PacketStruct*) Malloc(PACKSIZE);
 	
 	hp->sesid = ntohl(np->sesid);
 	hp->tagid = ntohs(np->tagid);
-	hp->bsize = ntohs(np->bsize);
+	
 	hp->cmdid = ntohs(np->cmdid);
+	hp->statid = ntohs(np->statid);
+
 	hp->nslice = ntohs(np->nslice);
 	hp->sindex = ntohs(np->sindex);
+
+	hp->bsize = ntohs(np->bsize);
 	memcpy(hp->body, np->body, PBODYCAP);
 	
 	ps = hp;
@@ -62,17 +118,22 @@ void Packet::ntohp()
 void Packet::htonp()
 {
 	if (pstype == NPACKET)
-		Error::msg("already in NETWORK byte order");
+		Error::msg("already in NETWORK byte order\n");
 
 	PacketStruct* hp = ps;
 	PacketStruct* np = (PacketStruct*) Malloc(PACKSIZE);
 	
 	np->sesid = htonl(hp->sesid);
 	np->tagid = htons(hp->tagid);
-	np->bsize = htons(hp->bsize);
+	
 	np->cmdid = htons(hp->cmdid);
+
+	np->statid = htons(hp->statid);
+
 	np->nslice = htons(hp->nslice);
 	np->sindex = htons(hp->sindex);
+
+	np->bsize = htons(hp->bsize);
 	memcpy(np->body, hp->body, PBODYCAP);
 
 	ps = np;
@@ -89,22 +150,23 @@ void Packet::print()
 	
 	if (pstype == HPACKET)
 	{
-		printf("\t\t[HOST Control Packet]\n");
+		printf("\t\t[HOST Packet]\n");
 		
 	}
 	else if (pstype == NPACKET)
 	{
-		printf("\t\t[NETWORK Control Packet]\n");
+		printf("\t\t[NETWORK Packet]\n");
 	}
 	else
-		Error::msg("unknown PacketStoreType");
+		Error::msg("unknown PacketStoreType\n");
 
 	printf("\t\tsesid = %d\n", ps->sesid);
 	printf("\t\ttagid = %d\n", ps->tagid);
-	printf("\t\tbsize = %d\n", ps->bsize);
 	printf("\t\tcmdid = %d\n", ps->cmdid);
+	printf("\t\tstatid = %d\n", ps->statid);
 	printf("\t\tnslice = %d\n", ps->nslice);
 	printf("\t\tsindex = %d\n", ps->sindex);
+	printf("\t\tbsize = %d\n", ps->bsize);
 	printf("\t\tbody = %s\n",  ps->body);
 
 	

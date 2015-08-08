@@ -13,7 +13,11 @@ public:
 	void init(PacketStoreType pstype = HPACKET);
 	~Packet();
 
-	void fill(uint32_t sesid, uint16_t tagid, uint16_t bsize, uint16_t cmdid, uint16_t nslice, uint16_t sindex, char body[PBODYCAP]);
+	void fill(uint32_t sesid, uint16_t tagid, uint16_t cmdid, uint16_t statid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
+	void fillInfo(uint32_t sesid, uint16_t statid, uint16_t bsize, char body[PBODYCAP]);
+	void fillCmd(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[PBODYCAP]);
+	void fillData(uint32_t sesid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
+	
 	void reset(PacketStoreType pstype);
 	void zero();
 

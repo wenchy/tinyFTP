@@ -13,6 +13,7 @@ public:
 	void init(SockStream & connSockStream);
 	void sendFile(const char *filename);
 	void recvFile(FILE* f);
+	int getFileNslice(const char *pathname, uint32_t *pnslice_o );
 
 
 private:
