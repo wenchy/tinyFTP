@@ -72,9 +72,8 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 
 	fprintf(stderr, "\033[32mEnd of Tansfer\033[0m (%d slices, last size %d)\n", nslice, n);
 }
-void CliDTP::recvFile(const char *pathname)
+void CliDTP::recvFile(const char *pathname, FILE *fp)
 {
-	
 	int n;
 	// first receive response
 	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
@@ -101,7 +100,7 @@ void CliDTP::recvFile(const char *pathname)
 
 	// second transfer file
 	//fprintf(stdout, "Recieve file now: %s\n", pathname);
-	FILE* fp = Fopen(pathname, "wb");	// Yo!
+
 	int m;
 	int oldProgress = 0, newProgress = 0;
 	fprintf(stderr, "Progress[%s]: %3d%%", pathname, newProgress);
@@ -115,6 +114,8 @@ void CliDTP::recvFile(const char *pathname)
 			if (m != packet.ps->bsize)
 			{
 				Error::msg("Recieved slice %u/%u: %hu vs %hu Bytes\n", packet.ps->sindex, packet.ps->nslice, packet.ps->bsize, m);
+				fclose(fp);
+				return;
 			} else {
 				newProgress = (packet.ps->sindex*1.0)/packet.ps->nslice*100;
 				if (newProgress > oldProgress)
@@ -132,6 +133,7 @@ void CliDTP::recvFile(const char *pathname)
 			return;
 		} else {
 			Error::msg("CliDTP::recvFile: unknown tagid %hu with statid %hu", packet.ps->tagid, packet.ps->statid);
+			fclose(fp);
 			return;
 		}
 	}
