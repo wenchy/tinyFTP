@@ -122,7 +122,7 @@ typedef struct packetStruct
 typedef enum tagID
 {
 	TAG_CMD = 1,
-	TAG_INFO,
+	TAG_STAT,
 	TAG_DATA
 } TagID;
 

@@ -29,10 +29,10 @@ void Packet::fill(uint32_t sesid, uint16_t tagid, uint16_t cmdid, uint16_t stati
 	if(body != NULL && bsize != 0)
 		memcpy(ps->body, body, PBODYCAP);  
 }
-void Packet::fillInfo(uint32_t sesid, uint16_t statid, uint16_t bsize, char body[PBODYCAP])
+void Packet::fillStat(uint32_t sesid, uint16_t statid, uint16_t bsize, char body[PBODYCAP])
 { 
 	ps->sesid = sesid;
-	ps->tagid = TAG_INFO;
+	ps->tagid = TAG_STAT;
 
 	ps->cmdid = 0;
 
@@ -101,8 +101,8 @@ void Packet::ntohp()
 	hp->cmdid = ntohs(np->cmdid);
 	hp->statid = ntohs(np->statid);
 
-	hp->nslice = ntohs(np->nslice);
-	hp->sindex = ntohs(np->sindex);
+	hp->nslice = ntohl(np->nslice);
+	hp->sindex = ntohl(np->sindex);
 
 	hp->bsize = ntohs(np->bsize);
 	memcpy(hp->body, np->body, PBODYCAP);
@@ -130,8 +130,8 @@ void Packet::htonp()
 
 	np->statid = htons(hp->statid);
 
-	np->nslice = htons(hp->nslice);
-	np->sindex = htons(hp->sindex);
+	np->nslice = htonl(hp->nslice);
+	np->sindex = htonl(hp->sindex);
 
 	np->bsize = htons(hp->bsize);
 	memcpy(np->body, hp->body, PBODYCAP);
@@ -160,12 +160,12 @@ void Packet::print()
 	else
 		Error::msg("unknown PacketStoreType\n");
 
-	printf("\t\tsesid = %d\n", ps->sesid);
+	printf("\t\tsesid = %u\n", ps->sesid);
 	printf("\t\ttagid = %d\n", ps->tagid);
 	printf("\t\tcmdid = %d\n", ps->cmdid);
 	printf("\t\tstatid = %d\n", ps->statid);
-	printf("\t\tnslice = %d\n", ps->nslice);
-	printf("\t\tsindex = %d\n", ps->sindex);
+	printf("\t\tnslice = %u\n", ps->nslice);
+	printf("\t\tsindex = %u\n", ps->sindex);
 	printf("\t\tbsize = %d\n", ps->bsize);
 	printf("\t\tbody = %s\n",  ps->body);
 

@@ -11,96 +11,176 @@ void CliPI::init(const char *host)
 }
 void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 {
-	this->cmdid = cmdid;
-	this->cmdVector = cmdVector;
-
 	switch(cmdid)
 	{
 		case GET:
-			cmdGET();
+			cmdGET(cmdid, cmdVector);
 			break;
 		case PUT:
-			cmdPUT();
+			cmdPUT(cmdid, cmdVector);
 			break;
+		case LS:
+			cmdLS(cmdid, cmdVector);
+			break;
+		case CD:
+			cmdCD(cmdid, cmdVector);
+			break;
+		case DELE:
+			cmdDELE(cmdid, cmdVector);
+			break;	
 		default:
-			Error::msg("unknown command");
+			Error::msg("Sorry! this command function not finished yet.\n");
 			break;
 	}
 	
 }
-void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid)
+void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	packet.reset(HPACKET);
 
-	//uint16_t bsize = cmdVector[1].size();
-
+	uint32_t nslice = 0;
+	uint32_t sindex = 0;
+	uint16_t statid = 0;
+	uint16_t bsize = 0;
 	char body[PBODYCAP];
+
 	std::strcpy(body,cmdVector[1].c_str()); 
-	uint16_t bsize = strlen(body);
+	bsize = strlen(body);
 	Error::msg("cmdVector: %d\n", cmdVector.size());
 	// Error::msg("body: %s\n", body);
-	packet.fill(sesid, TAG_CMD, cmdid, (uint32_t)0, (uint32_t)0, 0, bsize, body);
+	packet.fill(sesid, TAG_CMD, cmdid, statid, nslice, sindex, bsize, body);
 	packet.print();
 	packet.htonp(); 
 }
 
-// void CliPI::cmd2packet(uint32_t sesid, uint16_t cmdid = 0)
-// {
-// 	packet.reset(HpacketET);
+void CliPI::cmdGET(uint16_t cmdid, std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() != 2)
+		Error::msg("command argument fault");
+	//packet.ps->body[packet.ps->bsize] = 0;
 
-// 	uint16_t bsize = 18;
-// 	char body[PBODYCAP] = "Hello, ctr packetet.";
-// 	packet.init(sesid, cmdid, bsize, body);
-// }
+	printf("GET request\n");
 
-void CliPI::cmdGET()
+	char pathname[MAXLINE];
+	std::strcpy(pathname,cmdVector[1].c_str()); 
+	// command to packet
+	cmd2pack(0, cmdid, cmdVector);
+    connSockStream.Writen(packet.ps,  PACKSIZE);
+
+    // pathname exist on server? need test
+    cliDTP.init(connSockStream);
+	cliDTP.recvFile(pathname);
+ 
+}
+void CliPI::cmdPUT(uint16_t cmdid, std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() != 2)
+		Error::msg("command argument fault");
+
+	printf("PUT request\n");
+	char pathname[MAXLINE];
+	char buf[MAXLINE];
+	uint32_t nslice;
+	int n;
+	std::strcpy(pathname,cmdVector[1].c_str()); 
+	FILE *fp;
+	if ( (fp = fopen(pathname, "rb")) == NULL)
+	{
+		snprintf(buf, MAXLINE, "%s", strerror(errno));
+		Error::msg("%s", buf);
+		return;
+	} else if ( (n = getFileNslice(pathname, &nslice)) < 0)  {
+		if ( n == -2) {
+			Error::msg("Too large file size.", buf);
+			return;
+		} else {
+			Error::msg("File stat error.");
+			return;
+		}
+	} else {
+		// command to packet
+		cmd2pack(0, cmdid, cmdVector);
+	    connSockStream.Writen(packet.ps,  PACKSIZE);
+	}
+
+  
+	cliDTP.init(connSockStream);
+	cliDTP.sendFile(pathname, fp, nslice);
+}
+void CliPI::cmdLS(uint16_t cmdid, std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() > 2)
+		Error::msg("command argument fault");
+	packet.ps->body[packet.ps->bsize] = 0;
+	char pathname[MAXLINE];
+	std::strcpy(pathname,cmdVector[1].c_str()); 
+	// command to packet
+	cmd2pack(0, cmdid, cmdVector);
+    connSockStream.Writen(packet.ps,  PACKSIZE);
+
+    // pathname exist on server? need test
+    cliDTP.init(connSockStream);
+	cliDTP.recvFile(pathname);
+ 
+}
+void CliPI::cmdCD(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 		Error::msg("command argument fault");
 	packet.ps->body[packet.ps->bsize] = 0;
-	char filename[MAXLINE];
-	std::strcpy(filename,cmdVector[1].c_str()); 
+	char pathname[MAXLINE];
+	std::strcpy(pathname,cmdVector[1].c_str()); 
 	// command to packet
-	cmd2pack(0, cmdid);
+	cmd2pack(0, cmdid, cmdVector);
     connSockStream.Writen(packet.ps,  PACKSIZE);
 
-    // filename is on server? need test
+    // pathname exist on server? need test
     cliDTP.init(connSockStream);
-	cliDTP.recvFile(filename);
-	//packet.reset(NPACKET);
- //    int n;
-	// while ( (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0)
-	// {
-	// 	packet.ntohp();
-	// 	Error::msg("Recieved packet %d\n", packet.ps->sindex);
-	// 	//int writelen=fwrite(buff,sizeof(char),length,fd);
-	// 	packet.reset(NPACKET);
-	// }
-    
-
- //    if (packet.ps->tagid == INFO && packet.ps->cmdid == GET && packet.ps->bsize) {
- //    	packet.ps->body[packet.ps->bsize] = 0;
-	// 	printf("\t\tGET: %s\n", packet.ps->body);
-	// 	//receive_file(chp, data, sfd_client, f);
-	// 	//fclose(f);
-	// } else {
-	// 	Error::msg("Error getting remote file : <%s>\n", packet.ps->body); 
-	// }
+	cliDTP.recvFile(pathname);
  
 }
-void CliPI::cmdPUT()
+void CliPI::cmdDELE(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 		Error::msg("command argument fault");
+	packet.ps->body[packet.ps->bsize] = 0;
+	char pathname[MAXLINE];
+	std::strcpy(pathname,cmdVector[1].c_str()); 
 	// command to packet
-	cmd2pack(0, cmdid);
-
-	packet.print();
-	packet.htonp();
+	cmd2pack(0, cmdid, cmdVector);
     connSockStream.Writen(packet.ps,  PACKSIZE);
+
+    // pathname exist on server? need test
+    cliDTP.init(connSockStream);
+	cliDTP.recvFile(pathname);
+ 
 }
+
 void CliPI::sessionCmd()
 {
 
 }
 
+int CliPI::getFileNslice(const char *pathname, uint32_t *pnslice_o)  
+{  
+ 
+    unsigned long filesize = 0, n = MAXNSLICE;
+
+    struct stat statbuff;  
+    if(stat(pathname, &statbuff) < 0){  
+        return -1;  // error
+    } else {  
+        filesize = statbuff.st_size;  
+    }  
+    if (filesize % SLICECAP == 0)
+	{
+		 *pnslice_o = filesize/SLICECAP; 
+	} else if ( (n = filesize/SLICECAP + 1) > MAXNSLICE ){
+		Error::msg("too large file size: %d\n (MAX: %d)", n, MAXNSLICE);
+		return -2; 
+	} else {
+		 *pnslice_o = filesize/SLICECAP + 1; 
+	}
+  
+    return 1;  
+}

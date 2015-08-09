@@ -83,9 +83,7 @@ void init()
                                                     {"BINARY",  BINARY},
                                                     {"ASCII",   ASCII},
                                                     {"QUIT",    QUIT},
-
-                                                    {"INFO",    INFO},
-                                                    {"EOT",     EOT}        };
+                                                                           };
 
     cout << "cmdMap contains:";
     for (auto it = cmdMap.cbegin(); it != cmdMap.cend(); ++it)

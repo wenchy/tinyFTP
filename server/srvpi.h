@@ -18,7 +18,9 @@ public:
 
 	void cmdGET();
 	void cmdPUT();
-	void infoCmd();
+	void cmdLS();
+	void cmdCD();
+	void cmdDELE();
 	
 
 

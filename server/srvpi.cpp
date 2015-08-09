@@ -20,9 +20,11 @@ void SrvPI::run(int connfd)
 				cmdPUT();
 				break;
 			default:
-				Error::msg("unknown command");
+				Error::msg("Sorry! this command function not finished yet.\n");
 				break;
 		}
+    } else {
+    	Error::msg("Error: received packet is not a command.\n");
     }
 	
 }
@@ -54,23 +56,28 @@ void SrvPI::cmd2pack(uint32_t sesid, uint16_t cmdid, string str)
 void SrvPI::cmdGET()
 {
 	printf("GET request\n");
-	//packet.print();
 
 	packet.ps->body[packet.ps->bsize] = 0;
 	srvDTP.init(connSockStream);
 	srvDTP.sendFile(packet.ps->body);
-
-
 }
 void SrvPI::cmdPUT()
 {
 	printf("PUT request\n");
-	packet.print();
+
+	packet.ps->body[packet.ps->bsize] = 0;
+	srvDTP.init(connSockStream);
+	srvDTP.recvFile(packet.ps->body);
 }
-void SrvPI::infoCmd()
+void SrvPI::cmdLS()
 {
-	packet.print();
-	packet.htonp();
-	// SockStream connSockStream(cliCtrConnfd);
- //    connSockStream.Writen(packet.ps,  PACKSIZE); 
+	printf("LS request\n");
+}
+void SrvPI::cmdCD()
+{
+	printf("CD request\n");
+}
+void SrvPI::cmdDELE()
+{
+	printf("DELE request\n");
 }

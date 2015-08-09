@@ -17,9 +17,7 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"BINARY",  BINARY},
                                                     {"ASCII",   ASCII},
                                                     {"QUIT",    QUIT},
-
-                                                    {"INFO",    INFO},
-                                                    {"EOT",     EOT}        };
+                                                                        };
 
 UI::UI(const char *host)
 {  
@@ -33,7 +31,7 @@ void UI::run()
 	string inputline;
 
 	// user interface: first cout prompt (use "," operator)
-	while (std::cout << "tinyFTP> ", getline(std::cin, inputline))
+	while (printf("\033[35mtinyFTP> \033[0m"), getline(std::cin, inputline))
 	{
 		// clear cmdVector each time when user input
 		cmdVector.clear();
