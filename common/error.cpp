@@ -82,6 +82,7 @@ void Error::doit(int errnoflag, int level, const char *fmt, va_list ap)
 {
 	int		errno_save, n;
 	char	buf[MAXLINE + 1];
+	char	errmsg[MAXLINE + 1];
 
 	errno_save = errno;		/* value caller might want printed */
 #ifdef	HAVE_VSNPRINTF
@@ -91,7 +92,13 @@ void Error::doit(int errnoflag, int level, const char *fmt, va_list ap)
 #endif
 	n = strlen(buf);
 	if (errnoflag)
-		snprintf(buf + n, MAXLINE - n, ": %s", strerror(errno_save));
+	{
+		if (strerror_r(errno_save, errmsg, MAXLINE) != 0)
+		{
+		 	snprintf(errmsg, MAXLINE, "strerror_r call failed");
+		} 
+		snprintf(buf + n, MAXLINE - n, ": %s", errmsg);
+	}
 	strcat(buf, "\n");
 
 	if (Error::daemon_proc) {

@@ -15,7 +15,8 @@ void SrvDTP::sendFile(const char *pathname)
 	if ( (fp = fopen(pathname, "rb")) == NULL)
 	{
 		// send STAT_ERR Response
-		packet.sendSTAT_ERR(connSockStream, strerror(errno));
+		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
 		return;
 	} else if ( (n = getFileNslice(pathname, &nslice)) < 0)  {
 		// send ERR Response
@@ -56,7 +57,8 @@ void SrvDTP::recvFile(const char *pathname)
 		return;
 	} else if ( (fp = fopen(pathname, "wb")) == NULL) {
 		// send STAT_ERR Response
-		packet.sendSTAT_ERR(connSockStream, strerror(errno));
+		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
 		// send STAT_OK

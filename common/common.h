@@ -18,10 +18,15 @@
 #include <unistd.h>
 #include <errno.h>
 
-#include <cstdio>
-#include <cstdlib>
-#include <cstring>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+
 // c++ header
+// #include <cstdio>
+// #include <cstdlib>
+// #include <cstring>
 #include <iostream>
 #include <map>
 #include <string>
@@ -40,7 +45,7 @@ using namespace std;
 #define	LISTENQ		1024		// 2nd argument(backlog) to listen()
 
 // Miscellaneous constants
-#define	MAXLINE		128			// max text line length
+#define	MAXLINE		256			// max text line length
 //#define	BUFFSIZE	8192		// 8K Bytes buffer size for reads and writes
 
 //#define PORT		2121		// server: listening port
@@ -131,18 +136,21 @@ typedef enum cmdID
 {
 	USER = 1,
 	PASS,
+
 	GET,
 	PUT,
+	LS,
+	CD,
+	RM,
+	PWD,
+	MKDIR,
+	
 	MGET,
 	MPUT,
-	DELE,
 	RGET,
 	RPUT,
-	CD,
-	LS,
-	MKD,
-	PWD,
 	RMD,
+
 	BINARY,
 	ASCII,
 	QUIT

@@ -28,8 +28,8 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 		case PWD:
 			cmdPWD(cmdid, cmdVector);
 			break;
-		case DELE:
-			cmdDELE(cmdid, cmdVector);
+		case RM:
+			cmdRM(cmdid, cmdVector);
 			break;	
 		default:
 			Error::msg("Client: Sorry! this command function not finished yet.\n");
@@ -48,7 +48,7 @@ void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVe
 	char body[PBODYCAP];
 	if(cmdVector.size() > 1)
 	{
-		std::strcpy(body,cmdVector[1].c_str());
+		strcpy(body,cmdVector[1].c_str());
 		bsize = strlen(body); 
 	}
 
@@ -62,22 +62,21 @@ void CliPI::cmdGET(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("Usage: get [FILE]");
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: get [FILE]");
 		return;
 	}
 	printf("GET request\n");
 
 	char pathname[MAXLINE];
 	char buf[MAXLINE];
-	std::strcpy(pathname,cmdVector[1].c_str()); 
+	strcpy(pathname,cmdVector[1].c_str()); 
 	FILE *fp;
 	if ((access(pathname,F_OK)) == 0) {
 		snprintf(buf, MAXLINE, "File [%s] already exists", pathname);
 		Error::msg("%s", buf);
 		return;
 	} else if ( (fp = fopen(pathname, "wb")) == NULL) {
-		snprintf(buf, MAXLINE, "%s", strerror(errno));
-		Error::msg("%s", buf);
+		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
 		// command to packet
@@ -94,7 +93,7 @@ void CliPI::cmdPUT(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("Usage: put [FILE]");
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: put [FILE]");
 		return;
 	}
 	printf("PUT request\n");
@@ -103,12 +102,11 @@ void CliPI::cmdPUT(uint16_t cmdid, std::vector<string> & cmdVector)
 	char buf[MAXLINE];
 	uint32_t nslice;
 	int n;
-	std::strcpy(pathname,cmdVector[1].c_str()); 
+	strcpy(pathname,cmdVector[1].c_str()); 
 	FILE *fp;
 	if ( (fp = fopen(pathname, "rb")) == NULL)
 	{
-		snprintf(buf, MAXLINE, "%s", strerror(errno));
-		Error::msg("%s", buf);
+		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
 		return;
 	} else if ( (n = getFileNslice(pathname, &nslice)) < 0)  {
 		if ( n == -2) {
@@ -131,7 +129,7 @@ void CliPI::cmdLS(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() > 2)
 	{
-		Error::msg("Usage: ls [DIR]");
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: ls [DIR]");
 		return;
 	}
 	
@@ -164,10 +162,13 @@ void CliPI::cmdLS(uint16_t cmdid, std::vector<string> & cmdVector)
 
 	while(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
 	{
+		
 		packet.ntohp();
+		//packet.print();
 		if (packet.ps->tagid == TAG_DATA) {
-			packet.ps->body[packet.ps->bsize] = 0;
-			printf("%s\n", packet.ps->body);
+			char sbuf[SLICECAP + 1] = {0};
+			strncpy(sbuf, packet.ps->body, packet.ps->bsize);
+			printf("%s\n", sbuf);
 			
 		} else if (packet.ps->tagid == TAG_STAT && packet.ps->statid == STAT_EOT){
 			packet.ps->body[packet.ps->bsize] = 0;
@@ -180,7 +181,7 @@ void CliPI::cmdCD(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("Usage: cd [DIR]");
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: cd [DIR]");
 		return;
 	}
 
@@ -212,21 +213,48 @@ void CliPI::cmdCD(uint16_t cmdid, std::vector<string> & cmdVector)
 	}
  
 }
-void CliPI::cmdDELE(uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::cmdRM(uint16_t cmdid, std::vector<string> & cmdVector)
 {
-	if(cmdVector.size() > 2)
+	if(cmdVector.size() != 2)
 	{
-		Error::msg("command argument fault");
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: rm [FILE]");
 		return;
 	}
+
+	cmd2pack(0, cmdid, cmdVector);
+	connSockStream.Writen(packet.ps, PACKSIZE);
+
+	int n;
+	// first receive response
+	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
+	{
+		packet.ntohp();
+		if (packet.ps->tagid == TAG_STAT) {
+			if (packet.ps->statid == STAT_OK) {
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stdout, "%s\n", packet.ps->body);
+			} else if (packet.ps->statid == STAT_ERR){
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stderr, "%s\n", packet.ps->body);
+				return;
+			} else {
+				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
+				return;
+			}
+			
+		} else {
+			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			return;
+		}
+	}
 	
- 
 }
+
 void CliPI::cmdPWD(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 1)
 	{
-		Error::msg("Usage: pwd");
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: pwd");
 		return;
 	}
 
@@ -256,8 +284,42 @@ void CliPI::cmdPWD(uint16_t cmdid, std::vector<string> & cmdVector)
 			return;
 		}
 	}
-	
- 
+}
+
+void CliPI::cmdMKDIR(uint16_t cmdid, std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() != 2)
+	{
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: mkdir [DIR]");
+		return;
+	}
+
+	cmd2pack(0, cmdid, cmdVector);
+	connSockStream.Writen(packet.ps, PACKSIZE);
+
+	int n;
+	// first receive response
+	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
+	{
+		packet.ntohp();
+		if (packet.ps->tagid == TAG_STAT) {
+			if (packet.ps->statid == STAT_OK) {
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stdout, "%s\n", packet.ps->body);
+			} else if (packet.ps->statid == STAT_ERR){
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stderr, "%s\n", packet.ps->body);
+				return;
+			} else {
+				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
+				return;
+			}
+			
+		} else {
+			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			return;
+		}
+	}
 }
 
 void CliPI::sessionCmd()

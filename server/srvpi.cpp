@@ -25,6 +25,9 @@ void SrvPI::run(int connfd)
 			case CD:
 				cmdCD();
 				break;
+			case RM:
+				cmdRM();
+				break;
 			case PWD:
 				cmdPWD();
 				break;
@@ -82,6 +85,7 @@ void SrvPI::cmdLS()
 {
 	printf("LS request\n");
 	char buf[MAXLINE];
+	char body[PBODYCAP];
 	string sbody;
 	DIR* dir;
 
@@ -94,9 +98,9 @@ void SrvPI::cmdLS()
 	}
 	if(!dir)
 	{
-		//Error::ret("opendir()");
 		// send STAT_ERR Response
-		packet.sendSTAT_ERR(connSockStream, strerror(errno));
+		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
 		// send STAT_OK
@@ -105,57 +109,56 @@ void SrvPI::cmdLS()
 	struct dirent* e;
 	int cnt = 0;
 	while( (e = readdir(dir)) )
-	{
-		//packet.reset(HPACKET);
-		//sprintf(body, "%s\t%s", e->d_type == 4 ? "DIR:" : e->d_type == 8 ? "FILE:" : "UNDEF:", e->d_name);
+	{	
 		if (e->d_type == 4)
 		{
-			if (strlen(e->d_name) > 10)
+			if (strlen(e->d_name) > 15)
 			{
-				snprintf(buf, MAXLINE, "\n\033[36m%s\033[0m\n", e->d_name);
+				if (sbody.empty() || sbody.back() == '\n')
+				{
+					snprintf(buf, MAXLINE, "\033[36m%s\033[0m\n", e->d_name);
+				} else {
+					snprintf(buf, MAXLINE, "\n\033[36m%s\033[0m\n", e->d_name);
+				}
 				cnt = 0;
 			} else {
 				snprintf(buf, MAXLINE, "\033[36m%-10s\033[0m\t", e->d_name);
+				cnt++;
 			}
-			sbody += buf;
-			//snprintf(body, PBODYCAP, "\033[34m%s\033[0m", e->d_name);
-		} else if(e->d_type == 8) {
-			if (strlen(e->d_name) > 10)
+		} else /*if(e->d_type == 8) */ {
+			if (strlen(e->d_name) > 15)
 			{
-				snprintf(buf, MAXLINE, "\n%s\n", e->d_name);
+				if (sbody.empty() || sbody.back() == '\n')
+				{
+					snprintf(buf, MAXLINE, "%s\n", e->d_name);
+				} else {
+					snprintf(buf, MAXLINE, "\n%s\n", e->d_name);
+				}
 				cnt = 0;
 			} else {
 				snprintf(buf, MAXLINE, "%-10s\t", e->d_name);
+				cnt++;
 			}
-			sbody += buf;
-			//snprintf(body, PBODYCAP, "%s", e->d_name);
-		} else {
-			if (strlen(e->d_name) > 10)
-			{
-				snprintf(buf, MAXLINE, "\n%s\n", e->d_name);
-				cnt = 0;
-			} else {
-				snprintf(buf, MAXLINE, "%-10s\t", e->d_name);
-			}
-			sbody += buf;
-			//snprintf(body, PBODYCAP, "%s", e->d_name);
 		}
-		if (((++cnt) % 4) == 0)
+
+		if ( cnt !=0 && (cnt % 4) == 0)
 		{
-			sbody += "\n";
+			snprintf(buf, MAXLINE, "%s\n", buf);
 		}
-		// packet.fillData(0, 0, 0, strlen(body), body);
-		// packet.htonp();
-		// connSockStream.Writen(packet.ps, PACKSIZE);
+
+		if ( (sbody.size() + strlen(buf)) > SLICECAP)
+		{
+			strcpy(body, sbody.c_str());
+			packet.sendDATA(connSockStream, 0, 0, 0, strlen(body), body);
+			sbody.clear();
+		}
+		sbody += buf;
+		
 	}
-	if (sbody.size() > PBODYCAP)
-	{
-		Error::msg("LS: too many dir ents\n");
-		return;
-	}
-	char body[PBODYCAP];
-	std::strcpy(body, sbody.c_str());
+
+	strcpy(body, sbody.c_str());
 	packet.sendDATA(connSockStream, 0, 0, 0, strlen(body), body);
+	
 	packet.sendSTAT_EOT(connSockStream);
 
 }
@@ -163,21 +166,42 @@ void SrvPI::cmdCD()
 {
 	printf("CD request\n");
 
-	//char buf[MAXLINE];
+	char buf[MAXLINE] = {0};
 	int n;
 	packet.ps->body[packet.ps->bsize] = 0;
 	if( (n = chdir(packet.ps->body)) == -1)
 	{
-		//Error::ret("opendir()");
 		// send STAT_ERR Response
-		packet.sendSTAT_ERR(connSockStream, strerror(errno));
+		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
 		// send STAT_OK
-		packet.sendSTAT_OK(connSockStream, "server: change current working directory to");
+		snprintf(buf, MAXLINE, "server: change CWD to [%s]", packet.ps->body);
+		packet.sendSTAT_OK(connSockStream, buf);
 	}
 	//packet.sendSTAT_EOT(connSockStream);
 }
+
+void SrvPI::cmdRM()
+{
+	printf("RM request\n");
+
+	char buf[MAXLINE];
+	packet.ps->body[packet.ps->bsize] = 0;
+	if( remove(packet.ps->body) !=0 )
+	{
+		// send STAT_ERR Response 
+		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+		return;
+	} else {
+		// send STAT_OK
+		snprintf(buf, MAXLINE, "%s is removed", packet.ps->body);
+		packet.sendSTAT_OK(connSockStream, buf);
+	}
+}
+
 void SrvPI::cmdPWD()
 {
 	printf("PWD request\n");
@@ -186,7 +210,8 @@ void SrvPI::cmdPWD()
 	if( !getcwd(buf, MAXLINE))
 	{
 		// send STAT_ERR Response
-		packet.sendSTAT_ERR(connSockStream, strerror(errno));
+		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
 		// send STAT_OK
@@ -194,7 +219,8 @@ void SrvPI::cmdPWD()
 	}
 	//packet.sendSTAT_EOT(connSockStream);
 }
-void SrvPI::cmdDELE()
+
+void SrvPI::cmdMKDIR()
 {
 	printf("DELE request\n");
 }

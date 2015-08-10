@@ -3,21 +3,24 @@
 // command init
 map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"PASS",    PASS},
+
                                                     {"GET",     GET},
                                                     {"PUT",     PUT},
+                                                    {"LS",      LS},
+                                                    {"CD",      CD},
+                                                    {"RM",      RM},
+                                                    {"PWD",     PWD},
+                                                    {"MKDIR",   MKDIR},
+
                                                     {"MGET",    MGET},
                                                     {"MPUT",    MPUT},
-                                                    {"DELE",    DELE},
                                                     {"RGET",    RGET},
                                                     {"RPUT",    RPUT},
-                                                    {"CD",      CD},
-                                                    {"LS",      LS},
-                                                    {"MKD",     MKD},
-                                                    {"PWD",     PWD},
                                                     {"RMD",     RMD},
+
                                                     {"BINARY",  BINARY},
                                                     {"ASCII",   ASCII},
-                                                    {"QUIT",    QUIT},
+                                                    {"QUIT",    QUIT}
                                                                         };
 
 UI::UI(const char *host)

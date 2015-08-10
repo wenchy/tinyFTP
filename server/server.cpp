@@ -64,33 +64,4 @@ int main(int argc, char **argv)
     return 0;   
 }
 
-void init()
-{
-    // command init
-    map<const string, const uint16_t> cmdMap = {    {"USER",    USER},
-                                                    {"PASS",    PASS},
-                                                    {"GET",     GET},
-                                                    {"PUT",     PUT},
-                                                    {"MGET",    MGET},
-                                                    {"MPUT",    MPUT},
-                                                    {"DELE",    DELE},
-                                                    {"RGET",    RGET},
-                                                    {"RPUT",    RPUT},
-                                                    {"CD",      CD},
-                                                    {"LS",      LS},
-                                                    {"MKD",     MKD},
-                                                    {"RMD",     RMD},
-                                                    {"BINARY",  BINARY},
-                                                    {"ASCII",   ASCII},
-                                                    {"QUIT",    QUIT},
-                                                                           };
-
-    cout << "cmdMap contains:";
-    for (auto it = cmdMap.cbegin(); it != cmdMap.cend(); ++it)
-        cout << " [" << (*it).first << ":" << (*it).second << "]" << endl;
-      cout << '\n';
-
-}
-
-
 
