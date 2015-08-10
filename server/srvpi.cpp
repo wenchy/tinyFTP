@@ -31,6 +31,9 @@ void SrvPI::run(int connfd)
 			case PWD:
 				cmdPWD();
 				break;
+			case MKDIR:
+				cmdMKDIR();
+				break;
 			default:
 				Error::msg("Server: Sorry! this command function not finished yet.\n");
 				break;
@@ -217,10 +220,29 @@ void SrvPI::cmdPWD()
 		// send STAT_OK
 		packet.sendSTAT_OK(connSockStream, buf);
 	}
-	//packet.sendSTAT_EOT(connSockStream);
 }
 
 void SrvPI::cmdMKDIR()
 {
-	printf("DELE request\n");
+	printf("MKDIR request\n");
+	packet.ps->body[packet.ps->bsize] = 0;
+	char buf[MAXLINE];
+	DIR* d = opendir(packet.ps->body);
+	if(d)
+	{	
+		packet.sendSTAT_ERR(connSockStream, "already exists");
+		closedir(d);
+	}
+	else if(mkdir(packet.ps->body, 0777) == -1)
+	{
+		//fprintf(stderr, "Wrong path.\n");
+		// send STAT_ERR Response
+		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+		return;
+	} else {
+		// send STAT_OK
+		snprintf(buf, MAXLINE, "directory %s is created", packet.ps->body);
+		packet.sendSTAT_OK(connSockStream, buf);
+	}
 }

@@ -25,12 +25,15 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 		case CD:
 			cmdCD(cmdid, cmdVector);
 			break;
-		case PWD:
-			cmdPWD(cmdid, cmdVector);
-			break;
 		case RM:
 			cmdRM(cmdid, cmdVector);
 			break;	
+		case PWD:
+			cmdPWD(cmdid, cmdVector);
+			break;
+		case MKDIR:
+			cmdMKDIR(cmdid, cmdVector);
+			break;
 		default:
 			Error::msg("Client: Sorry! this command function not finished yet.\n");
 			break;
@@ -217,7 +220,7 @@ void CliPI::cmdRM(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: rm [FILE]");
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: rm [FILE|DIR]");
 		return;
 	}
 
