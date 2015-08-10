@@ -63,7 +63,7 @@ bool UI::cmdCheck()
 	if (iter != cmdMap.end())
 	{
 		this->cmdid = iter->second;
-       	std::cout << "CommandID: " << iter->first << "(" << iter->second << ")" << std::endl;
+       	//std::cout << "CommandID: " << iter->first << "(" << iter->second << ")" << std::endl;
         return true;
 	} else {
         std::cerr << "unknown command: " << cmdVector[0] << std::endl;

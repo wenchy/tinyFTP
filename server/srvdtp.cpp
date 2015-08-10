@@ -14,97 +14,57 @@ void SrvDTP::sendFile(const char *pathname)
 
 	if ( (fp = fopen(pathname, "rb")) == NULL)
 	{
-		// send Response
-		packet.reset(HPACKET);
-		snprintf(buf, MAXLINE, "\033[31m%s\033[0m", strerror(errno));
-		packet.fillStat(0, STAT_ERR, strlen(buf), buf);
-		//packet.print();
-		packet.htonp();
-		connSockStream.Writen(packet.ps, PACKSIZE);
+		// send STAT_ERR Response
+		packet.sendSTAT_ERR(connSockStream, strerror(errno));
 		return;
 	} else if ( (n = getFileNslice(pathname, &nslice)) < 0)  {
-		// send Response
-		packet.reset(HPACKET);
+		// send ERR Response
 		if ( n == -2) {
-			snprintf(buf, MAXLINE, "\033[31mToo large file size.\033[0m");
+			snprintf(buf, MAXLINE, "Too large file size");
 		} else {
-			snprintf(buf, MAXLINE, "\033[31mFile stat error.\033[0m");
+			snprintf(buf, MAXLINE, "File stat error");
 		}
-		packet.fillStat(0, STAT_ERR, strlen(buf), buf);
-		//packet.print();
-		packet.htonp();
-		connSockStream.Writen(packet.ps, PACKSIZE);
+		packet.sendSTAT_ERR(connSockStream, buf);
 		return;
 	} else {
-		// send Response
-		packet.reset(HPACKET);
-		snprintf(buf, MAXLINE, "\033[32mOK to transfer\033[0m");
-		packet.fillStat(0, STAT_OK, strlen(buf), buf);
-		packet.print();
-		packet.htonp();
-		connSockStream.Writen(packet.ps, PACKSIZE);
+		// send STAT_OK
+		packet.sendSTAT_OK(connSockStream);
 	}
 
 	char body[PBODYCAP];
 	printf("Send file [%s] now\n", pathname);
 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 	{
-		packet.reset(HPACKET);
-		packet.fillData(0, nslice, ++sindex, n, body);
-		//packet.print();
-		packet.htonp();
-		connSockStream.Writen(packet.ps, PACKSIZE);
-		//printf("file_block_length:%d\n",n);
+		packet.sendDATA(connSockStream, 0, nslice, ++sindex, n, body);
 	}
 
 	fclose(fp);
 
 	// send EOT
-	packet.reset(HPACKET);
-	snprintf(buf, MAXLINE, "\033[32mEnd of Tansfer\033[0m (%d slices, last size %d)", nslice, n);
-	packet.fillStat(0, STAT_EOT, strlen(buf), buf);
-	packet.print();
-	packet.htonp();
-	connSockStream.Writen(packet.ps, PACKSIZE);
+	printf("EOT[%s]\n", pathname);
+	packet.sendSTAT_EOT(connSockStream);
 }
 void SrvDTP::recvFile(const char *pathname)
 {
 	int n;
 	char buf[MAXLINE];
-	// first PUT response
-	//fprintf(stdout, "Recieve file now: %s\n", pathname);
 	FILE* fp;	// Yo!
 	if ((access(pathname,F_OK)) == 0) {
-		packet.reset(HPACKET);
+		// send STAT_ERR Response
 		snprintf(buf, MAXLINE, "File [%s] already exists", pathname);
-		packet.fillStat(0, STAT_ERR, strlen(buf), buf);
-		//packet.print();
-		packet.htonp();
-		connSockStream.Writen(packet.ps, PACKSIZE);
+		packet.sendSTAT_ERR(connSockStream, buf);
 		return;
 	} else if ( (fp = fopen(pathname, "wb")) == NULL) {
-		//Error::msg("can not open file %s", pathname);
-		// send Response
-		packet.reset(HPACKET);
-		snprintf(buf, MAXLINE, "%s", strerror(errno));
-		packet.fillStat(0, STAT_ERR, strlen(buf), buf);
-		//packet.print();
-		packet.htonp();
-		connSockStream.Writen(packet.ps, PACKSIZE);
+		// send STAT_ERR Response
+		packet.sendSTAT_ERR(connSockStream, strerror(errno));
 		return;
 	} else {
-		// send Response
-		packet.reset(HPACKET);
-		snprintf(buf, MAXLINE, "\033[32mOK to transfer\033[0m");
-		packet.fillStat(0, STAT_OK, strlen(buf), buf);
-		//packet.print();
-		packet.htonp();
-		connSockStream.Writen(packet.ps, PACKSIZE);
+		// send STAT_OK
+		packet.sendSTAT_OK(connSockStream);
 	}
 	
-
+	printf("Recv file [%s] now\n", pathname);
 	int m;
-	int oldProgress = 0, newProgress = 0;
 	while (packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0)
 	{
 		packet.ntohp();
@@ -115,25 +75,12 @@ void SrvDTP::recvFile(const char *pathname)
 			{
 				Error::msg("Recieved slice %d/%d: %d vs %d Bytes\n", packet.ps->sindex, packet.ps->nslice, packet.ps->bsize, m);
 				return;
-			} else {
-				if(packet.ps->nslice == 0)
-				{
-					Error::msg("nslice is zero, can not divide\n");
-					return;
-				}
-				newProgress = (packet.ps->sindex*1.0)/packet.ps->nslice*100;
-				if (newProgress > oldProgress)
-				{
-					//printf("\033[2K\r\033[0m");
-					fprintf(stderr, "\033[2K\r\033[0mProgress[%s]: %3d%%", pathname, newProgress);
-				}
-				oldProgress = newProgress;
 			}
 			//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.ps->bsize, m);
 		} else if(packet.ps->tagid == TAG_STAT && packet.ps->statid == STAT_EOT) {
 			fclose(fp);
 			packet.ps->body[packet.ps->bsize] = 0;
-			printf("\n%s\n", packet.ps->body);
+			printf("\n%s %s\n", packet.ps->body, pathname);
 			return;
 		} else {
 			Error::msg("SrvDTP::recvFile: unknown tagid %d with statid %d", packet.ps->tagid, packet.ps->statid);
@@ -162,6 +109,6 @@ int SrvDTP::getFileNslice(const char *pathname,uint32_t *pnslice_o)
 	} else {
 		 *pnslice_o = filesize/SLICECAP + 1; 
 	}
-  	printf("nslice: %u\n", *pnslice_o);
+  	//printf("getFileNslice nslice: %u\n", *pnslice_o);
     return 1;  
 }

@@ -41,7 +41,7 @@ using namespace std;
 
 // Miscellaneous constants
 #define	MAXLINE		128			// max text line length
-#define	BUFFSIZE	8192		// 8K Bytes buffer size for reads and writes
+//#define	BUFFSIZE	8192		// 8K Bytes buffer size for reads and writes
 
 //#define PORT		2121		// server: listening port
 #define CTRPORT		2121    	// server: control listening port

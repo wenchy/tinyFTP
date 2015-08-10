@@ -173,6 +173,48 @@ void Packet::print()
 	
 	fflush(stdout);
 }
+void Packet::sendDATA(SockStream & connSockStream, uint32_t sesid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
+{
+	this->reset(HPACKET);
+	this->fillData(0, nslice, ++sindex, bsize, body);
+	//this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+	//printf("file_block_length:%d\n",n);
+}
+void Packet::sendSTAT_OK(SockStream & connSockStream)
+{
+	// send OK
+	this->reset(HPACKET);
+	char buf[MAXLINE];
+	snprintf(buf, MAXLINE, "\033[32mOK to transfer\033[0m");
+	this->fillStat(0, STAT_OK, strlen(buf), buf);
+	//this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+void Packet::sendSTAT_ERR(SockStream & connSockStream, char *errmsg)
+{
+	// send EOT
+	this->reset(HPACKET);
+	char buf[MAXLINE];
+	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", errmsg);
+	this->fillStat(0, STAT_ERR, strlen(buf), buf);
+	//this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+void Packet::sendSTAT_EOT(SockStream & connSockStream)
+{
+	// send EOT
+	this->reset(HPACKET);
+	char buf[MAXLINE];
+	snprintf(buf, MAXLINE, "\033[32mEnd of Tansfer\033[0m");
+	this->fillStat(0, STAT_EOT, strlen(buf), buf);
+	//this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
 
 Packet::~Packet()
 { 

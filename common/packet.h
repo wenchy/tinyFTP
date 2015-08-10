@@ -3,7 +3,7 @@
 
 #include    "common.h"
 #include    "error.h"
-
+#include    "sockstream.h"
 
 class Packet
 {
@@ -27,6 +27,12 @@ public:
 	void htonp();
 
 	void print();
+
+	void sendDATA(SockStream & connSockStream, uint32_t sesid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
+
+	void sendSTAT_OK(SockStream & connSockStream);
+	void sendSTAT_ERR(SockStream & connSockStream, char *errmsg);
+	void sendSTAT_EOT(SockStream & connSockStream);
 
 
 //private:

@@ -8,7 +8,7 @@ void SrvPI::run(int connfd)
 	if ( connSockStream.Readn(packet.ps, PACKSIZE) == 0)
 	            Error::quit_pthread("client terminated prematurely");
     packet.ntohp();
-    packet.print();
+    //packet.print();
     if (packet.ps->tagid == TAG_CMD)
     {
     	switch(packet.ps->cmdid)
@@ -21,6 +21,9 @@ void SrvPI::run(int connfd)
 				break;
 			case LS:
 				cmdLS();
+				break;
+			case CD:
+				cmdCD();
 				break;
 			default:
 				Error::msg("Sorry! this command function not finished yet.\n");
@@ -76,7 +79,6 @@ void SrvPI::cmdLS()
 {
 	printf("LS request\n");
 	char buf[MAXLINE];
-	char body[PBODYCAP];
 	string sbody;
 	DIR* dir;
 
@@ -88,7 +90,15 @@ void SrvPI::cmdLS()
 		dir= opendir(packet.ps->body);
 	}
 	if(!dir)
-		Error::sys("opendir()");
+	{
+		//Error::ret("opendir()");
+		// send STAT_ERR Response
+		packet.sendSTAT_ERR(connSockStream, strerror(errno));
+		return;
+	} else {
+		// send STAT_OK
+		packet.sendSTAT_OK(connSockStream);
+	}
 	struct dirent* e;
 	int cnt = 0;
 	while( (e = readdir(dir)) )
@@ -140,24 +150,30 @@ void SrvPI::cmdLS()
 		Error::msg("LS: too many dir ents\n");
 		return;
 	}
-	packet.reset(HPACKET);
+	char body[PBODYCAP];
 	std::strcpy(body, sbody.c_str());
-	packet.fillData(0, 0, 0, strlen(body), body);
-	packet.htonp();
-	connSockStream.Writen(packet.ps, PACKSIZE);
-
-	// send EOT
-	packet.reset(HPACKET);
-	snprintf(buf, MAXLINE, "\033[32mEnd of Tansfer\033[0m");
-	packet.fillStat(0, STAT_EOT, strlen(buf), buf);
-	//packet.print();
-	packet.htonp();
-	connSockStream.Writen(packet.ps, PACKSIZE);
+	packet.sendDATA(connSockStream, 0, 0, 0, strlen(body), body);
+	packet.sendSTAT_EOT(connSockStream);
 
 }
 void SrvPI::cmdCD()
 {
 	printf("CD request\n");
+
+	//char buf[MAXLINE];
+	int n;
+	packet.ps->body[packet.ps->bsize] = 0;
+	if( (n = chdir(packet.ps->body)) == -1)
+	{
+		//Error::ret("opendir()");
+		// send STAT_ERR Response
+		packet.sendSTAT_ERR(connSockStream, strerror(errno));
+		return;
+	} else {
+		// send STAT_OK
+		packet.sendSTAT_OK(connSockStream);
+	}
+	//packet.sendSTAT_EOT(connSockStream);
 }
 void SrvPI::cmdDELE()
 {

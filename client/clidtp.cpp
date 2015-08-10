@@ -9,7 +9,6 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 {
 	int n;
 	uint32_t sindex = 0;
-	char buf[MAXLINE];
 	// first PUT response
 	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
 	{
@@ -31,46 +30,33 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 			
 		} else {
 			Error::msg("CliDTP::sendFile: unknown tagid %d", packet.ps->tagid);
+			packet.print();
 			return;
 		}
 	}
 
 	char body[PBODYCAP];
-	//printf("Send file [%s] now\n", pathname);
 	int oldProgress = 0, newProgress = 0;
-	fprintf(stderr, "Progress[%s]: %3d%%", pathname, newProgress);
+	if(nslice == 0)
+	{
+		Error::msg("nslice is zero, can not divide\n");
+		return;
+	}
 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 	{
-		packet.reset(HPACKET);
-		packet.fillData(0, nslice, ++sindex, n, body);
-		//printf("file_block_length:%d\n",n);
-		if(packet.ps->nslice == 0)
-		{
-			Error::msg("nslice is zero, can not divide\n");
-			return;
-		}
-		newProgress = (packet.ps->sindex*1.0)/packet.ps->nslice*100;
+		packet.sendDATA(connSockStream, 0, nslice, ++sindex, n, body);
+		newProgress = (sindex*1.0)/nslice*100;
 		if (newProgress > oldProgress)
 		{
 			//printf("\033[2K\r\033[0m");
 			fprintf(stderr, "\033[2K\r\033[0mProgress[%s]: %3d%%", pathname, newProgress);
 		}
 		oldProgress = newProgress;
-		//packet.print();
-		packet.htonp();
-		connSockStream.Writen(packet.ps, PACKSIZE);
-
 	}
 	fclose(fp);
 	// send EOT
-	packet.reset(HPACKET);
-	snprintf(buf, MAXLINE, "\033[32mEnd of Tansfer\033[0m (%d slices, last size %d)", nslice, n);
-	packet.fillStat(0, STAT_EOT, strlen(buf), buf);
-	packet.print();
-	packet.htonp();
-	connSockStream.Writen(packet.ps, PACKSIZE);
-
-	fprintf(stderr, "\033[32mEnd of Tansfer\033[0m (%d slices, last size %d)\n", nslice, n);
+	printf("\nEOT[%s]\n", pathname);
+	packet.sendSTAT_EOT(connSockStream);
 }
 void CliDTP::recvFile(const char *pathname, FILE *fp)
 {
@@ -103,7 +89,6 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 
 	int m;
 	int oldProgress = 0, newProgress = 0;
-	fprintf(stderr, "Progress[%s]: %3d%%", pathname, newProgress);
 	while (packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0)
 	{
 		packet.ntohp();
@@ -113,10 +98,15 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 
 			if (m != packet.ps->bsize)
 			{
-				Error::msg("Recieved slice %u/%u: %hu vs %hu Bytes\n", packet.ps->sindex, packet.ps->nslice, packet.ps->bsize, m);
+				Error::msg("fwirte error: %u/%u: %hu vs %hu Bytes\n", packet.ps->sindex, packet.ps->nslice, packet.ps->bsize, m);
 				fclose(fp);
 				return;
 			} else {
+				if(packet.ps->nslice == 0)
+				{
+					Error::msg("nslice is zero, can not divide\n");
+					break;
+				}
 				newProgress = (packet.ps->sindex*1.0)/packet.ps->nslice*100;
 				if (newProgress > oldProgress)
 				{

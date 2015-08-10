@@ -51,7 +51,7 @@ void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVe
 
 	// Error::msg("body: %s\n", body);
 	packet.fill(sesid, TAG_CMD, cmdid, statid, nslice, sindex, bsize, body);
-	packet.print();
+	//packet.print();
 	packet.htonp(); 
 }
 
@@ -59,7 +59,7 @@ void CliPI::cmdGET(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("command argument fault");
+		Error::msg("Usage: get [FILE]");
 		return;
 	}
 	printf("GET request\n");
@@ -91,7 +91,7 @@ void CliPI::cmdPUT(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("command argument fault");
+		Error::msg("Usage: put [FILE]");
 		return;
 	}
 	printf("PUT request\n");
@@ -128,7 +128,7 @@ void CliPI::cmdLS(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() > 2)
 	{
-		Error::msg("command argument fault");
+		Error::msg("Usage: ls [DIR]");
 		return;
 	}
 	
@@ -136,6 +136,29 @@ void CliPI::cmdLS(uint16_t cmdid, std::vector<string> & cmdVector)
 	connSockStream.Writen(packet.ps, PACKSIZE);
 
 	int n;
+	// first receive response
+	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
+	{
+		packet.ntohp();
+		if (packet.ps->tagid == TAG_STAT) {
+			if (packet.ps->statid == STAT_OK) {
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stdout, "%s\n", packet.ps->body);
+			} else if (packet.ps->statid == STAT_ERR){
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stderr, "%s\n", packet.ps->body);
+				return;
+			} else {
+				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
+				return;
+			}
+			
+		} else {
+			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			return;
+		}
+	}
+
 	while(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
 	{
 		packet.ntohp();
@@ -149,17 +172,41 @@ void CliPI::cmdLS(uint16_t cmdid, std::vector<string> & cmdVector)
 			break;
 		}
 	}
-	
- 
 }
 void CliPI::cmdCD(uint16_t cmdid, std::vector<string> & cmdVector)
 {
-	if(cmdVector.size() > 2)
+	if(cmdVector.size() != 2)
 	{
-		Error::msg("command argument fault");
+		Error::msg("Usage: cd [DIR]");
 		return;
 	}
-	
+
+	cmd2pack(0, cmdid, cmdVector);
+	connSockStream.Writen(packet.ps, PACKSIZE);
+
+	int n;
+	// first receive response
+	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
+	{
+		packet.ntohp();
+		if (packet.ps->tagid == TAG_STAT) {
+			if (packet.ps->statid == STAT_OK) {
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stdout, "%s\n", packet.ps->body);
+			} else if (packet.ps->statid == STAT_ERR){
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stderr, "%s\n", packet.ps->body);
+				return;
+			} else {
+				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
+				return;
+			}
+			
+		} else {
+			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			return;
+		}
+	}
  
 }
 void CliPI::cmdDELE(uint16_t cmdid, std::vector<string> & cmdVector)
@@ -198,6 +245,6 @@ int CliPI::getFileNslice(const char *pathname, uint32_t *pnslice_o)
 	} else {
 		 *pnslice_o = filesize/SLICECAP + 1; 
 	}
-  
+  	//printf("getFileNslice nslice: %d\n", *pnslice_o);
     return 1;  
 }
