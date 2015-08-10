@@ -31,7 +31,11 @@ public:
 	void sendDATA(SockStream & connSockStream, uint32_t sesid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
 
 	void sendSTAT_OK(SockStream & connSockStream);
+	void sendSTAT_OK(SockStream & connSockStream, char *msg);
+	void sendSTAT_OK(SockStream & connSockStream, const char *msg);
+	void sendSTAT_ERR(SockStream & connSockStream);
 	void sendSTAT_ERR(SockStream & connSockStream, char *errmsg);
+	void sendSTAT_ERR(SockStream & connSockStream, const char *errmsg);
 	void sendSTAT_EOT(SockStream & connSockStream);
 
 

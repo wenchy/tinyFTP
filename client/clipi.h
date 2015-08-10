@@ -40,6 +40,7 @@ public:
 	void cmdLS(uint16_t cmdid, std::vector<string> & cmdVector);
 	void cmdCD(uint16_t cmdid, std::vector<string> & cmdVector);
 	void cmdDELE(uint16_t cmdid, std::vector<string> & cmdVector);
+	void cmdPWD(uint16_t cmdid, std::vector<string> & cmdVector);
 	void sessionCmd();
 	int getFileNslice(const char *pathname, uint32_t *pnslice_o);  
 

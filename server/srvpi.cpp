@@ -25,8 +25,11 @@ void SrvPI::run(int connfd)
 			case CD:
 				cmdCD();
 				break;
+			case PWD:
+				cmdPWD();
+				break;
 			default:
-				Error::msg("Sorry! this command function not finished yet.\n");
+				Error::msg("Server: Sorry! this command function not finished yet.\n");
 				break;
 		}
     } else {
@@ -171,7 +174,23 @@ void SrvPI::cmdCD()
 		return;
 	} else {
 		// send STAT_OK
-		packet.sendSTAT_OK(connSockStream);
+		packet.sendSTAT_OK(connSockStream, "server: change current working directory to");
+	}
+	//packet.sendSTAT_EOT(connSockStream);
+}
+void SrvPI::cmdPWD()
+{
+	printf("PWD request\n");
+
+	char buf[MAXLINE];
+	if( !getcwd(buf, MAXLINE))
+	{
+		// send STAT_ERR Response
+		packet.sendSTAT_ERR(connSockStream, strerror(errno));
+		return;
+	} else {
+		// send STAT_OK
+		packet.sendSTAT_OK(connSockStream, buf);
 	}
 	//packet.sendSTAT_EOT(connSockStream);
 }

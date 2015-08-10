@@ -25,11 +25,14 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 		case CD:
 			cmdCD(cmdid, cmdVector);
 			break;
+		case PWD:
+			cmdPWD(cmdid, cmdVector);
+			break;
 		case DELE:
 			cmdDELE(cmdid, cmdVector);
 			break;	
 		default:
-			Error::msg("Sorry! this command function not finished yet.\n");
+			Error::msg("Client: Sorry! this command function not finished yet.\n");
 			break;
 	}
 	
@@ -215,6 +218,43 @@ void CliPI::cmdDELE(uint16_t cmdid, std::vector<string> & cmdVector)
 	{
 		Error::msg("command argument fault");
 		return;
+	}
+	
+ 
+}
+void CliPI::cmdPWD(uint16_t cmdid, std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() != 1)
+	{
+		Error::msg("Usage: pwd");
+		return;
+	}
+
+	cmd2pack(0, cmdid, cmdVector);
+	connSockStream.Writen(packet.ps, PACKSIZE);
+
+	int n;
+	// first receive response
+	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
+	{
+		packet.ntohp();
+		if (packet.ps->tagid == TAG_STAT) {
+			if (packet.ps->statid == STAT_OK) {
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stdout, "%s\n", packet.ps->body);
+			} else if (packet.ps->statid == STAT_ERR){
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stderr, "%s\n", packet.ps->body);
+				return;
+			} else {
+				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
+				return;
+			}
+			
+		} else {
+			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			return;
+		}
 	}
 	
  

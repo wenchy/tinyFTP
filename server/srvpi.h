@@ -20,6 +20,7 @@ public:
 	void cmdPUT();
 	void cmdLS();
 	void cmdCD();
+	void cmdPWD();
 	void cmdDELE();
 	
 

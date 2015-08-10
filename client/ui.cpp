@@ -13,6 +13,7 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"CD",      CD},
                                                     {"LS",      LS},
                                                     {"MKD",     MKD},
+                                                    {"PWD",     PWD},
                                                     {"RMD",     RMD},
                                                     {"BINARY",  BINARY},
                                                     {"ASCII",   ASCII},
@@ -66,7 +67,7 @@ bool UI::cmdCheck()
        	//std::cout << "CommandID: " << iter->first << "(" << iter->second << ")" << std::endl;
         return true;
 	} else {
-        std::cerr << "unknown command: " << cmdVector[0] << std::endl;
+        std::cerr << "UI#unknown command: " << cmdVector[0] << std::endl;
         return false;
 	}
 }
