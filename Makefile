@@ -1,7 +1,9 @@
 CC := g++
 CFLAGS := -std=c++11 -g -Wall -O3 -Iinclude
 CPPFLAGS := $(CFLAGS)
-LIBS := -pthread -lsqlite3 -Llib -Wl,-rpath=lib
+LIBS := -pthread -lsqlite3 -Llib #-Wl,-rpath=/home/wenchy/GitHub/tinyFTP/lib
+
+FILE:=/usr/lib/libsqlite3.so
 
 SRV_EXE := server/server.out
 CLI_EXE := client/client.out
@@ -26,6 +28,7 @@ $(SRV_EXE): $(SRV_OBJ) $(COM_OBJ)
 $(CLI_EXE): $(CLI_OBJ) $(COM_OBJ)
 	$(CC) $(CPPFLAGS) $^ -o $@ $(LIBS)
 depend:
+	$(shell if ![ -f $(FILE) ]; then @sudo cp lib/libsqlite3.so /usr/lib; fi;)
 	$(CC) -MM $(SRC) > .depend
 -include .depend
 clean:

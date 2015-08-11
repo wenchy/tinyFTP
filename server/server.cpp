@@ -1,5 +1,7 @@
 #include "server.h"
 
+#include    "../common/database.h"
+
 void * clientConnect(void * arg)
 {
     ThreadArg * ptarg = (ThreadArg *)arg;
@@ -16,6 +18,9 @@ void * clientConnect(void * arg)
 
 int main(int argc, char **argv)
 {
+    Database db(DBFILENAME);
+    db.init();
+
     struct sockaddr_in  cliaddr;
     socklen_t len = sizeof(cliaddr);
     char buff[MAXLINE];

@@ -2,11 +2,7 @@
 #define _TINYFTP_DATABASE_H_
 
 #include    "common.h"
-#include	"../include/sqlite3.h"
-
-using namespace std;
-
-#define		DBFILENAME	"tinyFTP.db"
+#include	<sqlite3.h>
 
 // Database class
 class Database
@@ -14,13 +10,15 @@ class Database
 public:
 	Database(const char * dbfilename);
 
+	Database & create();
 	Database & createTable();
 	bool execute(const char *sql, Database * pDatabase);
 	bool insert(string tblname, map<string, string> & paramMap);
 	bool select(string tblname, map<string, string> & paramMap);
 	bool update(string tblname, string id, map<string, string> & paramMap);
-	bool remove();
+	bool remove(string tblname, string id);
 	map<string ,string> & getResult();
+	//Database & select(string tblname, map<string, string> & paramMap);
 	bool first();
 	bool find(string tblname, string id);
 	bool findALL(string tblname);
