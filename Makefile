@@ -1,6 +1,7 @@
 CC := g++
-CFLAGS := -std=c++11 -g -Wall -O3 -pthread
+CFLAGS := -std=c++11 -g -Wall -O3 -Iinclude
 CPPFLAGS := $(CFLAGS)
+LIBS := -pthread -lsqlite3 -Llib -Wl,-rpath=lib
 
 SRV_EXE := server/server.out
 CLI_EXE := client/client.out
@@ -21,9 +22,9 @@ all: depend $(EXE)
 .PHONY: all
 
 $(SRV_EXE): $(SRV_OBJ) $(COM_OBJ)
-	$(CC) $(CPPFLAGS) $^ -o $@
+	$(CC) $(CPPFLAGS) $^ -o $@ $(LIBS)
 $(CLI_EXE): $(CLI_OBJ) $(COM_OBJ)
-	$(CC) $(CPPFLAGS) $^ -o $@
+	$(CC) $(CPPFLAGS) $^ -o $@ $(LIBS)
 depend:
 	$(CC) -MM $(SRC) > .depend
 -include .depend

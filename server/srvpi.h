@@ -5,6 +5,7 @@
 #include    "../common/error.h"
 #include    "../common/packet.h"
 #include    "../common/sockstream.h"
+#include    "../common/database.h"
 #include    "srvdtp.h"
 // Server Protocol Interpreter (SrvPI)
 class SrvPI

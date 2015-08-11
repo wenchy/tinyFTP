@@ -1,28 +1,5 @@
 #include "server.h"
 
-// std::map< uint32_t, std::pair<int, int> > gsessionMap;
-// static uint32_t gsessionID = 1;
-// static int gctrListenfd, gdatListenfd;
-
-// void str_echo(int sockfd )
-// {
-//     ssize_t     n;
-//     ControlPacket controlPacket(NPACKET);
-//     SockStream connSockStream(sockfd);
-
-//     while (1)
-//     {
-//         if ( (n = connSockStream.Readn(controlPacket.cpack, CPACKSIZE)) == 0)
-//             Error::ret("str_echo: client terminated prematurely");
-//         controlPacket.ntohp();
-//         controlPacket.print();
-//         //Fputs(cpack, stdout);
-//         //fprintf(stderr, "%lu, %d: %s", strlen(recvline), recvline[strlen(recvline)-1], recvline);
-//         //connSockStream.Writen(recvline, strlen(recvline));
-//     }
-
-// }
-
 void * clientConnect(void * arg)
 {
     ThreadArg * ptarg = (ThreadArg *)arg;

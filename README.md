@@ -5,11 +5,14 @@ Implementation of a tiny FTP client and server
 
 ftp [hostname | ip-address]
 
-- **GET**:     get [remote-file] [local-file]
-- **MGET**:    mget [remote-files]
-- **PUT**:     put [local-file] [remote-file]
-- **MPUT**:    mput [local-files]
-- **EXIT**:    ftp> bye(or quit)
+- **GET**:      get   [remote-file] [local-file]
+- **PUT**:      put   [local-file] [remote-file]
+- **LS**:       ls    [remote-directory]
+- **CD**:       cd    [DIR]
+- **RM**:       rm    [remote-file|directory]
+- **PWD**:      pwd
+- **MKDIR**:    mkdir [remote-directory]
+- **QUIT**:     quit
 
 ##  FTP model
 

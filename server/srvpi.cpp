@@ -2,6 +2,8 @@
 
 void SrvPI::run(int connfd)
 {
+	Database db(DBFILENAME);
+    db.init();
 	connSockStream.init(connfd);
 
 	packet.reset(NPACKET);
