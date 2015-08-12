@@ -93,11 +93,7 @@ void Error::doit(int errnoflag, int level, const char *fmt, va_list ap)
 	n = strlen(buf);
 	if (errnoflag)
 	{
-		if (strerror_r(errno_save, errmsg, MAXLINE) != 0)
-		{
-		 	snprintf(errmsg, MAXLINE, "strerror_r call failed");
-		} 
-		snprintf(buf + n, MAXLINE - n, ": %s", errmsg);
+		snprintf(buf + n, MAXLINE - n, ": %s", strerror_r(errno_save, errmsg, MAXLINE));
 	}
 	strcat(buf, "\n");
 

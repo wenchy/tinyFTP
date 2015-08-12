@@ -8,7 +8,9 @@
 class Database
 {
 public:
-	Database(const char * dbfilename);
+	// Database(){}
+	Database(const char * zDbFilename);
+	// void init1(const char * zDbFilename);
 
 	Database & create();
 	Database & createTable();

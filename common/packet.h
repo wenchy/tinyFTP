@@ -34,9 +34,12 @@ public:
 	void sendSTAT_OK(SockStream & connSockStream, char *msg);
 	void sendSTAT_OK(SockStream & connSockStream, const char *msg);
 	void sendSTAT_OK(SockStream & connSockStream, string msg);
+
 	void sendSTAT_ERR(SockStream & connSockStream);
-	void sendSTAT_ERR(SockStream & connSockStream, char *errmsg);
-	void sendSTAT_ERR(SockStream & connSockStream, const char *errmsg);
+	void sendSTAT_ERR(SockStream & connSockStream, char *msg);
+	void sendSTAT_ERR(SockStream & connSockStream, const char *msg);
+	void sendSTAT_ERR(SockStream & connSockStream, string msg);
+
 	void sendSTAT_EOT(SockStream & connSockStream);
 
 

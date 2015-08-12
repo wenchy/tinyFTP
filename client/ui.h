@@ -29,6 +29,7 @@ private:
 	std::vector<string> cmdVector;
 	uint16_t cmdid;
 	CliPI cliPI;
+	string username;
 
 	// decode the input line to a command
 	bool cmdCheck();

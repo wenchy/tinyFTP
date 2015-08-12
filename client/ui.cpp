@@ -42,6 +42,20 @@ void UI::run()
         std::istringstream is(inputline);
         while(is >> word)
             this->cmdVector.push_back(word);
+
+        // if user enter nothing, assume special anonymous user
+        if (this->cmdVector.empty())
+        {
+            this->cmdVector.push_back("anonymous");
+            this->cmdVector.push_back("anonymous"); 
+            if (!cliPI.cmdPASS(this->cmdVector))
+            {
+                continue;
+            } else {
+                break;
+            }
+        }
+
         if (!cliPI.cmdUSER(this->cmdVector))
         {
             continue;
@@ -64,9 +78,9 @@ void UI::run()
             }
         }
     }                
-
+    this->username = this->cmdVector[0];
 	// other ftp commands: first cout prompt (use "," operator)
-	while (printf("\033[35mtinyFTP> \033[0m"), getline(std::cin, inputline))
+	while (printf("\033[35m%s@tinyFTP> \033[0m", username.c_str()), getline(std::cin, inputline))
 	{
 		// clear cmdVector each time when user input
 		this->cmdVector.clear();

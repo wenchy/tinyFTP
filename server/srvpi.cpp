@@ -1,7 +1,11 @@
 #include    "srvpi.h"
 
+
+
+
 void SrvPI::run(int connfd)
 {
+	std::cout <<  "[" << userRootDir <<" " << userRCWD << "]" << std::endl;
 	connSockStream.init(connfd);
 
 	packet.reset(NPACKET);
@@ -80,38 +84,43 @@ void SrvPI::cmdUSER()
 	printf("USER request\n");
 }
 void SrvPI::split(std::string src, std::string token, vector<string>& vect)   
-{   
-    int nend=0;   
-    int nbegin=0;   
-    while(nend != -1)   
+{    
+    int nbegin=0;
+    int nend=0;    
+    while(nend != -1 && (unsigned int)nbegin < src.length() )    
     {   
         nend = src.find_first_of(token, nbegin);   
-        if(nend == -1)   
-            vect.push_back(src.substr(nbegin, src.length()-nbegin));   
-        else  
-            vect.push_back(src.substr(nbegin, nend-nbegin));   
+        if(nend == -1) {
+        	 vect.push_back(src.substr(nbegin, src.length()-nbegin));
+        } else {
+        	if (nend != nbegin )
+        	{
+        		vect.push_back(src.substr(nbegin, nend-nbegin));  
+        	}
+        	 
+        }     
         nbegin = nend + 1;   
     }   
 }
 
-static void Split(const char* content, const char* token, vector<std::string>& vect)   
-{   
-    if(content == NULL)   
-           return;   
-    int len = strlen(content);   
-    if(len  <= 0)   
-        return;   
-    char* pBuf =(char*)malloc(len+1);   
-    strcpy(pBuf , content); 
-    // not thread safe  
-    char* str = strtok(pBuf , token);   
-    while(str != NULL)   
-    {   
-        vect.push_back(str);   
-        str = strtok(NULL, token);   
-    }   
-    free(pBuf);   
-}
+// static void Split(const char* content, const char* token, vector<std::string>& vect)   
+// {   
+//     if(content == NULL)   
+//            return;   
+//     int len = strlen(content);   
+//     if(len  <= 0)   
+//         return;   
+//     char* pBuf =(char*)malloc(len+1);   
+//     strcpy(pBuf , content); 
+//     // not thread safe  
+//     char* str = strtok(pBuf , token);   
+//     while(str != NULL)   
+//     {   
+//         vect.push_back(str);   
+//         str = strtok(NULL, token);   
+//     }   
+//     free(pBuf);   
+// }
 void SrvPI::cmdPASS()
 {
 	printf("PASS request\n");
@@ -122,8 +131,17 @@ void SrvPI::cmdPASS()
 
 	// for (vector<string>::iterator iter=paramVector.begin(); iter!=paramVector.end(); ++iter)
  //   	{
- //    	std::cout << *iter << '\n';
+ //    	std::cout << "paramVector[" << *iter << "]" << '\n';
  //   	}
+
+ //   	vector<string> testVector; 
+	// split("///!home//!wenchy///!tony///!", "///!", testVector);
+
+	// for (vector<string>::iterator iter=testVector.begin(); iter!=testVector.end(); ++iter)
+ //   	{
+ //    	std::cout << "test[" << *iter << "]" << '\n';
+ //   	}
+
 
    	std::map<string, string> selectParamMap = {  {"username", paramVector[0]}, {"password", paramVector[1]} };
    	if (db.select("user", selectParamMap))
@@ -131,14 +149,15 @@ void SrvPI::cmdPASS()
    		vector< map<string ,string> > resultMapVector = db.getResult();
    		if (!resultMapVector.empty())
    		{
-   			// send STAT_OK
-			packet.sendSTAT_OK(connSockStream, "Welcome! " + paramVector[0]);
+			packet.sendSTAT_OK(connSockStream, "Welcome! " + resultMapVector[0]["USERNAME"]);
+			// init userRootDir and userRCWD
+			userRootDir = ROOTDIR + resultMapVector[0]["USERNAME"];
+			userRCWD = resultMapVector[0]["RCWD"];
+			//std::cout <<  "[" << userRootDir <<" " << userRCWD << "]" << std::endl;
    		} else {
-   			// send STAT_ERR Response
 			packet.sendSTAT_ERR(connSockStream, "error: username mismatch password");
    		}
    	} else {
-   		// send STAT_ERR Response
 		packet.sendSTAT_ERR(connSockStream, "Database select error");
    	}
 }
@@ -167,12 +186,17 @@ void SrvPI::cmdLS()
 	string sbody;
 	DIR* dir;
 
+	packet.ps->body[packet.ps->bsize] = 0;
+
+
 	if (packet.ps->bsize == 0)
 	{
-		dir= opendir(".");
+		//dir= opendir(".");
+		dir= opendir((userRootDir + userRCWD).c_str());
 	} else {
-		packet.ps->body[packet.ps->bsize] = 0;
-		dir= opendir(packet.ps->body);
+		//packet.ps->body[packet.ps->bsize] = 0;
+		//dir= opendir(packet.ps->body);
+		dir= opendir((userRootDir + userRCWD + packet.ps->body).c_str());
 	}
 	if(!dir)
 	{
@@ -245,19 +269,64 @@ void SrvPI::cmdCD()
 	printf("CD request\n");
 
 	char buf[MAXLINE] = {0};
-	int n;
 	packet.ps->body[packet.ps->bsize] = 0;
-	if( (n = chdir(packet.ps->body)) == -1)
-	{
-		// send STAT_ERR Response
-		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+
+	// check path, one user can only work in his own working space
+	string userinput(packet.ps->body);
+	string absCWD = userRootDir + userRCWD;
+
+	vector<string> absCWDVector; 
+	split(absCWD, "/", absCWDVector);
+	for (vector<string>::iterator iter=absCWDVector.begin(); iter!=absCWDVector.end(); ++iter)
+   	{
+    	std::cout << "absCWD[" << *iter << "]" << '\n';
+   	}
+
+	vector<string> userVector; 
+	split(userinput, "/", userVector);
+	for (vector<string>::iterator iter=userVector.begin(); iter!=userVector.end(); ++iter)
+   	{
+    	std::cout << "userinput[" << *iter << "]" << '\n';
+    	if (*iter == "..")
+    	{
+    		absCWDVector.pop_back();
+    	} else if (*iter == ".") {
+    		continue;
+    	} else {
+    		absCWDVector.push_back(*iter);
+    	}
+   	}
+
+   	string newAbsDir;
+   	for (vector<string>::iterator iter=absCWDVector.begin(); iter!=absCWDVector.end(); ++iter)
+   	{
+    	newAbsDir += "/" + *iter;
+   	}
+   	std::cout << newAbsDir << '\n';
+   	if (newAbsDir.substr(0, userRootDir.size()) != userRootDir)
+   	{
+		packet.sendSTAT_ERR(connSockStream, "Permission deny: " + newAbsDir);
 		return;
-	} else {
-		// send STAT_OK
-		snprintf(buf, MAXLINE, "server: change CWD to [%s]", packet.ps->body);
+   	} else {
+   		this->userRCWD = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
+		snprintf(buf, MAXLINE, "current working directory: [%s]", userRCWD.c_str());
 		packet.sendSTAT_OK(connSockStream, buf);
-	}
+   	}
+   	
+	
+	
+
+	// if( (n = chdir(newAbsDir.c_str())) == -1)
+	// {
+	// 	// send STAT_ERR Response
+	// 	// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+	// 	packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+	// 	return;
+	// } else {
+	// 	// send STAT_OK
+	// 	snprintf(buf, MAXLINE, "server: change CWD to [%s]", packet.ps->body);
+	// 	packet.sendSTAT_OK(connSockStream, buf);
+	// }
 	//packet.sendSTAT_EOT(connSockStream);
 }
 
@@ -284,17 +353,19 @@ void SrvPI::cmdPWD()
 {
 	printf("PWD request\n");
 
-	char buf[MAXLINE];
-	if( !getcwd(buf, MAXLINE))
-	{
-		// send STAT_ERR Response
-		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
-		return;
-	} else {
-		// send STAT_OK
-		packet.sendSTAT_OK(connSockStream, buf);
-	}
+	packet.sendSTAT_OK(connSockStream, userRCWD.c_str());
+
+	// char buf[MAXLINE];
+	// if( !getcwd(buf, MAXLINE))
+	// {
+	// 	// send STAT_ERR Response
+	// 	// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+	// 	packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+	// 	return;
+	// } else {
+	// 	// send STAT_OK
+	// 	packet.sendSTAT_OK(connSockStream, userRCWD.c_str());
+	// }
 }
 
 void SrvPI::cmdMKDIR()
@@ -320,4 +391,9 @@ void SrvPI::cmdMKDIR()
 		snprintf(buf, MAXLINE, "directory %s is created", packet.ps->body);
 		packet.sendSTAT_OK(connSockStream, buf);
 	}
+}
+
+SrvPI::~SrvPI()
+{
+
 }

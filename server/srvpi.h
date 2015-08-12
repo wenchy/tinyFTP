@@ -11,7 +11,7 @@
 class SrvPI
 {
 public:
-	SrvPI():db(DBFILENAME){};
+	SrvPI():db(DBFILENAME){}
 	void run(int connfd);
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[PBODYCAP]);
@@ -28,15 +28,20 @@ public:
 	void cmdRM();
 	void cmdPWD();
 	void cmdMKDIR();
+
+	~SrvPI();
 	
 	
 
 
-private:
+//private:
 	Packet packet;
 	SockStream connSockStream;
 	SrvDTP srvDTP;
 	Database db;
+
+	std::string userRootDir;
+	std::string userRCWD; // current working directory relative to userRootDir
 
 
 };

@@ -38,14 +38,31 @@ Database::Database(const char * zDbFilename): dbFilename(zDbFilename)
  }
 }
 
+// void Database::init1(const char * zDbFilename)
+// {
+//    //clean();
+//    dbFilename = zDbFilename;
+//    zErrMsg = NULL;
+//    /* Open database */
+//    rc = sqlite3_open(dbFilename.c_str(), &pDb);
+//    if( rc ){
+//     fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(pDb));
+//     exit(0);
+//  }else{
+//     fprintf(stdout, "Open database successfully\n");
+//  }
+// }
+
 void Database::init()
 {
-   std::map<string, string> insertParamMap0 = { {"username", "anonymous"},
-   {"password", "anonymous"} };
-   std::map<string, string> insertParamMap1 = { {"username", "wenchy"},
-   {"password", "8285919"} };
-   std::map<string, string> insertParamMap2 = { {"username", "davey"},
-   {"password", "davey"} };
+   std::map<string, string> insertParamMap0 = { {"username", "admin"},
+                                                {"password", "admin"} };
+   std::map<string, string> insertParamMap1 = { {"username", "anonymous"},
+                                                {"password", "anonymous"} };
+   std::map<string, string> insertParamMap2 = { {"username", "charles"},
+                                                {"password", "charles"} };
+   std::map<string, string> insertParamMap3 = { {"username", "davey"},
+                                                {"password", "davey"} };
 
    std::map<string, string> selectParamMap = {  {"id", "1"}, {"username", "Paul"} };
    std::map<string, string> updateParamMap = {  {"username", "davey"}, {"password", "dddd"} };
@@ -54,6 +71,7 @@ void Database::init()
    insert("user", insertParamMap0);
    insert("user", insertParamMap1);
    insert("user", insertParamMap2);
+   insert("user", insertParamMap3);
    //select("user", selectParamMap);
 
    // init user's root working directory
