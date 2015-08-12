@@ -56,7 +56,31 @@ void Database::init()
    insert("user", insertParamMap2);
    //select("user", selectParamMap);
 
-   findALL("user");
+   // init user's root working directory
+   if(findALL("user"))
+   {
+      for (vector< map<string ,string> >::iterator iter=resultMapVector.begin(); iter!=resultMapVector.end(); ++iter)
+      {
+         string dirString(ROOTDIR);
+         dirString += (*iter)["USERNAME"];
+         DIR* d = opendir(dirString.c_str());
+         if(d)
+         {  
+            fprintf(stderr, "Already exists: %s\n",  dirString.c_str());
+            closedir(d);
+         }
+         else if(mkdir(dirString.c_str(), 0777) == -1)
+         {
+            char buf[MAXLINE];
+            fprintf(stdout, "Error(%s): %s\n", dirString.c_str(), strerror_r(errno, buf, MAXLINE));
+         } else {
+            fprintf(stdout, "Directory created: %s\n", dirString.c_str());
+         }
+      }
+   }
+
+   
+
    //update("user", "2", updateParamMap);
    //find("user", "2");
 }
@@ -70,23 +94,24 @@ Database & Database::create()
       "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
       "USERNAME      TEXT UNIQUE                         NOT NULL," \
       "PASSWORD      TEXT                                NOT NULL," \
+      "RCWD          TEXT DEFAULT '/', " \
       "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
       "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
       "STATE         INTEGER  DEFAULT 0 );";
 
-const char *sql_table_file =  "CREATE TABLE FILE(" \
-   "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
-   "MD5SUM        TEXT UNIQUE                         NOT NULL," \
-   "FILENAME      TEXT                                NOT NULL," \
-   "DIRECTORY     TEXT                                NOT NULL," \
-   "SIZE          INTEGER                             NOT NULL," \
-   "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
-   "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
-   "ACCESS        INTEGER  DEFAULT 0 );";
+   const char *sql_table_file =  "CREATE TABLE FILE(" \
+      "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
+      "MD5SUM        TEXT UNIQUE                         NOT NULL," \
+      "FILENAME      TEXT                                NOT NULL," \
+      "DIRECTORY     TEXT                                NOT NULL," \
+      "SIZE          INTEGER                             NOT NULL," \
+      "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
+      "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
+      "ACCESS        INTEGER  DEFAULT 0 );";
 
    /* Execute SQL statement */
-execute(sql_table_user, NULL);
-execute(sql_table_file, NULL);
+   execute(sql_table_user, NULL);
+   execute(sql_table_file, NULL);
 
 return *this;
 }
@@ -103,7 +128,7 @@ Database & Database::createTable()
       "STATE         INTEGER  DEFAULT 0 );";
 
     /* Execute SQL statement */
-execute(sql_user, NULL);
+   execute(sql_user, NULL);
 
 return *this;
 }

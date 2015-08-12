@@ -42,6 +42,7 @@ using namespace std;
 #define DEBUG 1
 
 #define DBFILENAME	"tinyFTP.db"
+#define ROOTDIR		"/home/"
 
 // MACRO constants
 #define	LISTENQ		1024		// 2nd argument(backlog) to listen()

@@ -46,15 +46,16 @@ void UI::run()
         {
             continue;
         } else {
-            printf("\033[35mPassword for 'tinyFTP': \033[0m");
-            getline(std::cin, inputline);
-            std::istringstream isPass(inputline);
-            while(isPass >> word)
-            {
-                 this->cmdVector.push_back(word);
-                 //std::cout << word << endl;
-            }
-               
+            char *password = getpass("\033[35mPassword for 'tinyFTP': \033[0m");
+            // printf("\033[35mPassword for 'tinyFTP': \033[0m");
+            // getline(std::cin, inputline);
+            // std::istringstream isPass(inputline);
+            // while(isPass >> word)
+            // {
+            //      this->cmdVector.push_back(word);
+            //      //std::cout << word << endl;
+            // }
+            this->cmdVector.push_back(password);  
             if (!cliPI.cmdPASS(this->cmdVector))
             {
                 continue;
