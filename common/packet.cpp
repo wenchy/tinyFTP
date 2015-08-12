@@ -215,6 +215,17 @@ void Packet::sendSTAT_OK(SockStream & connSockStream, const char *msg)
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
 }
+void Packet::sendSTAT_OK(SockStream & connSockStream, string msg)
+{
+	// send OK
+	this->reset(HPACKET);
+	char buf[MAXLINE];
+	snprintf(buf, MAXLINE, "\033[32m%s\033[0m", msg.c_str());
+	this->fillStat(0, STAT_OK, strlen(buf), buf);
+	//this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
 void Packet::sendSTAT_ERR(SockStream & connSockStream)
 {
 	// send EOT

@@ -17,12 +17,12 @@ public:
 	bool select(string tblname, map<string, string> & paramMap);
 	bool update(string tblname, string id, map<string, string> & paramMap);
 	bool remove(string tblname, string id);
-	map<string ,string> & getResult();
+	vector< map<string ,string> > & getResult();
 	//Database & select(string tblname, map<string, string> & paramMap);
 	bool first();
 	bool find(string tblname, string id);
 	bool findALL(string tblname);
-	void printResult(string sqlAction);
+	void printResult();
 	void clean();
 	void dump();
 
@@ -36,7 +36,7 @@ private:
 	sqlite3 *pDb;
 	char *zErrMsg;
 	int  rc;
-	map<string ,string> resultMap;
+	vector< map<string ,string> > resultMapVector;
 };
 
 #endif /* _TINYFTP_DATABASE_H_ */

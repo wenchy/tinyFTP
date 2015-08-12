@@ -13,26 +13,32 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	switch(cmdid)
 	{
+		case USER:
+			cmdUSER(cmdVector);
+			break;
+		case PASS:
+			cmdPASS(cmdVector);
+			break;
 		case GET:
-			cmdGET(cmdid, cmdVector);
+			cmdGET(cmdVector);
 			break;
 		case PUT:
-			cmdPUT(cmdid, cmdVector);
+			cmdPUT(cmdVector);
 			break;
 		case LS:
-			cmdLS(cmdid, cmdVector);
+			cmdLS(cmdVector);
 			break;
 		case CD:
-			cmdCD(cmdid, cmdVector);
+			cmdCD(cmdVector);
 			break;
 		case RM:
-			cmdRM(cmdid, cmdVector);
+			cmdRM(cmdVector);
 			break;	
 		case PWD:
-			cmdPWD(cmdid, cmdVector);
+			cmdPWD(cmdVector);
 			break;
 		case MKDIR:
-			cmdMKDIR(cmdid, cmdVector);
+			cmdMKDIR(cmdVector);
 			break;
 		default:
 			Error::msg("Client: Sorry! this command function not finished yet.\n");
@@ -61,7 +67,89 @@ void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVe
 	packet.htonp(); 
 }
 
-void CliPI::cmdGET(uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::pass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector)
+{
+	packet.reset(HPACKET);
+
+	uint32_t nslice = 0;
+	uint32_t sindex = 0;
+	uint16_t statid = 0;
+	uint16_t bsize = 0;
+	char body[PBODYCAP];
+	string params;
+	vector<string>::iterator iter=cmdVector.begin();
+	params += *iter;
+	for (++iter; iter!=cmdVector.end(); ++iter)
+   	{
+   		params += "\t" + *iter;
+   	}
+   	//cout << params << endl;
+   	strcpy(body, params.c_str());
+	bsize = strlen(body); 
+
+	// Error::msg("body: %s\n", body);
+	packet.fill(sesid, TAG_CMD, cmdid, statid, nslice, sindex, bsize, body);
+	//packet.print();
+	packet.htonp(); 
+}
+
+bool CliPI::cmdUSER(std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() != 1)
+	{
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: [username]");
+		return false;
+	} else {
+		return true;
+	}
+ 
+}
+
+bool CliPI::cmdPASS(std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() != 2)
+	{
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: [password]");
+		for (vector<string>::iterator iter=cmdVector.begin(); iter!=cmdVector.end(); ++iter)
+	   	{
+	    	std::cout << *iter << '\n';
+	   	}
+		return false;
+	}
+
+	pass2pack(0, PASS, cmdVector);
+	connSockStream.Writen(packet.ps, PACKSIZE);
+
+	int n;
+	// first receive response
+	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
+	{
+		packet.ntohp();
+		if (packet.ps->tagid == TAG_STAT) {
+			if (packet.ps->statid == STAT_OK) {
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stdout, "%s\n", packet.ps->body);
+				return true;
+			} else if (packet.ps->statid == STAT_ERR){
+				packet.ps->body[packet.ps->bsize] = 0;
+				fprintf(stderr, "%s\n", packet.ps->body);
+				return false;
+			} else {
+				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
+				return false;
+			}
+			
+		} else {
+			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			return false;
+		}
+	} else {
+		return false;
+	}
+ 
+}
+
+void CliPI::cmdGET(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
@@ -83,7 +171,7 @@ void CliPI::cmdGET(uint16_t cmdid, std::vector<string> & cmdVector)
 		return;
 	} else {
 		// command to packet
-		cmd2pack(0, cmdid, cmdVector);
+		cmd2pack(0, GET, cmdVector);
 	    connSockStream.Writen(packet.ps, PACKSIZE);
 	}
 
@@ -92,7 +180,7 @@ void CliPI::cmdGET(uint16_t cmdid, std::vector<string> & cmdVector)
 	cliDTP.recvFile(pathname, fp);
  
 }
-void CliPI::cmdPUT(uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::cmdPUT(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
@@ -121,14 +209,14 @@ void CliPI::cmdPUT(uint16_t cmdid, std::vector<string> & cmdVector)
 		}
 	} else {
 		// command to packet
-		cmd2pack(0, cmdid, cmdVector);
+		cmd2pack(0, PUT, cmdVector);
 	    connSockStream.Writen(packet.ps, PACKSIZE);
 	}
 
 	cliDTP.init(connSockStream);
 	cliDTP.sendFile(pathname, fp, nslice);
 }
-void CliPI::cmdLS(uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::cmdLS(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() > 2)
 	{
@@ -136,7 +224,7 @@ void CliPI::cmdLS(uint16_t cmdid, std::vector<string> & cmdVector)
 		return;
 	}
 	
-	cmd2pack(0, cmdid, cmdVector);
+	cmd2pack(0, LS, cmdVector);
 	connSockStream.Writen(packet.ps, PACKSIZE);
 
 	int n;
@@ -180,7 +268,7 @@ void CliPI::cmdLS(uint16_t cmdid, std::vector<string> & cmdVector)
 		}
 	}
 }
-void CliPI::cmdCD(uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::cmdCD(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
@@ -188,7 +276,7 @@ void CliPI::cmdCD(uint16_t cmdid, std::vector<string> & cmdVector)
 		return;
 	}
 
-	cmd2pack(0, cmdid, cmdVector);
+	cmd2pack(0, CD, cmdVector);
 	connSockStream.Writen(packet.ps, PACKSIZE);
 
 	int n;
@@ -216,7 +304,7 @@ void CliPI::cmdCD(uint16_t cmdid, std::vector<string> & cmdVector)
 	}
  
 }
-void CliPI::cmdRM(uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::cmdRM(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
@@ -224,7 +312,7 @@ void CliPI::cmdRM(uint16_t cmdid, std::vector<string> & cmdVector)
 		return;
 	}
 
-	cmd2pack(0, cmdid, cmdVector);
+	cmd2pack(0, RM, cmdVector);
 	connSockStream.Writen(packet.ps, PACKSIZE);
 
 	int n;
@@ -253,7 +341,7 @@ void CliPI::cmdRM(uint16_t cmdid, std::vector<string> & cmdVector)
 	
 }
 
-void CliPI::cmdPWD(uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::cmdPWD(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 1)
 	{
@@ -261,7 +349,7 @@ void CliPI::cmdPWD(uint16_t cmdid, std::vector<string> & cmdVector)
 		return;
 	}
 
-	cmd2pack(0, cmdid, cmdVector);
+	cmd2pack(0, PWD, cmdVector);
 	connSockStream.Writen(packet.ps, PACKSIZE);
 
 	int n;
@@ -289,7 +377,7 @@ void CliPI::cmdPWD(uint16_t cmdid, std::vector<string> & cmdVector)
 	}
 }
 
-void CliPI::cmdMKDIR(uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
@@ -297,7 +385,7 @@ void CliPI::cmdMKDIR(uint16_t cmdid, std::vector<string> & cmdVector)
 		return;
 	}
 
-	cmd2pack(0, cmdid, cmdVector);
+	cmd2pack(0, MKDIR, cmdVector);
 	connSockStream.Writen(packet.ps, PACKSIZE);
 
 	int n;

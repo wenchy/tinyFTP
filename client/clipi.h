@@ -35,14 +35,18 @@ public:
 	void init(const char *host);
 	void run(uint16_t cmdid, std::vector<string> & cmdVector);
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
+	void pass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
 	
-	void cmdGET(uint16_t cmdid, std::vector<string> & cmdVector);
-	void cmdPUT(uint16_t cmdid, std::vector<string> & cmdVector);
-	void cmdLS(uint16_t cmdid, std::vector<string> & cmdVector);
-	void cmdCD(uint16_t cmdid, std::vector<string> & cmdVector);
-	void cmdRM(uint16_t cmdid, std::vector<string> & cmdVector);
-	void cmdPWD(uint16_t cmdid, std::vector<string> & cmdVector);
-	void cmdMKDIR(uint16_t cmdid, std::vector<string> & cmdVector);
+	bool cmdUSER(std::vector<string> & cmdVector);
+	bool cmdPASS(std::vector<string> & cmdVector);
+
+	void cmdGET(std::vector<string> & cmdVector);
+	void cmdPUT(std::vector<string> & cmdVector);
+	void cmdLS(std::vector<string> & cmdVector);
+	void cmdCD(std::vector<string> & cmdVector);
+	void cmdRM(std::vector<string> & cmdVector);
+	void cmdPWD(std::vector<string> & cmdVector);
+	void cmdMKDIR(std::vector<string> & cmdVector);
 
 	void sessionCmd();
 	int getFileNslice(const char *pathname, uint32_t *pnslice_o);  

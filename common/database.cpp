@@ -12,10 +12,13 @@
 static int callback(void *pDatabase, int argc, char **argv, char **azColName){
    if (pDatabase != NULL)
    {
-      map<string ,string> & kvMap = ((Database *)pDatabase)->getResult();
+      vector< map<string ,string> > & resultMapVector = ((Database *)pDatabase)->getResult();
+      map<string, string> kvMap;
       for(int i=0; i<argc; i++){
+         //printf("%s = %s\n", azColName[i], argv[i] ? argv[i] : "NULL");
          kvMap.insert( std::pair<string, string>(azColName[i], argv[i]) );
       }
+      resultMapVector.push_back(kvMap);
    }
    return 0;
    
@@ -28,21 +31,21 @@ Database::Database(const char * zDbFilename): dbFilename(zDbFilename)
    /* Open database */
    rc = sqlite3_open(dbFilename.c_str(), &pDb);
    if( rc ){
-     fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(pDb));
-     exit(0);
-   }else{
-     fprintf(stdout, "Open database successfully\n");
-   }
+    fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(pDb));
+    exit(0);
+ }else{
+    fprintf(stdout, "Open database successfully\n");
+ }
 }
 
 void Database::init()
 {
    std::map<string, string> insertParamMap0 = { {"username", "anonymous"},
-                                                {"password", "anonymous"} };
+   {"password", "anonymous"} };
    std::map<string, string> insertParamMap1 = { {"username", "wenchy"},
-                                                {"password", "8285919"} };
+   {"password", "8285919"} };
    std::map<string, string> insertParamMap2 = { {"username", "davey"},
-                                                {"password", "davey"} };
+   {"password", "davey"} };
 
    std::map<string, string> selectParamMap = {  {"id", "1"}, {"username", "Paul"} };
    std::map<string, string> updateParamMap = {  {"username", "davey"}, {"password", "dddd"} };
@@ -52,7 +55,7 @@ void Database::init()
    insert("user", insertParamMap1);
    insert("user", insertParamMap2);
    //select("user", selectParamMap);
-  
+
    findALL("user");
    //update("user", "2", updateParamMap);
    //find("user", "2");
@@ -64,51 +67,51 @@ Database & Database::create()
 
    /* Create SQL statement */
    const char *sql_table_user =  "CREATE TABLE USER(" \
-                                 "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
-                                 "USERNAME      TEXT UNIQUE                         NOT NULL," \
-                                 "PASSWORD      TEXT                                NOT NULL," \
-                                 "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
-                                 "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
-                                 "STATE         INTEGER  DEFAULT 0 );";
+      "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
+      "USERNAME      TEXT UNIQUE                         NOT NULL," \
+      "PASSWORD      TEXT                                NOT NULL," \
+      "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
+      "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
+      "STATE         INTEGER  DEFAULT 0 );";
 
-   const char *sql_table_file =  "CREATE TABLE FILE(" \
-                                 "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
-                                 "MD5SUM        TEXT UNIQUE                         NOT NULL," \
-                                 "FILENAME      TEXT                                NOT NULL," \
-                                 "DIRECTORY     TEXT                                NOT NULL," \
-                                 "SIZE          INTEGER                             NOT NULL," \
-                                 "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
-                                 "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
-                                 "ACCESS        INTEGER  DEFAULT 0 );";
+const char *sql_table_file =  "CREATE TABLE FILE(" \
+   "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
+   "MD5SUM        TEXT UNIQUE                         NOT NULL," \
+   "FILENAME      TEXT                                NOT NULL," \
+   "DIRECTORY     TEXT                                NOT NULL," \
+   "SIZE          INTEGER                             NOT NULL," \
+   "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
+   "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
+   "ACCESS        INTEGER  DEFAULT 0 );";
 
    /* Execute SQL statement */
-   execute(sql_table_user, NULL);
-   execute(sql_table_file, NULL);
+execute(sql_table_user, NULL);
+execute(sql_table_file, NULL);
 
-
-
-   return *this;
+return *this;
 }
 
 Database & Database::createTable()
 {
    /* Create SQL statement */
    const char *sql_user =     "CREATE TABLE USER(" \
-                              "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
-                              "USERNAME      TEXT UNIQUE                         NOT NULL," \
-                              "PASSWORD      TEXT                                NOT NULL," \
-                              "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
-                              "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
-                              "STATE         INTEGER  DEFAULT 0 );";
+      "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
+      "USERNAME      TEXT UNIQUE                         NOT NULL," \
+      "PASSWORD      TEXT                                NOT NULL," \
+      "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
+      "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
+      "STATE         INTEGER  DEFAULT 0 );";
 
     /* Execute SQL statement */
-   execute(sql_user, NULL);
+execute(sql_user, NULL);
 
-   return *this;
+return *this;
 }
 
 bool Database::execute(const char *sql, Database * pDatabase)
 {
+   /* Clear resultMap */
+   resultMapVector.clear();
    /* Execute SQL statement */
    rc = sqlite3_exec(pDb, sql, callback, pDatabase, &zErrMsg);
    if ( rc != SQLITE_OK ){
@@ -117,7 +120,7 @@ bool Database::execute(const char *sql, Database * pDatabase)
       return false;
    } else {
       //fprintf(stdout, "insert: Records created successfully\n");
-      printResult("execute");
+      printResult();
       return true;
    }
 }
@@ -144,14 +147,8 @@ bool Database::insert(string tblname, map<string, string> & kvMap)
    sqlSring += valString;
 
    std::cout << "insert: " << sqlSring << std::endl;
-   /* Execute SQL statement */
-   resultMap.clear();
-   if (execute(sqlSring.c_str(), this))
-   {
-      return true;
-   } else {
-      return false;
-   }
+      /* Execute SQL statement and return*/
+   return execute(sqlSring.c_str(), this);
 }
 
 bool Database::select(string tblname, map<string, string> & kvMap)
@@ -170,13 +167,7 @@ bool Database::select(string tblname, map<string, string> & kvMap)
    }
    std::cout << "query: " << sqlSring << std::endl;
    /* Execute SQL statement */
-   resultMap.clear();
-   if (execute(sqlSring.c_str(), this))
-   {
-      return true;
-   } else {
-      return false;
-   }
+   return execute(sqlSring.c_str(), this);
 }
 
 
@@ -198,13 +189,7 @@ bool Database::update(string tblname, string id, map<string, string> & kvMap)
    sqlSring += " WHERE id='" + id + "'";
    std::cout << "update: " << sqlSring << std::endl;
    /* Execute SQL statement */
-   resultMap.clear();
-   if (execute(sqlSring.c_str(), this))
-   {
-      return true;
-   } else {
-      return false;
-   }
+   return execute(sqlSring.c_str(), this);
 }
 
 bool Database::remove(string tblname, string id)
@@ -216,13 +201,7 @@ bool Database::remove(string tblname, string id)
    sqlSring += " WHERE id='" + id + "'";
 
    /* Execute SQL statement */
-   resultMap.clear();
-   if (execute(sqlSring.c_str(), this))
-   {
-      return true;
-   } else {
-      return false;
-   }
+   return execute(sqlSring.c_str(), this);
 }
 
 bool Database::find(string tblname, string id)
@@ -231,13 +210,7 @@ bool Database::find(string tblname, string id)
    sqlSring += "SELECT * from " + tblname + " WHERE id='";
    sqlSring += id +"'";
    std::cout << "find: " << sqlSring << std::endl;
-   resultMap.clear();
-   if (execute(sqlSring.c_str(), this))
-   {
-      return true;
-   } else {
-      return false;
-   }
+   return execute(sqlSring.c_str(), this);
 }
 
 bool Database::findALL(string tblname)
@@ -245,18 +218,12 @@ bool Database::findALL(string tblname)
    sqlSring.clear();
    sqlSring += "SELECT * from " + tblname;
    std::cout << "findALL: " << sqlSring << std::endl;
-   resultMap.clear();
-   if (execute(sqlSring.c_str(), this))
-   {
-      return true;
-   } else {
-      return false;
-   }
+   return execute(sqlSring.c_str(), this);
 }
 
-map<string ,string>  & Database::getResult()
+vector< map<string ,string> >  & Database::getResult()
 {
-   return resultMap;
+   return this->resultMapVector;
 }
 
 bool Database::first()
@@ -264,11 +231,14 @@ bool Database::first()
 
    return false;
 }
-void Database::printResult(string sqlAction)
+void Database::printResult()
 {
-   std::cout << sqlAction << ": \n";
-   for (map<string, string>::iterator it=resultMap.begin(); it!=resultMap.end(); ++it)
-         std::cout << it->first << ": " << it->second << '\n';
+   for (vector< map<string ,string> >::iterator iter=resultMapVector.begin(); iter!=resultMapVector.end(); ++iter)
+   {
+       for (map<string, string>::iterator it=iter->begin(); it!=iter->end(); ++it)
+            std::cout << it->first << ": " << it->second << '\n';
+       std::cout << '\n';
+   }
 }
 void Database::clean()
 {
@@ -284,7 +254,7 @@ void Database::clean()
 
 void Database::dump()
 {
-   
+
 }
 
 Database::~Database()

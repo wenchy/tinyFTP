@@ -34,17 +34,47 @@ void UI::run()
 	string word;
 	string inputline;
 
-	// user interface: first cout prompt (use "," operator)
+    // user validate commands
+    while (printf("\033[35mUsername for 'tinyFTP': \033[0m"), getline(std::cin, inputline))
+    {
+        // clear cmdVector each time when user input
+        this->cmdVector.clear();
+        std::istringstream is(inputline);
+        while(is >> word)
+            this->cmdVector.push_back(word);
+        if (!cliPI.cmdUSER(this->cmdVector))
+        {
+            continue;
+        } else {
+            printf("\033[35mPassword for 'tinyFTP': \033[0m");
+            getline(std::cin, inputline);
+            std::istringstream isPass(inputline);
+            while(isPass >> word)
+            {
+                 this->cmdVector.push_back(word);
+                 //std::cout << word << endl;
+            }
+               
+            if (!cliPI.cmdPASS(this->cmdVector))
+            {
+                continue;
+            } else {
+                break;
+            }
+        }
+    }                
+
+	// other ftp commands: first cout prompt (use "," operator)
 	while (printf("\033[35mtinyFTP> \033[0m"), getline(std::cin, inputline))
 	{
 		// clear cmdVector each time when user input
-		cmdVector.clear();
+		this->cmdVector.clear();
 		//std::cout << inputline << std::endl;
 
 		// split input string
 		std::istringstream is(inputline);
 		while(is >> word)
-			cmdVector.push_back(word);
+			this->cmdVector.push_back(word);
 
 		if (!cmdCheck())
 		{

@@ -13,6 +13,12 @@ void SrvPI::run(int connfd)
     {
     	switch(packet.ps->cmdid)
 		{
+			case USER:
+				cmdUSER();
+				break;
+			case PASS:
+				cmdPASS();
+				break;
 			case GET:
 				cmdGET();
 				break;
@@ -68,6 +74,69 @@ void SrvPI::cmd2pack(uint32_t sesid, uint16_t cmdid, string str)
 	//std::strcpy(body, str.c_str());
 	//packet.init(sesid, cmdid, bsize, body);
 }
+
+void SrvPI::cmdUSER()
+{
+	printf("USER request\n");
+
+	char buf[MAXLINE];
+	if( !getcwd(buf, MAXLINE))
+	{
+		// send STAT_ERR Response
+		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+		return;
+	} else {
+		// send STAT_OK
+		packet.sendSTAT_OK(connSockStream, buf);
+	}
+}
+void SrvPI::split(std::string src, std::string token, vector<string>& vect)   
+{   
+    int nend=0;   
+    int nbegin=0;   
+    while(nend != -1)   
+    {   
+        nend = src.find_first_of(token, nbegin);   
+        if(nend == -1)   
+            vect.push_back(src.substr(nbegin, src.length()-nbegin));   
+        else  
+            vect.push_back(src.substr(nbegin, nend-nbegin));   
+        nbegin = nend + 1;   
+    }   
+}
+void SrvPI::cmdPASS()
+{
+	printf("PASS request\n");
+	packet.ps->body[packet.ps->bsize] = 0;
+	cout << packet.ps->body << endl;
+	//string params =
+	vector<string> paramVector; 
+	split(packet.ps->body, "\t", paramVector);
+
+	for (vector<string>::iterator iter=paramVector.begin(); iter!=paramVector.end(); ++iter)
+   	{
+    	std::cout << *iter << '\n';
+   	}
+
+   	std::map<string, string> selectParamMap = {  {"username", paramVector[0]}, {"password", paramVector[1]} };
+   	if (db.select("user", selectParamMap))
+   	{
+   		vector< map<string ,string> > resultMapVector = db.getResult();
+   		if (!resultMapVector.empty())
+   		{
+   			// send STAT_OK
+			packet.sendSTAT_OK(connSockStream, "Welcome! " + paramVector[0]);
+   		} else {
+   			// send STAT_ERR Response
+			packet.sendSTAT_ERR(connSockStream, "error: username mismatch password");
+   		}
+   	} else {
+   		// send STAT_ERR Response
+		packet.sendSTAT_ERR(connSockStream, "Database select error");
+   	}
+}
+
 void SrvPI::cmdGET()
 {
 	printf("GET request\n");
