@@ -29,12 +29,14 @@ public:
 	void cmdPWD();
 	void cmdMKDIR();
 
+	
+
 	~SrvPI();
 	
 	
 
 
-//private:
+private:
 	Packet packet;
 	SockStream connSockStream;
 	SrvDTP srvDTP;
@@ -42,6 +44,8 @@ public:
 
 	std::string userRootDir;
 	std::string userRCWD; // current working directory relative to userRootDir
+
+	bool combineAndValidatePath(string userinput, bool updateRCWD);
 
 
 };

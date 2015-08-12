@@ -182,22 +182,16 @@ void SrvPI::cmdLS()
 {
 	printf("LS request\n");
 	char buf[MAXLINE];
-	char body[PBODYCAP];
-	string sbody;
-	DIR* dir;
 
 	packet.ps->body[packet.ps->bsize] = 0;
-
-
-	if (packet.ps->bsize == 0)
-	{
-		//dir= opendir(".");
-		dir= opendir((userRootDir + userRCWD).c_str());
-	} else {
-		//packet.ps->body[packet.ps->bsize] = 0;
-		//dir= opendir(packet.ps->body);
-		dir= opendir((userRootDir + userRCWD + packet.ps->body).c_str());
-	}
+	if (!combineAndValidatePath(packet.ps->body, false))
+   	{
+   		packet.sendSTAT_ERR(connSockStream, "Permission deny");
+		return;
+   	}
+   	
+	string tmp = userRCWD + "/";
+	DIR * dir= opendir((userRootDir + tmp + packet.ps->body).c_str());
 	if(!dir)
 	{
 		// send STAT_ERR Response
@@ -208,8 +202,11 @@ void SrvPI::cmdLS()
 		// send STAT_OK
 		packet.sendSTAT_OK(connSockStream);
 	}
+
 	struct dirent* e;
 	int cnt = 0;
+	char body[PBODYCAP];
+	string sbody;
 	while( (e = readdir(dir)) )
 	{	
 		if (e->d_type == 4)
@@ -264,58 +261,20 @@ void SrvPI::cmdLS()
 	packet.sendSTAT_EOT(connSockStream);
 
 }
+
 void SrvPI::cmdCD()
 {
 	printf("CD request\n");
 
-	char buf[MAXLINE] = {0};
 	packet.ps->body[packet.ps->bsize] = 0;
-
-	// check path, one user can only work in his own working space
-	string userinput(packet.ps->body);
-	string absCWD = userRootDir + userRCWD;
-
-	vector<string> absCWDVector; 
-	split(absCWD, "/", absCWDVector);
-	for (vector<string>::iterator iter=absCWDVector.begin(); iter!=absCWDVector.end(); ++iter)
+   	if (!combineAndValidatePath(packet.ps->body, true))
    	{
-    	std::cout << "absCWD[" << *iter << "]" << '\n';
-   	}
-
-	vector<string> userVector; 
-	split(userinput, "/", userVector);
-	for (vector<string>::iterator iter=userVector.begin(); iter!=userVector.end(); ++iter)
-   	{
-    	std::cout << "userinput[" << *iter << "]" << '\n';
-    	if (*iter == "..")
-    	{
-    		absCWDVector.pop_back();
-    	} else if (*iter == ".") {
-    		continue;
-    	} else {
-    		absCWDVector.push_back(*iter);
-    	}
-   	}
-
-   	string newAbsDir;
-   	for (vector<string>::iterator iter=absCWDVector.begin(); iter!=absCWDVector.end(); ++iter)
-   	{
-    	newAbsDir += "/" + *iter;
-   	}
-   	std::cout << newAbsDir << '\n';
-   	if (newAbsDir.substr(0, userRootDir.size()) != userRootDir)
-   	{
-		packet.sendSTAT_ERR(connSockStream, "Permission deny: " + newAbsDir);
+   		packet.sendSTAT_ERR(connSockStream, "Permission deny");
 		return;
    	} else {
-   		this->userRCWD = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
-		snprintf(buf, MAXLINE, "current working directory: [%s]", userRCWD.c_str());
-		packet.sendSTAT_OK(connSockStream, buf);
+		packet.sendSTAT_OK(connSockStream, "current working directory: " + userRCWD);
+		return;
    	}
-   	
-	
-	
-
 	// if( (n = chdir(newAbsDir.c_str())) == -1)
 	// {
 	// 	// send STAT_ERR Response
@@ -371,16 +330,21 @@ void SrvPI::cmdPWD()
 void SrvPI::cmdMKDIR()
 {
 	printf("MKDIR request\n");
+
 	packet.ps->body[packet.ps->bsize] = 0;
+   	if (!combineAndValidatePath(packet.ps->body, false))
+   	{
+   		packet.sendSTAT_ERR(connSockStream, "Permission deny");
+		return;
+   	}
+
 	char buf[MAXLINE];
-	DIR* d = opendir(packet.ps->body);
+	DIR* d = opendir((userRootDir + userRCWD).c_str());
 	if(d)
 	{	
 		packet.sendSTAT_ERR(connSockStream, "already exists");
 		closedir(d);
-	}
-	else if(mkdir(packet.ps->body, 0777) == -1)
-	{
+	} else if(mkdir(packet.ps->body, 0777) == -1) {
 		//fprintf(stderr, "Wrong path.\n");
 		// send STAT_ERR Response
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
@@ -391,6 +355,54 @@ void SrvPI::cmdMKDIR()
 		snprintf(buf, MAXLINE, "directory %s is created", packet.ps->body);
 		packet.sendSTAT_OK(connSockStream, buf);
 	}
+}
+
+
+bool SrvPI::combineAndValidatePath(string userinput, bool updateRCWD)
+{
+	string absCWD = userRootDir + userRCWD;
+
+	vector<string> absCWDVector; 
+	split(absCWD, "/", absCWDVector);
+	for (vector<string>::iterator iter=absCWDVector.begin(); iter!=absCWDVector.end(); ++iter)
+   	{
+    	std::cout << "absCWD[" << *iter << "]" << '\n';
+   	}
+
+	vector<string> userVector; 
+	split(userinput, "/", userVector);
+	for (vector<string>::iterator iter=userVector.begin(); iter!=userVector.end(); ++iter)
+   	{
+    	std::cout << "userinput[" << *iter << "]" << '\n';
+    	if (*iter == "..")
+    	{
+    		absCWDVector.pop_back();
+    	} else if (*iter == ".") {
+    		continue;
+    	} else {
+    		absCWDVector.push_back(*iter);
+    	}
+   	}
+
+   	string newAbsDir;
+   	for (vector<string>::iterator iter=absCWDVector.begin(); iter!=absCWDVector.end(); ++iter)
+   	{
+    	newAbsDir += "/" + *iter;
+   	}
+   	//std::cout << newAbsDir << '\n';
+   	// check path, one user can only work in his own working space
+   	if (newAbsDir.substr(0, userRootDir.size()) != userRootDir)
+   	{
+		std::cout << "Permission deny: " << newAbsDir << '\n';
+		return false;
+   	} else {
+   		// update userRCWD
+   		if (updateRCWD)
+   		{
+   			this->userRCWD = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
+   		}
+   		return true;
+   	}
 }
 
 SrvPI::~SrvPI()
