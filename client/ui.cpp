@@ -7,6 +7,7 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"GET",     GET},
                                                     {"PUT",     PUT},
                                                     {"LS",      LS},
+                                                    {"LLS",     LLS},
                                                     {"CD",      CD},
                                                     {"RM",      RM},
                                                     {"PWD",     PWD},
@@ -98,9 +99,9 @@ void UI::run()
 		} else {
 			cliPI.run(this->cmdid, this->cmdVector);
 		}
-
+  //       std::cout << "cmdVector" << std::endl;
 		// for (auto it = cmdVector.cbegin(); it != cmdVector.cend(); ++it)
-        //    std::cout << *it << std::endl;
+  //          std::cout << *it << std::endl;
     	// for (std::vector<string>::size_type i = 0; i < cmdVector.size(); i++)
     	// 	   std::cout << cmdVector[i] << std::endl;
 	}                                                         
@@ -120,7 +121,7 @@ bool UI::cmdCheck()
        	//std::cout << "CommandID: " << iter->first << "(" << iter->second << ")" << std::endl;
         return true;
 	} else {
-        std::cerr << "UI#unknown command: " << cmdVector[0] << std::endl;
+        std::cerr << cmdVector[0] << ": command not found"  << std::endl;
         return false;
 	}
 }

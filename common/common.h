@@ -144,6 +144,7 @@ typedef enum cmdID
 	GET,
 	PUT,
 	LS,
+	LLS,
 	CD,
 	RM,
 	PWD,

@@ -11,12 +11,16 @@ void SrvPI::run()
 {
 	std::cout<<  "connfd: " << connfd <<  " [" << userRootDir <<" " << userRCWD << "]" << std::endl;
 
+	int n;
 	packet.reset(NPACKET);
-	if ( connSockStream.Readn(packet.ps, PACKSIZE) == 0)
+	if ( (n = connSockStream.Readn(packet.ps, PACKSIZE)) == 0)
 	{
 		this->saveUserState();
 		Socket::tcpClose(connfd);
 		Error::quit_pthread("client terminated prematurely, saveUserState ok");
+	} else if (n < 0){
+		Error::ret("connSockStream.Readn()");
+		Error::quit_pthread("client socket connection exception");
 	}
 	           
     packet.ntohp();
@@ -376,10 +380,11 @@ void SrvPI::cmdMKDIR()
 		packet.sendSTAT_ERR(connSockStream, "already exists");
 		closedir(d);
 	} else if(mkdir(tmpDir.c_str(), 0777) == -1) {
-		//fprintf(stderr, "Wrong path.\n");
 		// send STAT_ERR Response
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+		msg_o += "system call (mkdir): ";
+		msg_o += strerror_r(errno, buf, MAXLINE);
+		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
 	} else {
 		// send STAT_OK
@@ -424,25 +429,31 @@ bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & ms
    	// check path, one user can only work in his own working space
    	if (newAbsDir.substr(0, userRootDir.size()) != userRootDir)
    	{
-		std::cout << "Permission deny: " << newAbsDir << '\n';
-		msg_o = "Permission deny: " + newAbsDir;
+		std::cout << "Permission denied: " << newAbsDir << '\n';
+		msg_o = "Permission denied: " + newAbsDir;
 		return false;
    	} else {
 
 		DIR * d= opendir(newAbsDir.c_str());
 		char buf[MAXLINE];
-		if(!d)
+		if(!d) //On error
 		{	
-			msg_o = strerror_r(errno, buf, MAXLINE);//"directory not exist";
+			//msg_o = strerror_r(errno, buf, MAXLINE);
 			if (cmdid == MKDIR)
 			{
 				return true;
 			} else {
+				msg_o = strerror_r(errno, buf, MAXLINE);
 				return false;
 			}
 			
-		} else {
+		} else { // dir already exists
 			closedir(d);
+			if (cmdid == MKDIR)
+			{
+				msg_o = "already exsits: " + newAbsDir;
+				return false;
+			}
 		}
    		// update userRCWD
    		if (cmdid == CD)

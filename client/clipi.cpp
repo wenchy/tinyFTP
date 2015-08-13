@@ -28,6 +28,9 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 		case LS:
 			cmdLS(cmdVector);
 			break;
+		case LLS:
+			cmdLLS(cmdVector);
+			break;
 		case CD:
 			cmdCD(cmdVector);
 			break;
@@ -274,6 +277,25 @@ void CliPI::cmdLS(std::vector<string> & cmdVector)
 		}
 	}
 }
+
+void CliPI::cmdLLS(std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() > 2)
+	{
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: lls [DIR]");
+		return;
+	}
+	string shellCMD = "ls --color=auto";
+	for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it){
+       	//std::cout << *it << std::endl;
+       	shellCMD += " " + *it;
+	}
+	if (system(shellCMD.c_str()) == -1) {
+		char buf[MAXLINE];
+		std::cout << "system(): " << strerror_r(errno, buf, MAXLINE) << std::endl;
+	}
+}
+
 void CliPI::cmdCD(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)

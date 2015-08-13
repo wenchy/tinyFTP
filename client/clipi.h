@@ -43,6 +43,7 @@ public:
 	void cmdGET(std::vector<string> & cmdVector);
 	void cmdPUT(std::vector<string> & cmdVector);
 	void cmdLS(std::vector<string> & cmdVector);
+	void cmdLLS(std::vector<string> & cmdVector);
 	void cmdCD(std::vector<string> & cmdVector);
 	void cmdRM(std::vector<string> & cmdVector);
 	void cmdPWD(std::vector<string> & cmdVector);
