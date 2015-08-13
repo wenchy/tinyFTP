@@ -1,39 +1,58 @@
 #include    "clidtp.h"
 
-void CliDTP::init(SockStream & connSockStream)
+CliDTP::CliDTP(SockStream & connSockStream, Packet & packet, int connfd)
 { 
 	this->connSockStream = connSockStream;
-	packet.init();
+	this->packet = packet;
+	this->connfd = connfd;
 }
+// void CliDTP::init(SockStream & connSockStream, Packet & packet)
+// { 
+// 	this->connSockStream = connSockStream;
+// 	this->packet = packet;
+// }
+
+void CliDTP::recvOnePacket()
+{
+	int n;
+	packet.reset(NPACKET);
+	if ( (n = connSockStream.Readn(packet.getPs(), PACKSIZE)) == 0)
+	{
+		Socket::tcpClose(connfd);
+		Error::quit("server terminated prematurely");
+	} else if (n < 0){
+		Error::ret("connSockStream.Readn()");
+		Error::quit("socket connection exception");
+	}
+	packet.ntohp();
+	packet.print();
+}
+
 void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 {
 	int n;
 	uint32_t sindex = 0;
 	// first PUT response
-	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
-	{
-		packet.ntohp();
-		if (packet.ps->tagid == TAG_STAT) {
-			if (packet.ps->statid == STAT_OK) {
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stdout, "%s\n", packet.ps->body);
-			} else if (packet.ps->statid == STAT_ERR) {
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stdout, "%s\n", packet.ps->body);
-				return;
-			} else {
-				
-				Error::msg("CliDTP::sendFile: unknown statid %d", packet.ps->statid);
-				packet.print();
-				return;
-			}
-			
+	recvOnePacket();
+	if (packet.getTagid() == TAG_STAT) {
+		if (packet.getStatid() == STAT_OK) {
+			cout << packet.getSBody() <<endl;
+		} else if (packet.getStatid() == STAT_ERR) {
+			cerr << packet.getSBody() <<endl;
+			return;
 		} else {
-			Error::msg("CliDTP::sendFile: unknown tagid %d", packet.ps->tagid);
+			
+			Error::msg("CliDTP::sendFile: unknown statid %d", packet.getStatid());
 			packet.print();
 			return;
 		}
+		
+	} else {
+		Error::msg("CliDTP::sendFile: unknown tagid %d", packet.getTagid());
+		packet.print();
+		return;
 	}
+
 
 	char body[PBODYCAP];
 	int oldProgress = 0, newProgress = 0;
@@ -44,7 +63,7 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 	}
 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 	{
-		packet.sendDATA(connSockStream, 0, nslice, ++sindex, n, body);
+		packet.sendDATA(connSockStream, nslice, ++sindex, n, body);
 		newProgress = (sindex*1.0)/nslice*100;
 		if (newProgress > oldProgress)
 		{
@@ -60,28 +79,22 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 }
 void CliDTP::recvFile(const char *pathname, FILE *fp)
 {
-	int n;
 	// first receive response
-	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
-	{
-		packet.ntohp();
-		if (packet.ps->tagid == TAG_STAT) {
-			if (packet.ps->statid == STAT_OK) {
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stdout, "%s\n", packet.ps->body);
-			} else if (packet.ps->statid == STAT_ERR){
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stderr, "%s\n", packet.ps->body);
-				return;
-			} else {
-				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
-				return;
-			}
-			
+	recvOnePacket();
+	if (packet.getTagid() == TAG_STAT) {
+		if (packet.getStatid() == STAT_OK) {
+			cout << packet.getSBody() <<endl;
+		} else if (packet.getStatid() == STAT_ERR){
+			cerr << packet.getSBody() <<endl;
+			return;
 		} else {
-			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			Error::msg("CliDTP::recvFile: unknown statid %d", packet.getStatid());
 			return;
 		}
+		
+	} else {
+		Error::msg("CliDTP::recvFile: unknown tagid %d", packet.getTagid());
+		return;
 	}
 
 	// second transfer file
@@ -89,25 +102,24 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 
 	int m;
 	int oldProgress = 0, newProgress = 0;
-	while (packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0)
+	while (1)
 	{
-		packet.ntohp();
-		//packet.print();
-		if(packet.ps->tagid == TAG_DATA) {
-			m = fwrite(packet.ps->body, sizeof(char), packet.ps->bsize, fp);
+		recvOnePacket();
+		if(packet.getTagid() == TAG_DATA) {
+			m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), fp);
 
-			if (m != packet.ps->bsize)
+			if (m != packet.getBsize())
 			{
-				Error::msg("fwirte error: %u/%u: %hu vs %hu Bytes\n", packet.ps->sindex, packet.ps->nslice, packet.ps->bsize, m);
+				Error::msg("fwirte error %d/%d: %d vs %d Bytes\n", packet.getSindex(), packet.getNslice(), packet.getBsize(), m);
 				fclose(fp);
 				return;
 			} else {
-				if(packet.ps->nslice == 0)
+				if(packet.getNslice() == 0)
 				{
 					Error::msg("nslice is zero, can not divide\n");
 					break;
 				}
-				newProgress = (packet.ps->sindex*1.0)/packet.ps->nslice*100;
+				newProgress = (packet.getSindex()*1.0)/packet.getNslice()*100;
 				if (newProgress > oldProgress)
 				{
 					//printf("\033[2K\r\033[0m");
@@ -115,14 +127,13 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 				}
 				oldProgress = newProgress;
 			}
-			//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.ps->bsize, m);
-		} else if(packet.ps->tagid == TAG_STAT && packet.ps->statid == STAT_EOT) {
+			//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.getBsize(), m);
+		} else if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT) {
 			fclose(fp);
-			packet.ps->body[packet.ps->bsize] = 0;
-			printf("\n%s\n", packet.ps->body);
+			cout << packet.getSBody() <<endl;
 			return;
 		} else {
-			Error::msg("CliDTP::recvFile: unknown tagid %hu with statid %hu", packet.ps->tagid, packet.ps->statid);
+			Error::msg("CliDTP::recvFile: unknown tagid %hu with statid %hu", packet.getTagid(), packet.getStatid());
 			fclose(fp);
 			return;
 		}

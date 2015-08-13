@@ -24,9 +24,9 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"QUIT",    QUIT}
                                                                         };
 
-UI::UI(const char *host)
+UI::UI(const char *host): cliPI(host)
 {  
-    cliPI.init(host);
+    //cliPI.init(host);
 
 }
 

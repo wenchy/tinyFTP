@@ -32,7 +32,9 @@
 class CliPI
 {
 public:
-	void init(const char *host);
+	CliPI(const char *host);
+	//void init(const char *host);
+	void recvOnePacket();
 	void run(uint16_t cmdid, std::vector<string> & cmdVector);
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
 	void pass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
@@ -55,11 +57,13 @@ public:
 
 private:
 	Packet packet;
-
 	SockStream connSockStream;
+	string userID; // for simple, userID is equal to session ID
+	int connfd;
 	// uint16_t cmdid;
 	// std::vector<string> cmdVector;
-	CliDTP cliDTP;
+	//CliDTP cliDTP;
+
 
 };
 

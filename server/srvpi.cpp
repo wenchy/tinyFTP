@@ -5,29 +5,41 @@ SrvPI::SrvPI(string dbFilename, int connfd):db(DBFILENAME)
 {
 	this->connfd = connfd;
 	connSockStream.init(connfd);
+	sessionCommandPacketCount = 0;
+	userID ="0";
 }
-
-void SrvPI::run()
+void SrvPI::recvOnePacket()
 {
-	std::cout<<  "connfd: " << connfd <<  " [" << userRootDir <<" " << userRCWD << "]" << std::endl;
-
 	int n;
 	packet.reset(NPACKET);
-	if ( (n = connSockStream.Readn(packet.ps, PACKSIZE)) == 0)
+	if ( (n = connSockStream.Readn(packet.getPs(), PACKSIZE)) == 0)
 	{
 		this->saveUserState();
 		Socket::tcpClose(connfd);
 		Error::quit_pthread("client terminated prematurely, saveUserState ok");
 	} else if (n < 0){
 		Error::ret("connSockStream.Readn()");
-		Error::quit_pthread("client socket connection exception");
+		Error::quit_pthread("socket connection exception");
 	}
-	           
-    packet.ntohp();
-    //packet.print();
-    if (packet.ps->tagid == TAG_CMD)
+	packet.ntohp();
+	packet.print();
+}
+void SrvPI::run()
+{
+	std::cout<<  "connfd: " << connfd <<  " [" << userRootDir <<" " << userRCWD << "]" << std::endl;
+
+	recvOnePacket();
+	
+	sessionCommandPacketCount++;
+	// if (std::stoul(userID) != packet.getSesid())
+	// {
+	// 	Error::quit_pthread("session failed");
+	// }
+   
+    
+    if (packet.getTagid() == TAG_CMD)
     {
-    	switch(packet.ps->cmdid)
+    	switch(packet.getCmdid())
 		{
 			case USER:
 				cmdUSER();
@@ -136,10 +148,9 @@ void SrvPI::split(std::string src, std::string token, vector<string>& vect)
 void SrvPI::cmdPASS()
 {
 	printf("PASS request\n");
-	packet.ps->body[packet.ps->bsize] = 0;
-	//string params =
+
 	vector<string> paramVector; 
-	split(packet.ps->body, "\t", paramVector);
+	split(packet.getSBody(), "\t", paramVector);
 
 	// for (vector<string>::iterator iter=paramVector.begin(); iter!=paramVector.end(); ++iter)
  //   	{
@@ -161,12 +172,13 @@ void SrvPI::cmdPASS()
    		vector< map<string ,string> > resultMapVector = db.getResult();
    		if (!resultMapVector.empty())
    		{
-			packet.sendSTAT_OK(connSockStream, "Welcome! " + resultMapVector[0]["USERNAME"]);
-			// init userID, userRootDir, and userRCWD
+   			// init userID, userRootDir, and userRCWD
 			userID = resultMapVector[0]["ID"];
 			userRootDir = ROOTDIR + resultMapVector[0]["USERNAME"];
 			userRCWD = resultMapVector[0]["RCWD"];
-			//std::cout <<  "[" << userRootDir <<" " << userRCWD << "]" << std::endl;
+			// set session ID: important
+			packet.setSessionID(std::stoul(userID));
+			packet.sendSTAT_OK(connSockStream, "Welcome! " + resultMapVector[0]["USERNAME"]);
    		} else {
 			packet.sendSTAT_ERR(connSockStream, "error: username mismatch password");
    		}
@@ -179,33 +191,30 @@ void SrvPI::cmdGET()
 {
 	printf("GET request\n");
 
-	srvDTP.init(connSockStream);
-	packet.ps->body[packet.ps->bsize] = 0;
-	srvDTP.sendFile(packet.ps->body);
+	SrvDTP srvDTP(this->connSockStream, this->packet, this->connfd);
+	srvDTP.sendFile(packet.getSBody().c_str());
 }
 void SrvPI::cmdPUT()
 {
 	printf("PUT request\n");
 	
-	srvDTP.init(connSockStream);
-	packet.ps->body[packet.ps->bsize] = 0;
-	srvDTP.recvFile(packet.ps->body);
+	SrvDTP srvDTP(this->connSockStream, this->packet, this->connfd);
+	srvDTP.recvFile(packet.getSBody().c_str());
 }
 void SrvPI::cmdLS()
 {
 	printf("LS request\n");
 	char buf[MAXLINE];
 
-	packet.ps->body[packet.ps->bsize] = 0;
 	string msg_o;
-	if (!combineAndValidatePath(LS, packet.ps->body, msg_o))
+	if (!combineAndValidatePath(LS, packet.getSBody(), msg_o))
    	{
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	}
 
-	string tmp = userRCWD + "/";
-	DIR * dir= opendir((userRootDir + tmp + packet.ps->body).c_str());
+	string tmpDir = userRootDir + userRCWD + "/" + packet.getSBody();
+	DIR * dir= opendir(tmpDir.c_str());
 	if(!dir)
 	{
 		// send STAT_ERR Response
@@ -266,7 +275,7 @@ void SrvPI::cmdLS()
 		if ( (sbody.size() + strlen(buf)) > SLICECAP)
 		{
 			strcpy(body, sbody.c_str());
-			packet.sendDATA(connSockStream, 0, 0, 0, strlen(body), body);
+			packet.sendDATA(connSockStream, 0, 0, strlen(body), body);
 			sbody.clear();
 		}
 		sbody += buf;
@@ -274,7 +283,7 @@ void SrvPI::cmdLS()
 	}
 
 	strcpy(body, sbody.c_str());
-	packet.sendDATA(connSockStream, 0, 0, 0, strlen(body), body);
+	packet.sendDATA(connSockStream, 0, 0, strlen(body), body);
 	
 	packet.sendSTAT_EOT(connSockStream);
 
@@ -284,9 +293,8 @@ void SrvPI::cmdCD()
 {
 	printf("CD request\n");
 
-	packet.ps->body[packet.ps->bsize] = 0;
 	string msg_o;
-   	if (!combineAndValidatePath(CD, packet.ps->body, msg_o))
+   	if (!combineAndValidatePath(CD, packet.getSBody(), msg_o))
    	{
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
@@ -313,8 +321,7 @@ void SrvPI::cmdRM()
 	printf("RM request\n");
 
 	char buf[MAXLINE];
-	packet.ps->body[packet.ps->bsize] = 0;
-	if( remove(packet.ps->body) !=0 )
+	if( remove(packet.getSBody().c_str()) !=0 )
 	{
 		// send STAT_ERR Response 
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
@@ -322,8 +329,7 @@ void SrvPI::cmdRM()
 		return;
 	} else {
 		// send STAT_OK
-		snprintf(buf, MAXLINE, "%s is removed", packet.ps->body);
-		packet.sendSTAT_OK(connSockStream, buf);
+		packet.sendSTAT_OK(connSockStream, packet.getSBody() + "is removed");
 	}
 }
 
@@ -331,10 +337,9 @@ void SrvPI::cmdPWD()
 {
 	printf("PWD request\n");
 
-	packet.ps->body[packet.ps->bsize] = 0;
-	if (packet.ps->bsize != 0)
+	if (!packet.getSBody().empty())
 	{
-		if (!strcmp(packet.ps->body, "-a"))
+		if (packet.getSBody() == "-a")
 		{
 			packet.sendSTAT_OK(connSockStream, (userRootDir + userRCWD).c_str());
 		} else {
@@ -363,17 +368,15 @@ void SrvPI::cmdMKDIR()
 {
 	printf("MKDIR request\n");
 
-	packet.ps->body[packet.ps->bsize] = 0;
 	string msg_o;
-   	if (!combineAndValidatePath(MKDIR, packet.ps->body, msg_o))
+   	if (!combineAndValidatePath(MKDIR, packet.getSBody(), msg_o))
    	{
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	}
 
 	char buf[MAXLINE];
-	string tmpDir = userRootDir + userRCWD + "/";
-	tmpDir += packet.ps->body;
+	string tmpDir = userRootDir + userRCWD + "/" + packet.getSBody();
 	DIR * d= opendir(tmpDir.c_str());
 	if(d)
 	{	
@@ -388,8 +391,7 @@ void SrvPI::cmdMKDIR()
 		return;
 	} else {
 		// send STAT_OK
-		snprintf(buf, MAXLINE, "directory [%s] created", packet.ps->body);
-		packet.sendSTAT_OK(connSockStream, buf);
+		packet.sendSTAT_OK(connSockStream, packet.getSBody() + "created");
 	}
 }
 
@@ -400,16 +402,16 @@ bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & ms
 
 	vector<string> absCWDVector; 
 	split(absCWD, "/", absCWDVector);
-	for (vector<string>::iterator iter=absCWDVector.begin(); iter!=absCWDVector.end(); ++iter)
-   	{
-    	std::cout << "absCWD[" << *iter << "]" << '\n';
-   	}
+	// for (vector<string>::iterator iter=absCWDVector.begin(); iter!=absCWDVector.end(); ++iter)
+ //   	{
+ //    	std::cout << "absCWD[" << *iter << "]" << '\n';
+ //   	}
 
 	vector<string> userVector; 
 	split(userinput, "/", userVector);
 	for (vector<string>::iterator iter=userVector.begin(); iter!=userVector.end(); ++iter)
    	{
-    	std::cout << "userinput[" << *iter << "]" << '\n';
+    	//std::cout << "userinput[" << *iter << "]" << '\n';
     	if (*iter == "..")
     	{
     		absCWDVector.pop_back();
@@ -429,7 +431,7 @@ bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & ms
    	// check path, one user can only work in his own working space
    	if (newAbsDir.substr(0, userRootDir.size()) != userRootDir)
    	{
-		std::cout << "Permission denied: " << newAbsDir << '\n';
+		//std::cout << "Permission denied: " << newAbsDir << '\n';
 		msg_o = "Permission denied: " + newAbsDir;
 		return false;
    	} else {

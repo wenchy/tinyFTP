@@ -4,13 +4,16 @@
 #include    "../common/common.h"
 #include    "../common/error.h"
 #include    "../common/packet.h"
+#include    "../common/socket.h"
 #include    "../common/sockstream.h"
 
 // Client Data Transfer Process (CliDTP)
 class CliDTP
 {
 public:
-	void init(SockStream & connSockStream);
+	CliDTP(SockStream & connSockStream, Packet & packet, int connfd);
+	//void init(SockStream & connSockStream, Packet & packet);
+	void recvOnePacket();
 	void sendFile(const char *pathname, FILE *fp, uint32_t nslice);
 	void recvFile(const char *filename, FILE *fp);
 	int getFileNslice(const char *pathname, uint32_t *pnslice_o );
@@ -18,6 +21,7 @@ public:
 private:
 	Packet packet;
 	SockStream connSockStream;
+	int connfd;
 
 };
 

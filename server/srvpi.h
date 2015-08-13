@@ -13,6 +13,7 @@ class SrvPI
 {
 public:
 	SrvPI(string dbFilename, int connfd);
+	void recvOnePacket();
 	void run();
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[PBODYCAP]);
@@ -38,10 +39,11 @@ public:
 
 
 private:
+	int sessionCommandPacketCount;
 	Packet packet;
 	int connfd;
 	SockStream connSockStream;
-	SrvDTP srvDTP;
+	//SrvDTP srvDTP;
 	Database db;
 
 	string userID; // for simple, userID is equal to session ID

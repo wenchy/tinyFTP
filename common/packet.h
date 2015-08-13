@@ -10,14 +10,15 @@ class Packet
 public:
 	Packet();
 	//Packet(PacketStoreType pstype = HPACKET);
-	void init(PacketStoreType pstype = HPACKET);
+	
 	~Packet();
 
-	void fill(uint32_t sesid, uint16_t tagid, uint16_t cmdid, uint16_t statid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
-	void fillStat(uint32_t sesid, uint16_t statid, uint16_t bsize, char body[PBODYCAP]);
-	void fillCmd(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[PBODYCAP]);
-	void fillData(uint32_t sesid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
-	
+	void fill(uint16_t tagid, uint16_t cmdid, uint16_t statid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
+	void fillStat(uint16_t statid, uint16_t bsize, char body[PBODYCAP]);
+	void fillCmd(uint16_t cmdid, uint16_t bsize, char body[PBODYCAP]);
+	void fillData(uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
+	void setSessionID(uint32_t sesid);
+
 	void reset(PacketStoreType pstype);
 	void zero();
 
@@ -28,12 +29,13 @@ public:
 
 	void print();
 
-	void sendDATA(SockStream & connSockStream, uint32_t sesid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
+	void sendDATA(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
 
 	void sendSTAT_OK(SockStream & connSockStream);
 	void sendSTAT_OK(SockStream & connSockStream, char *msg);
 	void sendSTAT_OK(SockStream & connSockStream, const char *msg);
 	void sendSTAT_OK(SockStream & connSockStream, string msg);
+	void sendSTAT_OK(SockStream & connSockStream, uint32_t sesid, string msg);
 
 	void sendSTAT_ERR(SockStream & connSockStream);
 	void sendSTAT_ERR(SockStream & connSockStream, char *msg);
@@ -41,11 +43,23 @@ public:
 	void sendSTAT_ERR(SockStream & connSockStream, string msg);
 
 	void sendSTAT_EOT(SockStream & connSockStream);
+	PacketStruct * getPs();
+	uint32_t getSesid();
+	uint16_t getTagid();
+	uint16_t getCmdid();
+	uint16_t getStatid();
+	uint32_t getNslice();
+	uint32_t getSindex();
+	uint16_t getBsize();
+	char * getBody();
+	std::string getSBody();
 
-
-//private:
+private:
 	PacketStruct *ps;
 	PacketStoreType pstype;
+
+	//void init(PacketStoreType pstype = HPACKET);
+
 
 };
 

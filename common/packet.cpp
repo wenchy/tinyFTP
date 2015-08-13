@@ -2,20 +2,21 @@
 
 Packet::Packet()
 { 
-	init(HPACKET);  
+	this->pstype = HPACKET;
+	ps = (PacketStruct*) Malloc(PACKSIZE);
+	ps->sesid = 0;  
 }
 // Packet::Packet(PacketStoreType pstype)
 // { 
 // 	init(pstype); 
 // }
-void Packet::init(PacketStoreType pstype)
+// void Packet::init(PacketStoreType pstype)
+// { 
+// 	this->pstype = pstype;
+// 	ps = (PacketStruct*) Malloc(PACKSIZE); 
+// }
+void Packet::fill(uint16_t tagid, uint16_t cmdid, uint16_t statid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
 { 
-	this->pstype = pstype;
-	ps = (PacketStruct*) Malloc(PACKSIZE); 
-}
-void Packet::fill(uint32_t sesid, uint16_t tagid, uint16_t cmdid, uint16_t statid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
-{ 
-	ps->sesid = sesid;
 	ps->tagid = tagid;
 
 	ps->cmdid = cmdid;
@@ -29,9 +30,8 @@ void Packet::fill(uint32_t sesid, uint16_t tagid, uint16_t cmdid, uint16_t stati
 	if(body != NULL && bsize != 0)
 		memcpy(ps->body, body, PBODYCAP);  
 }
-void Packet::fillStat(uint32_t sesid, uint16_t statid, uint16_t bsize, char body[PBODYCAP])
+void Packet::fillStat(uint16_t statid, uint16_t bsize, char body[PBODYCAP])
 { 
-	ps->sesid = sesid;
 	ps->tagid = TAG_STAT;
 
 	ps->cmdid = 0;
@@ -45,9 +45,8 @@ void Packet::fillStat(uint32_t sesid, uint16_t statid, uint16_t bsize, char body
 	if(body != NULL && bsize != 0)
 		memcpy(ps->body, body, PBODYCAP);  
 }
-void Packet::fillCmd(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[PBODYCAP])
+void Packet::fillCmd(uint16_t cmdid, uint16_t bsize, char body[PBODYCAP])
 { 
-	ps->sesid = sesid;
 	ps->tagid = TAG_CMD;
 
 	ps->cmdid = cmdid;
@@ -61,9 +60,9 @@ void Packet::fillCmd(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[P
 	if(body != NULL && bsize != 0)
 		memcpy(ps->body, body, PBODYCAP);  
 }
-void Packet::fillData(uint32_t sesid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
+
+void Packet::fillData(uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
 { 
-	ps->sesid = sesid;
 	ps->tagid = TAG_DATA;
 
 	ps->cmdid = 0;
@@ -77,10 +76,27 @@ void Packet::fillData(uint32_t sesid, uint32_t nslice, uint32_t sindex, uint16_t
 	if(body != NULL && bsize != 0)
 		memcpy(ps->body, body, PBODYCAP);  
 }
+
+void Packet::setSessionID(uint32_t sesid)
+{ 
+	ps->sesid = sesid; 
+}
+
 void Packet::reset(PacketStoreType pstype)
 {
-	zero();
 	this->pstype = pstype;
+
+	//must keep sesid
+	ps->tagid = 0;
+
+	ps->cmdid = 0;
+
+	ps->statid = 0;
+
+	ps->nslice = 0;
+	ps->sindex = 0;
+
+	memset(ps->body, 0, PBODYCAP);
 }
 void Packet::zero()
 {
@@ -173,10 +189,10 @@ void Packet::print()
 	
 	fflush(stdout);
 }
-void Packet::sendDATA(SockStream & connSockStream, uint32_t sesid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
+void Packet::sendDATA(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
 {
 	this->reset(HPACKET);
-	this->fillData(0, nslice, ++sindex, bsize, body);
+	this->fillData(nslice, sindex, bsize, body);
 	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
@@ -188,7 +204,7 @@ void Packet::sendSTAT_OK(SockStream & connSockStream)
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[32mOK to transfer\033[0m");
-	this->fillStat(0, STAT_OK, strlen(buf), buf);
+	this->fillStat(STAT_OK, strlen(buf), buf);
 	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
@@ -199,7 +215,7 @@ void Packet::sendSTAT_OK(SockStream & connSockStream, char *msg)
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[32m%s\033[0m", msg);
-	this->fillStat(0, STAT_OK, strlen(buf), buf);
+	this->fillStat(STAT_OK, strlen(buf), buf);
 	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
@@ -210,7 +226,7 @@ void Packet::sendSTAT_OK(SockStream & connSockStream, const char *msg)
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[32m%s\033[0m", msg);
-	this->fillStat(0, STAT_OK, strlen(buf), buf);
+	this->fillStat(STAT_OK, strlen(buf), buf);
 	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
@@ -221,7 +237,18 @@ void Packet::sendSTAT_OK(SockStream & connSockStream, string msg)
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[32m%s\033[0m", msg.c_str());
-	this->fillStat(0, STAT_OK, strlen(buf), buf);
+	this->fillStat(STAT_OK, strlen(buf), buf);
+	//this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+void Packet::sendSTAT_OK(SockStream & connSockStream, uint32_t sesid, string msg)
+{
+	// send OK
+	this->reset(HPACKET);
+	char buf[MAXLINE];
+	snprintf(buf, MAXLINE, "\033[32m%s\033[0m", msg.c_str());
+	this->fillStat(STAT_OK, strlen(buf), buf);
 	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
@@ -232,7 +259,7 @@ void Packet::sendSTAT_ERR(SockStream & connSockStream)
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[31mError occurred\033[0m");
-	this->fillStat(0, STAT_ERR, strlen(buf), buf);
+	this->fillStat(STAT_ERR, strlen(buf), buf);
 	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
@@ -243,7 +270,7 @@ void Packet::sendSTAT_ERR(SockStream & connSockStream, char *msg)
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", msg);
-	this->fillStat(0, STAT_ERR, strlen(buf), buf);
+	this->fillStat(STAT_ERR, strlen(buf), buf);
 	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
@@ -254,7 +281,7 @@ void Packet::sendSTAT_ERR(SockStream & connSockStream, const char *msg)
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", msg);
-	this->fillStat(0, STAT_ERR, strlen(buf), buf);
+	this->fillStat(STAT_ERR, strlen(buf), buf);
 	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
@@ -265,7 +292,7 @@ void Packet::sendSTAT_ERR(SockStream & connSockStream, string msg)
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", msg.c_str());
-	this->fillStat(0, STAT_ERR, strlen(buf), buf);
+	this->fillStat(STAT_ERR, strlen(buf), buf);
 	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
@@ -276,10 +303,57 @@ void Packet::sendSTAT_EOT(SockStream & connSockStream)
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[32mEnd of Tansfer\033[0m");
-	this->fillStat(0, STAT_EOT, strlen(buf), buf);
+	this->fillStat(STAT_EOT, strlen(buf), buf);
 	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
+}
+PacketStruct * Packet::getPs()
+{ 
+	return ps;
+}
+uint32_t Packet::getSesid()
+{ 
+	return ps->sesid;
+}
+
+uint16_t Packet::getTagid()
+{ 
+	return ps->tagid;
+}
+uint16_t Packet::getCmdid()
+{ 
+	return ps->cmdid;
+}
+
+uint16_t Packet::getStatid()
+{ 
+	return ps->statid;
+}
+
+uint32_t Packet::getNslice()
+{ 
+	return ps->nslice;
+}
+
+uint32_t Packet::getSindex()
+{ 
+	return ps->sindex;
+}
+
+uint16_t Packet::getBsize()
+{ 
+	return ps->bsize;
+}
+char * Packet::getBody()
+{ 
+	return ps->body;
+}
+std::string Packet::getSBody()
+{ 
+	char buf[PBODYCAP + 1] = {0};
+	strncpy(buf, ps->body, ps->bsize);
+	return string(buf);
 }
 
 Packet::~Packet()

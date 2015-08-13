@@ -1,14 +1,42 @@
 #include    "clipi.h"
 
-void CliPI::init(const char *host)
+CliPI::CliPI(const char *host)
 {
-	int connfd;
-
     Socket cliSocket(CLI_SOCKET, host, CTRPORT);
     connfd = cliSocket.init();
     connSockStream.init(connfd);
-
 }
+
+// void CliPI::init(const char *host)
+// {
+// 	int connfd;
+
+//     Socket cliSocket(CLI_SOCKET, host, CTRPORT);
+//     connfd = cliSocket.init();
+//     connSockStream.init(connfd);
+
+// }
+// void CliPI::sendOnePacket()
+// {
+	
+// }
+
+void CliPI::recvOnePacket()
+{
+	int n;
+	packet.reset(NPACKET);
+	if ( (n = connSockStream.Readn(packet.getPs(), PACKSIZE)) == 0)
+	{
+		Socket::tcpClose(connfd);
+		Error::quit("server terminated prematurely");
+	} else if (n < 0){
+		Error::ret("connSockStream.Readn()");
+		Error::quit("socket connection exception");
+	}
+	packet.ntohp();
+	packet.print();
+}
+
 void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	switch(cmdid)
@@ -65,7 +93,7 @@ void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVe
 	}
 
 	// Error::msg("body: %s\n", body);
-	packet.fill(sesid, TAG_CMD, cmdid, statid, nslice, sindex, bsize, body);
+	packet.fill(TAG_CMD, cmdid, statid, nslice, sindex, bsize, body);
 	//packet.print();
 	packet.htonp(); 
 }
@@ -91,7 +119,7 @@ void CliPI::pass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdV
 	bsize = strlen(body); 
 
 	// Error::msg("body: %s\n", body);
-	packet.fill(sesid, TAG_CMD, cmdid, statid, nslice, sindex, bsize, body);
+	packet.fill(TAG_CMD, cmdid, statid, nslice, sindex, bsize, body);
 	//packet.print();
 	packet.htonp(); 
 }
@@ -121,32 +149,28 @@ bool CliPI::cmdPASS(std::vector<string> & cmdVector)
 	}
 
 	pass2pack(0, PASS, cmdVector);
-	connSockStream.Writen(packet.ps, PACKSIZE);
+	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
-	int n;
 	// first receive response
-	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
-	{
-		packet.ntohp();
-		if (packet.ps->tagid == TAG_STAT) {
-			if (packet.ps->statid == STAT_OK) {
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stdout, "%s\n", packet.ps->body);
-				return true;
-			} else if (packet.ps->statid == STAT_ERR){
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stderr, "%s\n", packet.ps->body);
-				return false;
-			} else {
-				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
-				return false;
-			}
-			
+	recvOnePacket();
+	if (packet.getTagid() == TAG_STAT) {
+		if (packet.getStatid() == STAT_OK) {
+			// init userID, same as session id
+			char buf[MAXLINE];
+			snprintf (buf, MAXLINE, "%u", packet.getSesid());
+			userID = buf;
+			cout<< packet.getSBody() << endl;
+			return true;
+		} else if (packet.getStatid() == STAT_ERR){
+			cerr<< packet.getSBody() << endl;
+			return false;
 		} else {
-			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			Error::msg("CliPI::cmdPASS: unknown statid %d", packet.getStatid());
 			return false;
 		}
+		
 	} else {
+		Error::msg("CliPI::cmdPASS: unknown tagid %d", packet.getTagid());
 		return false;
 	}
  
@@ -175,11 +199,12 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
 	} else {
 		// command to packet
 		cmd2pack(0, GET, cmdVector);
-	    connSockStream.Writen(packet.ps, PACKSIZE);
+	    connSockStream.Writen(packet.getPs(), PACKSIZE);
 	}
 
     // pathname exist on server? need test
-    cliDTP.init(connSockStream);
+    CliDTP cliDTP(this->connSockStream, this->packet, this->connfd);
+    //cliDTP.init(connSockStream, packet);
 	cliDTP.recvFile(pathname, fp);
  
 }
@@ -213,10 +238,11 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 	} else {
 		// command to packet
 		cmd2pack(0, PUT, cmdVector);
-	    connSockStream.Writen(packet.ps, PACKSIZE);
+	    connSockStream.Writen(packet.getPs(), PACKSIZE);
 	}
 
-	cliDTP.init(connSockStream);
+	// must contain sesssion id
+	CliDTP cliDTP(this->connSockStream, this->packet, this->connfd);
 	cliDTP.sendFile(pathname, fp, nslice);
 }
 void CliPI::cmdLS(std::vector<string> & cmdVector)
@@ -228,51 +254,34 @@ void CliPI::cmdLS(std::vector<string> & cmdVector)
 	}
 	
 	cmd2pack(0, LS, cmdVector);
-	connSockStream.Writen(packet.ps, PACKSIZE);
+	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
-	int n;
 	// first receive response
-	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
-	{
-		packet.ntohp();
-		if (packet.ps->tagid == TAG_STAT) {
-			if (packet.ps->statid == STAT_OK) {
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stdout, "%s\n", packet.ps->body);
-			} else if (packet.ps->statid == STAT_ERR){
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stderr, "%s\n", packet.ps->body);
-				return;
-			} else {
-				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
-				return;
-			}
-			
+	recvOnePacket();
+	if (packet.getTagid() == TAG_STAT) {
+		if (packet.getStatid() == STAT_OK) {
+			cout<< packet.getSBody() << endl;
+		} else if (packet.getStatid() == STAT_ERR){
+			cerr<< packet.getSBody() << endl;
+			return;
 		} else {
-			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			Error::msg("unknown statid %d", packet.getStatid());
 			return;
 		}
-	} else if (n == 0) {
-		Error::quit("server terminated prematurely");
-		return;
+		
 	} else {
-		Error::ret("cmdLS");
+		Error::msg("unknown tagid %d", packet.getTagid());
 		return;
 	}
 
-	while(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
+	while(1) 
 	{
-		
-		packet.ntohp();
-		//packet.print();
-		if (packet.ps->tagid == TAG_DATA) {
-			char sbuf[SLICECAP + 1] = {0};
-			strncpy(sbuf, packet.ps->body, packet.ps->bsize);
-			printf("%s\n", sbuf);
+		recvOnePacket();
+		if (packet.getTagid() == TAG_DATA) {
+			cout<< packet.getSBody() << endl;
 			
-		} else if (packet.ps->tagid == TAG_STAT && packet.ps->statid == STAT_EOT){
-			packet.ps->body[packet.ps->bsize] = 0;
-			printf("%s\n", packet.ps->body);
+		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT){
+			cout<< packet.getSBody() << endl;
 			break;
 		}
 	}
@@ -305,35 +314,24 @@ void CliPI::cmdCD(std::vector<string> & cmdVector)
 	}
 
 	cmd2pack(0, CD, cmdVector);
-	connSockStream.Writen(packet.ps, PACKSIZE);
+	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
-	int n;
 	// first receive response
-	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
-	{
-		packet.ntohp();
-		if (packet.ps->tagid == TAG_STAT) {
-			if (packet.ps->statid == STAT_OK) {
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stdout, "%s\n", packet.ps->body);
-			} else if (packet.ps->statid == STAT_ERR){
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stderr, "%s\n", packet.ps->body);
-				return;
-			} else {
-				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
-				return;
-			}
-			
+	recvOnePacket();
+	if (packet.getTagid() == TAG_STAT) {
+		if (packet.getStatid() == STAT_OK) {
+			cout << packet.getSBody() <<endl;
+			return;
+		} else if (packet.getStatid() == STAT_ERR){
+			cerr << packet.getSBody() <<endl;
+			return;
 		} else {
-			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			Error::msg("CliPI::recvFile: unknown statid %d", packet.getStatid());
 			return;
 		}
-	} else if (n == 0) {
-		Error::quit("server terminated prematurely");
-		return;
+		
 	} else {
-		Error::ret("cmdCD");
+		Error::msg("CliPI::recvFile: unknown tagid %d", packet.getTagid());
 		return;
 	}
  
@@ -347,35 +345,24 @@ void CliPI::cmdRM(std::vector<string> & cmdVector)
 	}
 
 	cmd2pack(0, RM, cmdVector);
-	connSockStream.Writen(packet.ps, PACKSIZE);
+	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
-	int n;
 	// first receive response
-	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
-	{
-		packet.ntohp();
-		if (packet.ps->tagid == TAG_STAT) {
-			if (packet.ps->statid == STAT_OK) {
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stdout, "%s\n", packet.ps->body);
-			} else if (packet.ps->statid == STAT_ERR){
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stderr, "%s\n", packet.ps->body);
-				return;
-			} else {
-				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
-				return;
-			}
-			
+	recvOnePacket();
+	if (packet.getTagid() == TAG_STAT) {
+		if (packet.getStatid() == STAT_OK) {
+			cout << packet.getSBody() <<endl;
+			return;
+		} else if (packet.getStatid() == STAT_ERR){
+			cerr << packet.getSBody() <<endl;
+			return;
 		} else {
-			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			Error::msg("unknown statid %d", packet.getStatid());
 			return;
 		}
-	} else if (n == 0) {
-		Error::quit("server terminated prematurely");
-		return;
+		
 	} else {
-		Error::ret("cmdRM");
+		Error::msg("unknown tagid %d", packet.getTagid());
 		return;
 	}
 	
@@ -394,35 +381,24 @@ void CliPI::cmdPWD(std::vector<string> & cmdVector)
 	}
 
 	cmd2pack(0, PWD, cmdVector);
-	connSockStream.Writen(packet.ps, PACKSIZE);
+	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
-	int n;
 	// first receive response
-	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
-	{
-		packet.ntohp();
-		if (packet.ps->tagid == TAG_STAT) {
-			if (packet.ps->statid == STAT_OK) {
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stdout, "%s\n", packet.ps->body);
-			} else if (packet.ps->statid == STAT_ERR){
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stderr, "%s\n", packet.ps->body);
-				return;
-			} else {
-				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
-				return;
-			}
-			
+	recvOnePacket();
+	if (packet.getTagid() == TAG_STAT) {
+		if (packet.getStatid() == STAT_OK) {
+			cout << packet.getSBody() <<endl;
+			return;
+		} else if (packet.getStatid() == STAT_ERR){
+			cerr << packet.getSBody() <<endl;
+			return;
 		} else {
-			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			Error::msg("unknown statid %d", packet.getStatid());
 			return;
 		}
-	} else if (n == 0) {
-		Error::quit("server terminated prematurely");
-		return;
+		
 	} else {
-		Error::ret("cmdPWD");
+		Error::msg("unknown tagid %d", packet.getTagid());
 		return;
 	}
 }
@@ -436,35 +412,24 @@ void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
 	}
 
 	cmd2pack(0, MKDIR, cmdVector);
-	connSockStream.Writen(packet.ps, PACKSIZE);
+	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
-	int n;
 	// first receive response
-	if(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
-	{
-		packet.ntohp();
-		if (packet.ps->tagid == TAG_STAT) {
-			if (packet.ps->statid == STAT_OK) {
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stdout, "%s\n", packet.ps->body);
-			} else if (packet.ps->statid == STAT_ERR){
-				packet.ps->body[packet.ps->bsize] = 0;
-				fprintf(stderr, "%s\n", packet.ps->body);
-				return;
-			} else {
-				Error::msg("CliDTP::recvFile: unknown statid %d", packet.ps->statid);
-				return;
-			}
-			
+	recvOnePacket();
+	if (packet.getTagid() == TAG_STAT) {
+		if (packet.getStatid() == STAT_OK) {
+			cout << packet.getSBody() <<endl;
+			return;
+		} else if (packet.getStatid() == STAT_ERR){
+			cerr << packet.getSBody() <<endl;
+			return;
 		} else {
-			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
+			Error::msg("CliPI::recvFile: unknown statid %d", packet.getStatid());
 			return;
 		}
-	} else if (n == 0) {
-		Error::quit("server terminated prematurely");
-		return;
+		
 	} else {
-		Error::ret("cmdMKDIR");
+		Error::msg("CliPI::recvFile: unknown tagid %d", packet.getTagid());
 		return;
 	}
 }
