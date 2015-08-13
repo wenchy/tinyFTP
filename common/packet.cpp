@@ -15,7 +15,7 @@ Packet::Packet()
 // 	this->pstype = pstype;
 // 	ps = (PacketStruct*) Malloc(PACKSIZE); 
 // }
-void Packet::fill(uint16_t tagid, uint16_t cmdid, uint16_t statid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
+void Packet::fill(uint16_t tagid, uint16_t cmdid, uint16_t statid, uint32_t nslice, uint32_t sindex, uint16_t bsize, const char * body)
 { 
 	ps->tagid = tagid;
 
@@ -28,9 +28,9 @@ void Packet::fill(uint16_t tagid, uint16_t cmdid, uint16_t statid, uint32_t nsli
 
 	ps->bsize = bsize;
 	if(body != NULL && bsize != 0)
-		memcpy(ps->body, body, PBODYCAP);  
+		memcpy(ps->body, body, bsize);  
 }
-void Packet::fillStat(uint16_t statid, uint16_t bsize, char body[PBODYCAP])
+void Packet::fillStat(uint16_t statid, uint16_t bsize, const char * body)
 { 
 	ps->tagid = TAG_STAT;
 
@@ -43,9 +43,9 @@ void Packet::fillStat(uint16_t statid, uint16_t bsize, char body[PBODYCAP])
 
 	ps->bsize = bsize;
 	if(body != NULL && bsize != 0)
-		memcpy(ps->body, body, PBODYCAP);  
+		memcpy(ps->body, body, bsize);  
 }
-void Packet::fillCmd(uint16_t cmdid, uint16_t bsize, char body[PBODYCAP])
+void Packet::fillCmd(uint16_t cmdid, uint16_t bsize, const char * body)
 { 
 	ps->tagid = TAG_CMD;
 
@@ -58,10 +58,10 @@ void Packet::fillCmd(uint16_t cmdid, uint16_t bsize, char body[PBODYCAP])
 
 	ps->bsize = bsize;
 	if(body != NULL && bsize != 0)
-		memcpy(ps->body, body, PBODYCAP);  
+		memcpy(ps->body, body, bsize);  
 }
 
-void Packet::fillData(uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
+void Packet::fillData(uint32_t nslice, uint32_t sindex, uint16_t bsize, char * body)
 { 
 	ps->tagid = TAG_DATA;
 
@@ -74,16 +74,42 @@ void Packet::fillData(uint32_t nslice, uint32_t sindex, uint16_t bsize, char bod
 
 	ps->bsize = bsize;
 	if(body != NULL && bsize != 0)
-		memcpy(ps->body, body, PBODYCAP);  
+		memcpy(ps->body, body, bsize);  
+}
+
+void Packet::fillData(uint32_t nslice, uint32_t sindex, uint16_t bsize, const char * body)
+{ 
+	ps->tagid = TAG_DATA;
+
+	ps->cmdid = 0;
+
+	ps->statid = 0;
+
+	ps->nslice = nslice;
+	ps->sindex = sindex;
+
+	ps->bsize = bsize;
+	if(body != NULL && bsize != 0)
+		memcpy(ps->body, body, bsize);  
 }
 
 void Packet::setSessionID(uint32_t sesid)
 { 
 	ps->sesid = sesid; 
+	//printf("setSessionID: %u\n", ps->sesid);
 }
 
 void Packet::reset(PacketStoreType pstype)
 {
+	if (this->pstype == NPACKET){
+		if (pstype == HPACKET){
+			ps->sesid = ntohl(ps->sesid);
+		}
+	} else if (this->pstype == HPACKET){
+		if (pstype == NPACKET){
+			ps->sesid = htonl(ps->sesid);
+		}
+	}
 	this->pstype = pstype;
 
 	//must keep sesid
@@ -105,57 +131,46 @@ void Packet::zero()
 
 void Packet::ntohp()
 {
-	if (pstype == HPACKET)
+	if (pstype == HPACKET){
 		Error::msg("already in HOST byte order\n");
-
-	PacketStruct* np = ps;
-	PacketStruct* hp = (PacketStruct*) Malloc(PACKSIZE);
+		return;
+	}
+	ps->sesid = ntohl(ps->sesid);
+	ps->tagid = ntohs(ps->tagid);
 	
-	hp->sesid = ntohl(np->sesid);
-	hp->tagid = ntohs(np->tagid);
-	
-	hp->cmdid = ntohs(np->cmdid);
-	hp->statid = ntohs(np->statid);
+	ps->cmdid = ntohs(ps->cmdid);
+	ps->statid = ntohs(ps->statid);
 
-	hp->nslice = ntohl(np->nslice);
-	hp->sindex = ntohl(np->sindex);
+	ps->nslice = ntohl(ps->nslice);
+	ps->sindex = ntohl(ps->sindex);
 
-	hp->bsize = ntohs(np->bsize);
-	memcpy(hp->body, np->body, PBODYCAP);
-	
-	ps = hp;
+	ps->bsize = ntohs(ps->bsize);
+
 	this->pstype = HPACKET;
-
-	free(np);
 	
 }
 
 
 void Packet::htonp()
 {
-	if (pstype == NPACKET)
+	if (pstype == NPACKET){
 		Error::msg("already in NETWORK byte order\n");
+		return;
+	}
 
-	PacketStruct* hp = ps;
-	PacketStruct* np = (PacketStruct*) Malloc(PACKSIZE);
+	ps->sesid = htonl(ps->sesid);
+	ps->tagid = htons(ps->tagid);
 	
-	np->sesid = htonl(hp->sesid);
-	np->tagid = htons(hp->tagid);
-	
-	np->cmdid = htons(hp->cmdid);
+	ps->cmdid = htons(ps->cmdid);
 
-	np->statid = htons(hp->statid);
+	ps->statid = htons(ps->statid);
 
-	np->nslice = htonl(hp->nslice);
-	np->sindex = htonl(hp->sindex);
+	ps->nslice = htonl(ps->nslice);
+	ps->sindex = htonl(ps->sindex);
 
-	np->bsize = htons(hp->bsize);
-	memcpy(np->body, hp->body, PBODYCAP);
+	ps->bsize = htons(ps->bsize);
 
-	ps = np;
 	this->pstype = NPACKET;
-
-	free(hp);
 	
 }
 
@@ -166,15 +181,17 @@ void Packet::print()
 	
 	if (pstype == HPACKET)
 	{
-		printf("\t\t[HOST Packet]\n");
+		printf("\t\t[HOST Packet: %p]\n", ps);
 		
 	}
 	else if (pstype == NPACKET)
 	{
-		printf("\t\t[NETWORK Packet]\n");
+		printf("\t\t[NETWORK Packet: %p]\n", ps);
 	}
-	else
+	else {
 		Error::msg("unknown PacketStoreType\n");
+		return;
+	}
 
 	printf("\t\tsesid = %u\n", ps->sesid);
 	printf("\t\ttagid = %d\n", ps->tagid);
@@ -183,21 +200,42 @@ void Packet::print()
 	printf("\t\tnslice = %u\n", ps->nslice);
 	printf("\t\tsindex = %u\n", ps->sindex);
 	printf("\t\tbsize = %d\n", ps->bsize);
-	printf("\t\tbody = %s\n",  ps->body);
-
-	
+	printf("\t\tbody = %s\n",  this->getSBody().c_str());
 	
 	fflush(stdout);
 }
-void Packet::sendDATA(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP])
+void Packet::sendDATA(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, char *body)
 {
+	//this->print();
 	this->reset(HPACKET);
 	this->fillData(nslice, sindex, bsize, body);
-	//this->print();
+	printf("sendDATA:\n");
+	this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
-	//printf("file_block_length:%d\n",n);
 }
+
+void Packet::sendDATA(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, const char *body)
+{
+	//this->print();
+	this->reset(HPACKET);
+	this->fillData(nslice, sindex, bsize, body);
+	printf("sendDATA:\n");
+	this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+
+// void Packet::sendDATA(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, string sbody)
+// {
+// 	//this->print();
+// 	this->reset(HPACKET);
+// 	this->fillData(nslice, sindex, bsize, body);
+// 	printf("sendDATA:\n");
+// 	this->print();
+// 	this->htonp();
+// 	connSockStream.Writen(this->ps, PACKSIZE);
+// }
 void Packet::sendSTAT_OK(SockStream & connSockStream)
 {
 	// send OK

@@ -34,7 +34,7 @@ void CliPI::recvOnePacket()
 		Error::quit("socket connection exception");
 	}
 	packet.ntohp();
-	packet.print();
+	//packet.print();
 }
 
 void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)

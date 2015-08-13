@@ -22,7 +22,7 @@ void SrvPI::recvOnePacket()
 		Error::quit_pthread("socket connection exception");
 	}
 	packet.ntohp();
-	packet.print();
+	//packet.print();
 }
 void SrvPI::run()
 {
@@ -178,7 +178,8 @@ void SrvPI::cmdPASS()
 			userRCWD = resultMapVector[0]["RCWD"];
 			// set session ID: important
 			packet.setSessionID(std::stoul(userID));
-			packet.sendSTAT_OK(connSockStream, "Welcome! " + resultMapVector[0]["USERNAME"]);
+			packet.print();
+			packet.sendSTAT_OK(connSockStream, "Welcome! " + resultMapVector[0]["USERNAME"] + ", your last working dir: " + userRCWD);
    		} else {
 			packet.sendSTAT_ERR(connSockStream, "error: username mismatch password");
    		}
@@ -228,7 +229,6 @@ void SrvPI::cmdLS()
 
 	struct dirent* e;
 	int cnt = 0;
-	char body[PBODYCAP];
 	string sbody;
 	while( (e = readdir(dir)) )
 	{	
@@ -250,6 +250,7 @@ void SrvPI::cmdLS()
 			} else {
 				snprintf(buf, MAXLINE, "\033[36m%-10s\033[0m\t", e->d_name);
 				cnt++;
+
 			}
 		} else /*if(e->d_type == 8) */ {
 			if (strlen(e->d_name) > 15)
@@ -269,21 +270,19 @@ void SrvPI::cmdLS()
 
 		if ( cnt !=0 && (cnt % 5) == 0)
 		{
-			snprintf(buf, MAXLINE, "%s\n", buf);
+			strcat(buf, "\n");
 		}
 
 		if ( (sbody.size() + strlen(buf)) > SLICECAP)
 		{
-			strcpy(body, sbody.c_str());
-			packet.sendDATA(connSockStream, 0, 0, strlen(body), body);
+			packet.sendDATA(connSockStream, 0, 0, sbody.size(), sbody.c_str());
 			sbody.clear();
 		}
 		sbody += buf;
 		
 	}
 
-	strcpy(body, sbody.c_str());
-	packet.sendDATA(connSockStream, 0, 0, strlen(body), body);
+	packet.sendDATA(connSockStream, 0, 0, sbody.size(), sbody.c_str());
 	
 	packet.sendSTAT_EOT(connSockStream);
 
@@ -318,19 +317,59 @@ void SrvPI::cmdCD()
 
 void SrvPI::cmdRM()
 {
+	// S_ISLINGK(st_mode)
+	// S_ISREG(st_mode)       
+	// S_ISDIR(st_mode)       
+	// S_ISCHR(st_mode) 
+	// S_ISBLK(st_mode)
+	// S_ISSOCK(st_mode)
+
 	printf("RM request\n");
 
-	char buf[MAXLINE];
-	if( remove(packet.getSBody().c_str()) !=0 )
-	{
-		// send STAT_ERR Response 
-		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+	string msg_o;
+   	if (!combineAndValidatePath(RM, packet.getSBody(), msg_o))
+   	{
+   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
-	} else {
-		// send STAT_OK
-		packet.sendSTAT_OK(connSockStream, packet.getSBody() + "is removed");
-	}
+   	} else {
+   		string path = userRootDir + userRCWD + "/" + packet.getSBody();
+   		char buf[MAXLINE]; 
+   		if( remove(path.c_str()) !=0 )
+		{
+			// send STAT_ERR Response 
+			// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+			packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+			return;
+		} else {
+			// send STAT_OK
+			packet.sendSTAT_OK(connSockStream, packet.getSBody() + " is removed");
+			return;
+		}
+   	}
+
+	// struct stat statBuf; 
+	// string path = userRootDir + userRCWD + "/" + packet.getSBody(); 
+ //    stat(path.c_str(), &statBuf);
+ //    if (S_ISREG(statBuf.st_mode)){
+	// 	char buf[MAXLINE];
+	// 	if( remove(path.c_str()) !=0 )
+	// 	{
+	// 		// send STAT_ERR Response 
+	// 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+	// 		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+	// 		return;
+	// 	} else {
+	// 		// send STAT_OK
+	// 		packet.sendSTAT_OK(connSockStream, packet.getSBody() + "is removed");
+	// 		return;
+	// 	}
+	// } else if (S_ISDIR(statBuf.st_mode)){
+	// 	packet.sendSTAT_ERR(connSockStream, "rm: cannot remove '" + packet.getSBody() + "': Is a directory");
+	// 	return;
+	// }
+    
+    
+	
 }
 
 void SrvPI::cmdPWD()
@@ -373,28 +412,21 @@ void SrvPI::cmdMKDIR()
    	{
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
-   	}
-
-	char buf[MAXLINE];
-	string tmpDir = userRootDir + userRCWD + "/" + packet.getSBody();
-	DIR * d= opendir(tmpDir.c_str());
-	if(d)
-	{	
-		packet.sendSTAT_ERR(connSockStream, "already exists");
-		closedir(d);
-	} else if(mkdir(tmpDir.c_str(), 0777) == -1) {
-		// send STAT_ERR Response
-		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-		msg_o += "system call (mkdir): ";
-		msg_o += strerror_r(errno, buf, MAXLINE);
-		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
-		return;
-	} else {
-		// send STAT_OK
-		packet.sendSTAT_OK(connSockStream, packet.getSBody() + "created");
+   	} else {
+   		string path = userRootDir + userRCWD + "/" + packet.getSBody();
+   		char buf[MAXLINE]; 
+   		if(mkdir(path.c_str(), 0777) == -1){
+   			// send STAT_ERR Response
+			// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+			msg_o += "system call (mkdir): ";
+			msg_o += strerror_r(errno, buf, MAXLINE);
+			packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+   		}else {
+			// send STAT_OK
+			packet.sendSTAT_OK(connSockStream, packet.getSBody() + " created");
+		}
 	}
 }
-
 
 bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o)
 {
@@ -402,10 +434,6 @@ bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & ms
 
 	vector<string> absCWDVector; 
 	split(absCWD, "/", absCWDVector);
-	// for (vector<string>::iterator iter=absCWDVector.begin(); iter!=absCWDVector.end(); ++iter)
- //   	{
- //    	std::cout << "absCWD[" << *iter << "]" << '\n';
- //   	}
 
 	vector<string> userVector; 
 	split(userinput, "/", userVector);
@@ -427,47 +455,121 @@ bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & ms
    	{
     	newAbsDir += "/" + *iter;
    	}
-   	//std::cout << newAbsDir << '\n';
+   	std::cout << "newAbsDir: " << newAbsDir << '\n';
    	// check path, one user can only work in his own working space
    	if (newAbsDir.substr(0, userRootDir.size()) != userRootDir)
    	{
 		//std::cout << "Permission denied: " << newAbsDir << '\n';
 		msg_o = "Permission denied: " + newAbsDir;
 		return false;
-   	} else {
+   	} else {  
+   		return cmdPathProcess(cmdid, newAbsDir, msg_o);
+   	}
+}
 
-		DIR * d= opendir(newAbsDir.c_str());
-		char buf[MAXLINE];
-		if(!d) //On error
-		{	
-			//msg_o = strerror_r(errno, buf, MAXLINE);
-			if (cmdid == MKDIR)
-			{
+bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
+{
+
+	switch(cmdid)
+	{
+		case GET:
+		{
+
+			break;
+		}
+		case PUT:
+		{
+
+			break;
+		}
+		case LS:
+		{
+			DIR * d= opendir(newAbsDir.c_str());
+			char buf[MAXLINE];
+			if(!d) //On error
+			{	
+				//msg_o = strerror_r(errno, buf, MAXLINE);
+				msg_o = strerror_r(errno, buf, MAXLINE);
+				return false;
+				
+			} else { // dir already exists
+				closedir(d);
 				return true;
-			} else {
+			}
+			break;
+		}
+		case CD:
+		{
+			DIR * d= opendir(newAbsDir.c_str());
+			char buf[MAXLINE];
+			if(!d) //On error
+			{	
+				msg_o = strerror_r(errno, buf, MAXLINE);
+				return false;
+				
+			} else { // dir already exists
+				closedir(d);
+			}
+	   		// update userRCWD
+			this->userRCWD = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
+			if (this->userRCWD.empty())
+			{
+				this->userRCWD = "/";
+			}
+	   		return true;
+		}
+		case RM:
+		{
+			// S_ISLINGK(st_mode)
+			// S_ISREG(st_mode)       
+			// S_ISDIR(st_mode)       
+			// S_ISCHR(st_mode) 
+			// S_ISBLK(st_mode)
+			// S_ISSOCK(st_mode)
+	   		struct stat statBuf;
+	   		char buf[MAXLINE];
+		    int n = stat(newAbsDir.c_str(), &statBuf);
+		    if(!n) // stat call success
+			{	
+				if (S_ISREG(statBuf.st_mode)){
+					return true;
+			    } else if (S_ISDIR(statBuf.st_mode)){
+					msg_o = "rm: cannot remove '" + newAbsDir + "': Is a directory";
+					return false;
+			    } else {
+			    	msg_o = "rm: '" + newAbsDir + "' not a file or directory";
+					return false;
+			    }
+				
+			} else { // stat error
 				msg_o = strerror_r(errno, buf, MAXLINE);
 				return false;
 			}
-			
-		} else { // dir already exists
-			closedir(d);
-			if (cmdid == MKDIR)
-			{
+			break;
+		}	
+		case MKDIR:
+		{
+			DIR * d= opendir(newAbsDir.c_str());
+			//char buf[MAXLINE];
+			if(!d) // dir not exist
+			{	
+				return true;
+				
+			} else { // dir already exists
+				closedir(d);
 				msg_o = "already exsits: " + newAbsDir;
 				return false;
 			}
+			break;
 		}
-   		// update userRCWD
-   		if (cmdid == CD)
-   		{
-   			this->userRCWD = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
-   			if (this->userRCWD.empty())
-   			{
-   				this->userRCWD = "/";
-   			}
-   		}
-   		return true;
-   	}
+		default:
+		{
+			msg_o = "SrvPI::cmdPathProcess: unknown cmdid";
+			return false;
+			break;
+		}
+	}
+	return false;
 }
 
 SrvPI::~SrvPI()

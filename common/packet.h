@@ -13,10 +13,11 @@ public:
 	
 	~Packet();
 
-	void fill(uint16_t tagid, uint16_t cmdid, uint16_t statid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
-	void fillStat(uint16_t statid, uint16_t bsize, char body[PBODYCAP]);
-	void fillCmd(uint16_t cmdid, uint16_t bsize, char body[PBODYCAP]);
-	void fillData(uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
+	void fill(uint16_t tagid, uint16_t cmdid, uint16_t statid, uint32_t nslice, uint32_t sindex, uint16_t bsize, const char * body);
+	void fillStat(uint16_t statid, uint16_t bsize, const char * body);
+	void fillCmd(uint16_t cmdid, uint16_t bsize, const char * body);
+	void fillData(uint32_t nslice, uint32_t sindex, uint16_t bsize, char * body);
+	void fillData(uint32_t nslice, uint32_t sindex, uint16_t bsize,const char * body);
 	void setSessionID(uint32_t sesid);
 
 	void reset(PacketStoreType pstype);
@@ -29,7 +30,8 @@ public:
 
 	void print();
 
-	void sendDATA(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, char body[PBODYCAP]);
+	void sendDATA(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, char *body);
+	void sendDATA(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, const char *body);
 
 	void sendSTAT_OK(SockStream & connSockStream);
 	void sendSTAT_OK(SockStream & connSockStream, char *msg);

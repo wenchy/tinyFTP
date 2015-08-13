@@ -51,6 +51,7 @@ private:
 	std::string userRCWD; // current working directory relative to userRootDir
 
 	bool combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o);
+	bool cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o);
 	void saveUserState();
 
 

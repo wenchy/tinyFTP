@@ -24,7 +24,7 @@ void SrvDTP::recvOnePacket()
 		Error::quit_pthread("socket connection exception");
 	}
 	packet.ntohp();
-	packet.print();
+	//packet.print();
 }
 void SrvDTP::sendFile(const char *pathname)
 {
@@ -68,7 +68,6 @@ void SrvDTP::sendFile(const char *pathname)
 }
 void SrvDTP::recvFile(const char *pathname)
 {
-	int n;
 	char buf[MAXLINE];
 	FILE* fp;	// Yo!
 	if ((access(pathname,F_OK)) == 0) {

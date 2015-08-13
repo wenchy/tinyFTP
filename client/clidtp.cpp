@@ -25,7 +25,7 @@ void CliDTP::recvOnePacket()
 		Error::quit("socket connection exception");
 	}
 	packet.ntohp();
-	packet.print();
+	//packet.print();
 }
 
 void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
