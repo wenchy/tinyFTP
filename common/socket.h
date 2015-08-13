@@ -25,7 +25,7 @@ static  int     tcpAccept(int fd, struct sockaddr *sa, socklen_t *salenptr);
         void    tcpSetsockopt(int fd, int level, int optname, const void *optval, socklen_t optlen);
         void    tcpShutdown(int fd, int how);
         int     tcpSocket(int family, int type, int protocol);
-        void    tcpClose(int fd);
+static  void    tcpClose(int fd);
 
 private:
     SockType socktype; // client or server socket indicator

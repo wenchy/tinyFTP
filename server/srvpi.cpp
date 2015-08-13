@@ -1,16 +1,24 @@
 #include    "srvpi.h"
 
 
-
-
-void SrvPI::run(int connfd)
+SrvPI::SrvPI(string dbFilename, int connfd):db(DBFILENAME)
 {
-	std::cout <<  "[" << userRootDir <<" " << userRCWD << "]" << std::endl;
+	this->connfd = connfd;
 	connSockStream.init(connfd);
+}
+
+void SrvPI::run()
+{
+	std::cout<<  "connfd: " << connfd <<  " [" << userRootDir <<" " << userRCWD << "]" << std::endl;
 
 	packet.reset(NPACKET);
 	if ( connSockStream.Readn(packet.ps, PACKSIZE) == 0)
-	            Error::quit_pthread("client terminated prematurely");
+	{
+		this->saveUserState();
+		Socket::tcpClose(connfd);
+		Error::quit_pthread("client terminated prematurely, saveUserState ok");
+	}
+	           
     packet.ntohp();
     //packet.print();
     if (packet.ps->tagid == TAG_CMD)
@@ -150,7 +158,8 @@ void SrvPI::cmdPASS()
    		if (!resultMapVector.empty())
    		{
 			packet.sendSTAT_OK(connSockStream, "Welcome! " + resultMapVector[0]["USERNAME"]);
-			// init userRootDir and userRCWD
+			// init userID, userRootDir, and userRCWD
+			userID = resultMapVector[0]["ID"];
 			userRootDir = ROOTDIR + resultMapVector[0]["USERNAME"];
 			userRCWD = resultMapVector[0]["RCWD"];
 			//std::cout <<  "[" << userRootDir <<" " << userRCWD << "]" << std::endl;
@@ -184,12 +193,13 @@ void SrvPI::cmdLS()
 	char buf[MAXLINE];
 
 	packet.ps->body[packet.ps->bsize] = 0;
-	if (!combineAndValidatePath(packet.ps->body, false))
+	string msg_o;
+	if (!combineAndValidatePath(LS, packet.ps->body, msg_o))
    	{
-   		packet.sendSTAT_ERR(connSockStream, "Permission deny");
+   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	}
-   	
+
 	string tmp = userRCWD + "/";
 	DIR * dir= opendir((userRootDir + tmp + packet.ps->body).c_str());
 	if(!dir)
@@ -211,6 +221,10 @@ void SrvPI::cmdLS()
 	{	
 		if (e->d_type == 4)
 		{
+			if (!strcmp(e->d_name, "..") || !strcmp(e->d_name, "."))
+			{
+				continue;
+			}
 			if (strlen(e->d_name) > 15)
 			{
 				if (sbody.empty() || sbody.back() == '\n')
@@ -240,7 +254,7 @@ void SrvPI::cmdLS()
 			}
 		}
 
-		if ( cnt !=0 && (cnt % 4) == 0)
+		if ( cnt !=0 && (cnt % 5) == 0)
 		{
 			snprintf(buf, MAXLINE, "%s\n", buf);
 		}
@@ -267,9 +281,10 @@ void SrvPI::cmdCD()
 	printf("CD request\n");
 
 	packet.ps->body[packet.ps->bsize] = 0;
-   	if (!combineAndValidatePath(packet.ps->body, true))
+	string msg_o;
+   	if (!combineAndValidatePath(CD, packet.ps->body, msg_o))
    	{
-   		packet.sendSTAT_ERR(connSockStream, "Permission deny");
+   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	} else {
 		packet.sendSTAT_OK(connSockStream, "current working directory: " + userRCWD);
@@ -312,7 +327,20 @@ void SrvPI::cmdPWD()
 {
 	printf("PWD request\n");
 
-	packet.sendSTAT_OK(connSockStream, userRCWD.c_str());
+	packet.ps->body[packet.ps->bsize] = 0;
+	if (packet.ps->bsize != 0)
+	{
+		if (!strcmp(packet.ps->body, "-a"))
+		{
+			packet.sendSTAT_OK(connSockStream, (userRootDir + userRCWD).c_str());
+		} else {
+			packet.sendSTAT_ERR(connSockStream, "command format error");
+		}
+		
+	} else {
+		packet.sendSTAT_OK(connSockStream, userRCWD.c_str());
+	}
+	
 
 	// char buf[MAXLINE];
 	// if( !getcwd(buf, MAXLINE))
@@ -332,19 +360,22 @@ void SrvPI::cmdMKDIR()
 	printf("MKDIR request\n");
 
 	packet.ps->body[packet.ps->bsize] = 0;
-   	if (!combineAndValidatePath(packet.ps->body, false))
+	string msg_o;
+   	if (!combineAndValidatePath(MKDIR, packet.ps->body, msg_o))
    	{
-   		packet.sendSTAT_ERR(connSockStream, "Permission deny");
+   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	}
 
 	char buf[MAXLINE];
-	DIR* d = opendir((userRootDir + userRCWD).c_str());
+	string tmpDir = userRootDir + userRCWD + "/";
+	tmpDir += packet.ps->body;
+	DIR * d= opendir(tmpDir.c_str());
 	if(d)
 	{	
 		packet.sendSTAT_ERR(connSockStream, "already exists");
 		closedir(d);
-	} else if(mkdir(packet.ps->body, 0777) == -1) {
+	} else if(mkdir(tmpDir.c_str(), 0777) == -1) {
 		//fprintf(stderr, "Wrong path.\n");
 		// send STAT_ERR Response
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
@@ -352,13 +383,13 @@ void SrvPI::cmdMKDIR()
 		return;
 	} else {
 		// send STAT_OK
-		snprintf(buf, MAXLINE, "directory %s is created", packet.ps->body);
+		snprintf(buf, MAXLINE, "directory [%s] created", packet.ps->body);
 		packet.sendSTAT_OK(connSockStream, buf);
 	}
 }
 
 
-bool SrvPI::combineAndValidatePath(string userinput, bool updateRCWD)
+bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o)
 {
 	string absCWD = userRootDir + userRCWD;
 
@@ -394,12 +425,33 @@ bool SrvPI::combineAndValidatePath(string userinput, bool updateRCWD)
    	if (newAbsDir.substr(0, userRootDir.size()) != userRootDir)
    	{
 		std::cout << "Permission deny: " << newAbsDir << '\n';
+		msg_o = "Permission deny: " + newAbsDir;
 		return false;
    	} else {
+
+		DIR * d= opendir(newAbsDir.c_str());
+		char buf[MAXLINE];
+		if(!d)
+		{	
+			msg_o = strerror_r(errno, buf, MAXLINE);//"directory not exist";
+			if (cmdid == MKDIR)
+			{
+				return true;
+			} else {
+				return false;
+			}
+			
+		} else {
+			closedir(d);
+		}
    		// update userRCWD
-   		if (updateRCWD)
+   		if (cmdid == CD)
    		{
    			this->userRCWD = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
+   			if (this->userRCWD.empty())
+   			{
+   				this->userRCWD = "/";
+   			}
    		}
    		return true;
    	}
@@ -408,4 +460,9 @@ bool SrvPI::combineAndValidatePath(string userinput, bool updateRCWD)
 SrvPI::~SrvPI()
 {
 
+}
+void SrvPI::saveUserState()
+{
+	map<string, string> updateParamMap = {  {"RCWD", userRCWD} };
+	db.update("user", userID, updateParamMap);
 }

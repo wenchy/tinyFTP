@@ -249,6 +249,12 @@ void CliPI::cmdLS(std::vector<string> & cmdVector)
 			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
 			return;
 		}
+	} else if (n == 0) {
+		Error::quit("server terminated prematurely");
+		return;
+	} else {
+		Error::ret("cmdLS");
+		return;
 	}
 
 	while(packet.reset(NPACKET), (n = connSockStream.Readn(packet.ps, PACKSIZE)) > 0 ) 
@@ -301,6 +307,12 @@ void CliPI::cmdCD(std::vector<string> & cmdVector)
 			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
 			return;
 		}
+	} else if (n == 0) {
+		Error::quit("server terminated prematurely");
+		return;
+	} else {
+		Error::ret("cmdCD");
+		return;
 	}
  
 }
@@ -337,15 +349,25 @@ void CliPI::cmdRM(std::vector<string> & cmdVector)
 			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
 			return;
 		}
+	} else if (n == 0) {
+		Error::quit("server terminated prematurely");
+		return;
+	} else {
+		Error::ret("cmdRM");
+		return;
 	}
 	
 }
 
 void CliPI::cmdPWD(std::vector<string> & cmdVector)
 {
-	if(cmdVector.size() != 1)
+	if(cmdVector.size() > 2)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: pwd");
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: pwd [-a]");
+		return;
+	} else if (cmdVector.size() == 2 && cmdVector[1] != "-a")
+	{
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: pwd [-a]");
 		return;
 	}
 
@@ -374,6 +396,12 @@ void CliPI::cmdPWD(std::vector<string> & cmdVector)
 			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
 			return;
 		}
+	} else if (n == 0) {
+		Error::quit("server terminated prematurely");
+		return;
+	} else {
+		Error::ret("cmdPWD");
+		return;
 	}
 }
 
@@ -410,6 +438,12 @@ void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
 			Error::msg("CliDTP::recvFile: unknown tagid %d", packet.ps->tagid);
 			return;
 		}
+	} else if (n == 0) {
+		Error::quit("server terminated prematurely");
+		return;
+	} else {
+		Error::ret("cmdMKDIR");
+		return;
 	}
 }
 

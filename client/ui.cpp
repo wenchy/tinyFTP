@@ -79,6 +79,7 @@ void UI::run()
         }
     }                
     this->username = this->cmdVector[0];
+
 	// other ftp commands: first cout prompt (use "," operator)
 	while (printf("\033[35m%s@tinyFTP> \033[0m", username.c_str()), getline(std::cin, inputline))
 	{
@@ -99,15 +100,19 @@ void UI::run()
 		}
 
 		// for (auto it = cmdVector.cbegin(); it != cmdVector.cend(); ++it)
-  //   		std::cout << *it << std::endl;
+        //    std::cout << *it << std::endl;
     	// for (std::vector<string>::size_type i = 0; i < cmdVector.size(); i++)
-    	// 	std::cout << cmdVector[i] << std::endl;
+    	// 	   std::cout << cmdVector[i] << std::endl;
 	}                                                         
 	
 }
 
 bool UI::cmdCheck()
 {
+    if (cmdVector.empty())
+    {
+        return false;
+    }
 	map<const string, const uint16_t >::iterator iter = cmdMap.find(toUpper(cmdVector[0]));
 	if (iter != cmdMap.end())
 	{

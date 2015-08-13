@@ -5,11 +5,11 @@
 void * clientConnect(void * arg)
 {
     ThreadArg * ptarg = (ThreadArg *)arg;
-    SrvPI srvPI;
+    SrvPI srvPI(DBFILENAME, ptarg->fd);
 
     while (1)
     {
-        srvPI.run(ptarg->fd);
+        srvPI.run();
     }
 
     return(NULL);
