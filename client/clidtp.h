@@ -11,7 +11,7 @@
 class CliDTP
 {
 public:
-	CliDTP(SockStream & connSockStream, Packet & packet, int connfd);
+	CliDTP(SockStream & connSockStream, Packet * ppacket, int connfd);
 	//void init(SockStream & connSockStream, Packet & packet);
 	void recvOnePacket();
 	void sendFile(const char *pathname, FILE *fp, uint32_t nslice);
@@ -19,7 +19,7 @@ public:
 	int getFileNslice(const char *pathname, uint32_t *pnslice_o );
 	
 private:
-	Packet packet;
+	Packet * ppacket;
 	SockStream connSockStream;
 	int connfd;
 

@@ -68,6 +68,9 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 		case PWD:
 			cmdPWD(cmdVector);
 			break;
+		case LPWD:
+			cmdLPWD(cmdVector);
+			break;
 		case MKDIR:
 			cmdMKDIR(cmdVector);
 			break;
@@ -183,17 +186,36 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
 		Error::msg("\033[31mIllegal Input\033[0m\nUsage: get [FILE]");
 		return;
 	}
-	printf("GET request\n");
-
 	char pathname[MAXLINE];
 	char buf[MAXLINE];
 	strcpy(pathname,cmdVector[1].c_str()); 
 	FILE *fp;
 	if ((access(pathname,F_OK)) == 0) {
-		snprintf(buf, MAXLINE, "File [%s] already exists", pathname);
-		Error::msg("%s", buf);
-		return;
-	} else if ( (fp = fopen(pathname, "wb")) == NULL) {
+		snprintf(buf, MAXLINE, "File [%s] already exists, overwrite (y/n) ? ", pathname);
+		//Error::msg("%s", buf);
+		string inputline, word;
+		vector<string> paramVector;
+		while (printf("%s", buf), getline(std::cin, inputline))
+    	{
+			paramVector.clear();
+		    std::istringstream is(inputline);
+		    while(is >> word)
+		        paramVector.push_back(word);
+
+		    // if user enter nothing, assume special anonymous user
+		    if (paramVector.size() == 1){
+		       if (paramVector[0] == "y"){
+		       		break;
+		       } else if (paramVector[0] == "n"){
+		       		return;
+		       }
+		    } else {
+		        continue;
+		    }
+		}
+	}
+
+	if ( (fp = fopen(pathname, "wb")) == NULL) {
 		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
@@ -203,7 +225,7 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
 	}
 
     // pathname exist on server? need test
-    CliDTP cliDTP(this->connSockStream, this->packet, this->connfd);
+    CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
     //cliDTP.init(connSockStream, packet);
 	cliDTP.recvFile(pathname, fp);
  
@@ -215,7 +237,6 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 		Error::msg("\033[31mIllegal Input\033[0m\nUsage: put [FILE]");
 		return;
 	}
-	printf("PUT request\n");
 
 	char pathname[MAXLINE];
 	char buf[MAXLINE];
@@ -242,7 +263,7 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 	}
 
 	// must contain sesssion id
-	CliDTP cliDTP(this->connSockStream, this->packet, this->connfd);
+	CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
 	cliDTP.sendFile(pathname, fp, nslice);
 }
 void CliPI::cmdLS(std::vector<string> & cmdVector)
@@ -400,6 +421,24 @@ void CliPI::cmdPWD(std::vector<string> & cmdVector)
 	} else {
 		Error::msg("unknown tagid %d", packet.getTagid());
 		return;
+	}
+}
+
+void CliPI::cmdLPWD(std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() != 1)
+	{
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: lpwd ");
+		return;
+	}
+	string shellCMD = "pwd";
+	for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it){
+       	//std::cout << *it << std::endl;
+       	shellCMD += " " + *it;
+	}
+	if (system(shellCMD.c_str()) == -1) {
+		char buf[MAXLINE];
+		std::cout << "system(): " << strerror_r(errno, buf, MAXLINE) << std::endl;
 	}
 }
 

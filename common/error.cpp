@@ -24,7 +24,8 @@ void Error::sys(const char *fmt, ...)
 	va_start(ap, fmt);
 	doit(1, LOG_ERR, fmt, ap);
 	va_end(ap);
-	exit(1);
+	//exit(1);
+	pthread_exit((void *)1);
 }
 
 /* Fatal error related to system call
@@ -61,7 +62,8 @@ void Error::quit(const char *fmt, ...)
 	va_start(ap, fmt);
 	doit(0, LOG_ERR, fmt, ap);
 	va_end(ap);
-	exit(1);
+	//exit(1);
+	pthread_exit((void *)1);
 }
 
 /* Fatal error unrelated to system call
@@ -73,7 +75,7 @@ void Error::quit_pthread(const char *fmt, ...)
 	va_start(ap, fmt);
 	doit(0, LOG_ERR, fmt, ap);
 	va_end(ap);
-	pthread_exit((void *)1); ;
+	pthread_exit((void *)1);
 }
 
 /* Print message and return to caller

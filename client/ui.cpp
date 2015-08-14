@@ -11,6 +11,7 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"CD",      CD},
                                                     {"RM",      RM},
                                                     {"PWD",     PWD},
+                                                    {"LPWD",    LPWD},
                                                     {"MKDIR",   MKDIR},
 
                                                     {"MGET",    MGET},

@@ -188,18 +188,27 @@ void SrvPI::cmdPASS()
    	}
 }
 
-void SrvPI::cmdGET()
+void SrvPI::cmdGET ()
 {
 	printf("GET request\n");
 
-	SrvDTP srvDTP(this->connSockStream, this->packet, this->connfd);
-	srvDTP.sendFile(packet.getSBody().c_str());
+	string msg_o;
+	if (!combineAndValidatePath(GET, packet.getSBody(), msg_o))
+   	{
+   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+		return;
+   	}
+
+	string path = userRootDir + userRCWD + "/" + packet.getSBody();
+	std::cout << "cmdGET path[" << path << "]" << '\n';
+	SrvDTP srvDTP(this->connSockStream, &(this->packet), this->connfd);
+	srvDTP.sendFile(path.c_str());
 }
 void SrvPI::cmdPUT()
 {
 	printf("PUT request\n");
 	
-	SrvDTP srvDTP(this->connSockStream, this->packet, this->connfd);
+	SrvDTP srvDTP(this->connSockStream,  &(this->packet), this->connfd);
 	srvDTP.recvFile(packet.getSBody().c_str());
 }
 void SrvPI::cmdLS()
@@ -213,7 +222,7 @@ void SrvPI::cmdLS()
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	}
-
+   	printf("LS request 1\n");
 	string tmpDir = userRootDir + userRCWD + "/" + packet.getSBody();
 	DIR * dir= opendir(tmpDir.c_str());
 	if(!dir)
@@ -226,7 +235,7 @@ void SrvPI::cmdLS()
 		// send STAT_OK
 		packet.sendSTAT_OK(connSockStream);
 	}
-
+	printf("LS request 2\n");
 	struct dirent* e;
 	int cnt = 0;
 	string sbody;
@@ -281,7 +290,7 @@ void SrvPI::cmdLS()
 		sbody += buf;
 		
 	}
-
+	printf("LS request 3\n");
 	packet.sendDATA(connSockStream, 0, 0, sbody.size(), sbody.c_str());
 	
 	packet.sendSTAT_EOT(connSockStream);
@@ -430,13 +439,16 @@ void SrvPI::cmdMKDIR()
 
 bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o)
 {
+	printf("combine 1\n");
 	string absCWD = userRootDir + userRCWD;
 
-	vector<string> absCWDVector; 
+	vector<string> absCWDVector;
+	printf("combine 11\n"); 
 	split(absCWD, "/", absCWDVector);
-
+	printf("combine 2\n");
 	vector<string> userVector; 
 	split(userinput, "/", userVector);
+	printf("combine 3\n");
 	for (vector<string>::iterator iter=userVector.begin(); iter!=userVector.end(); ++iter)
    	{
     	//std::cout << "userinput[" << *iter << "]" << '\n';
@@ -474,8 +486,26 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 	{
 		case GET:
 		{
-
-			break;
+			struct stat statBuf;
+	   		char buf[MAXLINE];
+		    int n = stat(newAbsDir.c_str(), &statBuf);
+		    if(!n) // stat call success
+			{	
+				if (S_ISREG(statBuf.st_mode)){
+					return true;
+			    } else if (S_ISDIR(statBuf.st_mode)){
+					msg_o = "get: cannot download '" + newAbsDir + "': Is a directory";
+					return false;
+			    } else {
+			    	msg_o = "get: '" + newAbsDir + "' not a regular file or directory";
+					return false;
+			    }
+				
+			} else { // stat error
+				msg_o = strerror_r(errno, buf, MAXLINE);
+				return false;
+			}
+			break;	
 		}
 		case PUT:
 		{
@@ -537,7 +567,7 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 					msg_o = "rm: cannot remove '" + newAbsDir + "': Is a directory";
 					return false;
 			    } else {
-			    	msg_o = "rm: '" + newAbsDir + "' not a file or directory";
+			    	msg_o = "rm: '" + newAbsDir + "' not a regular file or directory";
 					return false;
 			    }
 				

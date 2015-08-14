@@ -1,9 +1,9 @@
 #include    "srvdtp.h"
 
-SrvDTP::SrvDTP(SockStream & connSockStream, Packet & packet, int connfd)
+SrvDTP::SrvDTP(SockStream & connSockStream, Packet * ppacket, int connfd)
 { 
 	this->connSockStream = connSockStream;
-	this->packet = packet;
+	this->ppacket = ppacket;
 	this->connfd = connfd;
 }
 // void SrvDTP::init(SockStream & connSockStream, Packet & packet)
@@ -13,6 +13,7 @@ SrvDTP::SrvDTP(SockStream & connSockStream, Packet & packet, int connfd)
 // }
 void SrvDTP::recvOnePacket()
 {
+	Packet & packet = *(this->ppacket);
 	int n;
 	packet.reset(NPACKET);
 	if ( (n = connSockStream.Readn(packet.getPs(), PACKSIZE)) == 0)
@@ -28,6 +29,7 @@ void SrvDTP::recvOnePacket()
 }
 void SrvDTP::sendFile(const char *pathname)
 {
+	Packet & packet = *(this->ppacket);
 	int n;
 	uint32_t nslice =0, sindex = 0;
 	FILE* fp;	// Yo!
@@ -68,6 +70,7 @@ void SrvDTP::sendFile(const char *pathname)
 }
 void SrvDTP::recvFile(const char *pathname)
 {
+	Packet & packet = *(this->ppacket);
 	char buf[MAXLINE];
 	FILE* fp;	// Yo!
 	if ((access(pathname,F_OK)) == 0) {

@@ -1,9 +1,9 @@
 #include    "clidtp.h"
 
-CliDTP::CliDTP(SockStream & connSockStream, Packet & packet, int connfd)
+CliDTP::CliDTP(SockStream & connSockStream, Packet * ppacket, int connfd)
 { 
 	this->connSockStream = connSockStream;
-	this->packet = packet;
+	this->ppacket = ppacket;
 	this->connfd = connfd;
 }
 // void CliDTP::init(SockStream & connSockStream, Packet & packet)
@@ -14,6 +14,7 @@ CliDTP::CliDTP(SockStream & connSockStream, Packet & packet, int connfd)
 
 void CliDTP::recvOnePacket()
 {
+	Packet & packet = *(this->ppacket);
 	int n;
 	packet.reset(NPACKET);
 	if ( (n = connSockStream.Readn(packet.getPs(), PACKSIZE)) == 0)
@@ -30,6 +31,7 @@ void CliDTP::recvOnePacket()
 
 void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 {
+	Packet & packet = *(this->ppacket);
 	int n;
 	uint32_t sindex = 0;
 	// first PUT response
@@ -79,6 +81,7 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 }
 void CliDTP::recvFile(const char *pathname, FILE *fp)
 {
+	Packet & packet = *(this->ppacket);
 	// first receive response
 	recvOnePacket();
 	if (packet.getTagid() == TAG_STAT) {
@@ -130,7 +133,7 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 			//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.getBsize(), m);
 		} else if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT) {
 			fclose(fp);
-			cout << packet.getSBody() <<endl;
+			cout<< endl << packet.getSBody() << endl;
 			return;
 		} else {
 			Error::msg("CliDTP::recvFile: unknown tagid %hu with statid %hu", packet.getTagid(), packet.getStatid());

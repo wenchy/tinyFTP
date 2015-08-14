@@ -11,7 +11,7 @@
 class SrvDTP
 {
 public:
-	SrvDTP(SockStream & connSockStream, Packet & packet, int connfd);
+	SrvDTP(SockStream & connSockStream, Packet * ppacket, int connfd);
 	//void init(SockStream & connSockStream, Packet & packet);
 	void recvOnePacket();
 	void sendFile(const char *filename);
@@ -20,7 +20,7 @@ public:
 
 
 private:
-	Packet packet;
+	Packet * ppacket;
 	SockStream connSockStream;
 	int connfd;
 

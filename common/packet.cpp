@@ -209,8 +209,8 @@ void Packet::sendDATA(SockStream & connSockStream, uint32_t nslice, uint32_t sin
 	//this->print();
 	this->reset(HPACKET);
 	this->fillData(nslice, sindex, bsize, body);
-	printf("sendDATA:\n");
-	this->print();
+	//printf("sendDATA:\n");
+	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
 }

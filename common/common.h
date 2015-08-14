@@ -148,6 +148,7 @@ typedef enum cmdID
 	CD,
 	RM,
 	PWD,
+	LPWD,
 	MKDIR,
 	
 	MGET,

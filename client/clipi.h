@@ -49,6 +49,7 @@ public:
 	void cmdCD(std::vector<string> & cmdVector);
 	void cmdRM(std::vector<string> & cmdVector);
 	void cmdPWD(std::vector<string> & cmdVector);
+	void cmdLPWD(std::vector<string> & cmdVector);
 	void cmdMKDIR(std::vector<string> & cmdVector);
 
 	void sessionCmd();
