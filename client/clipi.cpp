@@ -1,5 +1,34 @@
 #include    "clipi.h"
 
+
+std::map<string, string> CliPI::helpMap = {	//{"USER",    "user 	username"},
+                                            //{"PASS",    "pass 	password"},
+
+                                            {"GET",     "get [file]"},
+                                            {"PUT",     "put [file]"},
+                                            {"LS",      "ls [dir]"},
+                                            {"LLS",     "lls same as local ls"},
+                                            {"CD",      "ls [dir]"},
+                                            {"LCD",     "lcd [dir]"},
+                                            {"RM",      "rm [file]"},
+                                            {"LRM",     "lrm same as local rm"},
+                                            {"PWD",     "pwd [-a]"},
+                                            {"LPWD",    "lpwd same as local pwd"},
+                                            {"MKDIR",   "pwd [dir]"},
+                                            {"LMKDIR",  "lmkdir same as local mkdir"},
+                                            {"QUIT",    "quit"},
+                                            {"HELP",    "help [cmd]"},
+
+                                            //{"MGET",    "mget [file]..."},
+                                            //{"MPUT",    "mput [file]..."},
+                                            //{"RGET",    "rget [dir]"},
+                                            //{"RPUT",    "rput [dir]"},
+                                            //{"RMD",     "rmd [dir]"},
+
+                                            //{"BINARY",  "binary"},
+                                            //{"ASCII",   "ascii"}  	
+                                        								};
+
 CliPI::CliPI(const char *host)
 {
     Socket cliSocket(CLI_SOCKET, host, CTRPORT);
@@ -86,6 +115,9 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 		case QUIT:
 			cmdQUIT(cmdVector);
 			break;
+		case HELP:
+			cmdHELP(cmdVector);
+			break;
 		default:
 			Error::msg("Client: Sorry! this command function not finished yet.\n");
 			break;
@@ -143,7 +175,7 @@ bool CliPI::cmdUSER(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 1)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: [username]");
+		Error::msg("Usage: [username]");
 		return false;
 	} else {
 		userpass2pack(0, USER, cmdVector);
@@ -173,7 +205,7 @@ bool CliPI::cmdPASS(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: [password]");
+		Error::msg("Usage: [password]");
 		for (vector<string>::iterator iter=cmdVector.begin(); iter!=cmdVector.end(); ++iter)
 	   	{
 	    	std::cout << *iter << '\n';
@@ -213,7 +245,7 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: get [FILE]");
+		std::cout << "Usage: " << helpMap["GET"] << std::endl;
 		return;
 	}
 	char pathname[MAXLINE];
@@ -266,7 +298,7 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: put [FILE]");
+		std::cout << "Usage: " << helpMap["PUT"] << std::endl;
 		return;
 	}
 
@@ -369,7 +401,7 @@ void CliPI::cmdLS(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() > 2)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: ls [DIR]");
+		std::cout << "Usage: " << helpMap["LS"] << std::endl;
 		return;
 	}
 	
@@ -424,7 +456,7 @@ void CliPI::cmdCD(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: cd [DIR]");
+		std::cout << "Usage: " << helpMap["CD"] << std::endl;
 		return;
 	}
 
@@ -456,7 +488,7 @@ void CliPI::cmdLCD(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: cd [DIR]");
+		std::cout << "Usage: " << helpMap["LCD"] << std::endl;
 		return;
 	}
 
@@ -474,7 +506,7 @@ void CliPI::cmdRM(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: rm [FILE|DIR]");
+		std::cout << "Usage: " << helpMap["RM"] << std::endl;
 		return;
 	}
 
@@ -519,11 +551,11 @@ void CliPI::cmdPWD(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() > 2)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: pwd [-a]");
+		std::cout << "Usage: " << helpMap["PWD"] << std::endl;
 		return;
 	} else if (cmdVector.size() == 2 && cmdVector[1] != "-a")
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: pwd [-a]");
+		std::cout << "Usage: " << helpMap["PWD"] << std::endl;
 		return;
 	}
 
@@ -567,7 +599,7 @@ void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: mkdir [DIR]");
+		std::cout << "Usage: " << helpMap["MKDIR"] << std::endl;
 		return;
 	}
 
@@ -612,13 +644,46 @@ void CliPI::cmdQUIT(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 1)
 	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: quit");
+		std::cout << "Usage: " << helpMap["QUIT"] << std::endl;
 		return;
 	}
 
 	Socket::tcpClose(connfd);
 
 	exit(1);
+}
+
+void CliPI::cmdHELP(std::vector<string> & cmdVector)
+{
+    if(cmdVector.size() == 1)
+	{
+		int i = 1;
+		std::cout << "commands:" << std::endl;
+		for (map<string ,string>::iterator iter=helpMap.begin(); iter!=helpMap.end(); ++iter, ++i)
+	    {
+	            std::cout << "\t" << iter->first;
+	            if (i % 5 == 0)
+	            {
+	            	std::cout << std::endl;
+	            }
+	    }
+
+	    if ((i -1) % 5 != 0){
+	    	std::cout << std::endl;
+	    }
+	    
+	} else if(cmdVector.size() == 2){
+		map<string, string>::iterator iter = helpMap.find(toUpper(cmdVector[1]));
+		if (iter != helpMap.end())
+		{
+			std::cout << "Usage: " << helpMap[toUpper(cmdVector[1])] << std::endl;
+		} else {
+	        std::cerr << cmdVector[1] << ": command not found"  << std::endl;
+		}
+	} else {
+		std::cout << "Usage: " << helpMap["HELP"] << std::endl;
+	}                                                                  
+	return;
 }
 
 int CliPI::getFileNslice(const char *pathname, uint32_t *pnslice_o)  
@@ -648,4 +713,20 @@ int CliPI::getFileNslice(const char *pathname, uint32_t *pnslice_o)
 	}
   	//printf("getFileNslice nslice: %d\n", *pnslice_o);
     return 1;  
+}
+
+string CliPI::toUpper(string &s)
+{
+	string upperStr;
+	for(string::size_type i=0; i < s.size(); i++)
+		upperStr += toupper(s[i]);
+	return upperStr;
+}
+
+string CliPI::toLower(string &s)
+{
+	string upperStr;
+	for(string::size_type i=0; i < s.size(); i++)
+		upperStr += tolower(s[i]);
+	return upperStr;
 }

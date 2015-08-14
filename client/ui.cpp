@@ -17,6 +17,7 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"MKDIR",   MKDIR},
                                                     {"LMKDIR",  LMKDIR},
                                                     {"QUIT",    QUIT},
+                                                    {"HELP",    HELP},
 
                                                     {"MGET",    MGET},
                                                     {"MPUT",    MPUT},
@@ -25,8 +26,7 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"RMD",     RMD},
 
                                                     {"BINARY",  BINARY},
-                                                    {"ASCII",   ASCII},
-                                                    {"QUIT",    QUIT}
+                                                    {"ASCII",   ASCII}
                                                                         };
 
 UI::UI(const char *host): cliPI(host)

@@ -154,6 +154,7 @@ typedef enum cmdID
 	MKDIR,
 	LMKDIR,
 	QUIT,
+	HELP,
 	
 	MGET,
 	MPUT,

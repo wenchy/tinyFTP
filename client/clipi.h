@@ -55,9 +55,12 @@ public:
 	void cmdMKDIR(std::vector<string> & cmdVector);
 	void cmdLMKDIR(std::vector<string> & cmdVector);
 	void cmdQUIT(std::vector<string> & cmdVector);
+	void cmdHELP(std::vector<string> & cmdVector);
 
 
-	int getFileNslice(const char *pathname, uint32_t *pnslice_o);  
+	int getFileNslice(const char *pathname, uint32_t *pnslice_o); 
+	string toUpper(string &s);
+	string toLower(string &s);
 
 
 private:
@@ -68,7 +71,7 @@ private:
 	// uint16_t cmdid;
 	// std::vector<string> cmdVector;
 	//CliDTP cliDTP;
-
+	static std::map<string, string> helpMap;
 
 };
 
