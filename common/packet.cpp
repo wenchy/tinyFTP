@@ -269,6 +269,7 @@ void Packet::sendSTAT_OK(SockStream & connSockStream, const char *msg)
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
 }
+
 void Packet::sendSTAT_OK(SockStream & connSockStream, string msg)
 {
 	// send OK
@@ -280,20 +281,46 @@ void Packet::sendSTAT_OK(SockStream & connSockStream, string msg)
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
 }
-void Packet::sendSTAT_OK(SockStream & connSockStream, uint32_t sesid, string msg)
+
+
+void Packet::sendSTAT_CFM(SockStream & connSockStream, char *msg)
 {
-	// send OK
+	// send CFM
 	this->reset(HPACKET);
 	char buf[MAXLINE];
-	snprintf(buf, MAXLINE, "\033[32m%s\033[0m", msg.c_str());
-	this->fillStat(STAT_OK, strlen(buf), buf);
+	snprintf(buf, MAXLINE, "%s", msg);
+	this->fillStat(STAT_CFM, strlen(buf), buf);
 	//this->print();
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
 }
+void Packet::sendSTAT_CFM(SockStream & connSockStream, const char *msg)
+{
+	// send CFM
+	this->reset(HPACKET);
+	char buf[MAXLINE];
+	snprintf(buf, MAXLINE, "%s", msg);
+	this->fillStat(STAT_CFM, strlen(buf), buf);
+	//this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+
+void Packet::sendSTAT_CFM(SockStream & connSockStream, string msg)
+{
+	// send CFM
+	this->reset(HPACKET);
+	char buf[MAXLINE];
+	snprintf(buf, MAXLINE, "%s", msg.c_str());
+	this->fillStat(STAT_CFM, strlen(buf), buf);
+	//this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+
 void Packet::sendSTAT_ERR(SockStream & connSockStream)
 {
-	// send EOT
+	// send ERR
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[31mError occurred\033[0m");
@@ -304,7 +331,7 @@ void Packet::sendSTAT_ERR(SockStream & connSockStream)
 }
 void Packet::sendSTAT_ERR(SockStream & connSockStream, char *msg)
 {
-	// send EOT
+	// send ERR
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", msg);
@@ -315,7 +342,7 @@ void Packet::sendSTAT_ERR(SockStream & connSockStream, char *msg)
 }
 void Packet::sendSTAT_ERR(SockStream & connSockStream, const char *msg)
 {
-	// send EOT
+	// send ERR
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", msg);
@@ -326,7 +353,7 @@ void Packet::sendSTAT_ERR(SockStream & connSockStream, const char *msg)
 }
 void Packet::sendSTAT_ERR(SockStream & connSockStream, string msg)
 {
-	// send EOT
+	// send ERR
 	this->reset(HPACKET);
 	char buf[MAXLINE];
 	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", msg.c_str());
@@ -346,6 +373,19 @@ void Packet::sendSTAT_EOT(SockStream & connSockStream)
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
 }
+
+void Packet::sendSTAT_EOT(SockStream & connSockStream, string msg)
+{
+	// send ERR
+	this->reset(HPACKET);
+	char buf[MAXLINE];
+	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", msg.c_str());
+	this->fillStat(STAT_EOT, strlen(buf), buf);
+	//this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+
 PacketStruct * Packet::getPs()
 { 
 	return ps;

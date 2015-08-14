@@ -37,7 +37,10 @@ public:
 	void sendSTAT_OK(SockStream & connSockStream, char *msg);
 	void sendSTAT_OK(SockStream & connSockStream, const char *msg);
 	void sendSTAT_OK(SockStream & connSockStream, string msg);
-	void sendSTAT_OK(SockStream & connSockStream, uint32_t sesid, string msg);
+
+	void sendSTAT_CFM(SockStream & connSockStream, char *msg);
+	void sendSTAT_CFM(SockStream & connSockStream, const char *msg);
+	void sendSTAT_CFM(SockStream & connSockStream, string msg);
 
 	void sendSTAT_ERR(SockStream & connSockStream);
 	void sendSTAT_ERR(SockStream & connSockStream, char *msg);
@@ -45,6 +48,8 @@ public:
 	void sendSTAT_ERR(SockStream & connSockStream, string msg);
 
 	void sendSTAT_EOT(SockStream & connSockStream);
+	void sendSTAT_EOT(SockStream & connSockStream, string msg);
+
 	PacketStruct * getPs();
 	uint32_t getSesid();
 	uint16_t getTagid();

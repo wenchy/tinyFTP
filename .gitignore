@@ -19,7 +19,7 @@
 # Shared objects (inc. Windows DLLs)
 *.dll
 # *.so
-$ *.so.*
+# *.so.*
 *.dylib
 
 # Executables
@@ -35,3 +35,5 @@ $ *.so.*
 
 # Other files
 .depend
+*.db
+test

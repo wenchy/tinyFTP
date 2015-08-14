@@ -144,12 +144,15 @@ typedef enum cmdID
 	GET,
 	PUT,
 	LS,
-	LLS,
+	LLS, // local ls
 	CD,
+	LCD,
 	RM,
+	LRM,
 	PWD,
 	LPWD,
 	MKDIR,
+	LMKDIR,
 	
 	MGET,
 	MPUT,
@@ -165,10 +168,11 @@ typedef enum cmdID
 typedef enum statID
 {
 	STAT_OK = 1,
-	STAT_ERR,
-	STAT_TERM,
-	STAT_DONE,
-	STAT_EOT
+	STAT_CFM, 	// confirm
+	STAT_ERR, 	// error
+	STAT_TERM,	// terminate
+	STAT_DONE,	// done
+	STAT_EOT	// end of transfer
 } StatID;
 
 /*********************************************************

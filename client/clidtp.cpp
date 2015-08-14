@@ -34,34 +34,13 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 	Packet & packet = *(this->ppacket);
 	int n;
 	uint32_t sindex = 0;
-	// first PUT response
-	recvOnePacket();
-	if (packet.getTagid() == TAG_STAT) {
-		if (packet.getStatid() == STAT_OK) {
-			cout << packet.getSBody() <<endl;
-		} else if (packet.getStatid() == STAT_ERR) {
-			cerr << packet.getSBody() <<endl;
-			return;
-		} else {
-			
-			Error::msg("CliDTP::sendFile: unknown statid %d", packet.getStatid());
-			packet.print();
-			return;
-		}
-		
-	} else {
-		Error::msg("CliDTP::sendFile: unknown tagid %d", packet.getTagid());
-		packet.print();
-		return;
-	}
-
 
 	char body[PBODYCAP];
 	int oldProgress = 0, newProgress = 0;
 	if(nslice == 0)
 	{
-		Error::msg("nslice is zero, can not divide\n");
-		return;
+		printf("\033[32mEOT: 0 bytes\033[0m");
+		packet.sendSTAT_EOT(connSockStream);
 	}
 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 	{
@@ -143,26 +122,31 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 	}
 }
 
-int CliDTP::getFileNslice(const char *pathname,uint32_t *pnslice_o)  
-{  
+// int CliDTP::getFileNslice(const char *pathname,uint32_t *pnslice_o)  
+// {  
  
-    unsigned long filesize = 0, n = MAXNSLICE;
+//     unsigned long filesize = 0, n = MAXNSLICE;
 
-    struct stat statbuff;  
-    if(stat(pathname, &statbuff) < 0){  
-        return -1;  // error
-    } else {  
-        filesize = statbuff.st_size;  
-    }  
-    if (filesize % SLICECAP == 0)
-	{
-		 *pnslice_o = filesize/SLICECAP; 
-	} else if ( (n = filesize/SLICECAP + 1) > MAXNSLICE ){
-		Error::msg("too large file size: %d\n (MAX: %d)", n, MAXNSLICE);
-		return -2; 
-	} else {
-		 *pnslice_o = filesize/SLICECAP + 1; 
-	}
+//     struct stat statbuff;  
+//     if(stat(pathname, &statbuff) < 0){  
+//         return -1;  // error
+//     } else {  
+//         if (statbuff.st_size == 0)
+// 		{
+// 			return 0; // file is empty.
+// 		} else {
+// 			filesize = statbuff.st_size;  
+// 		}  
+//     }  
+//     if (filesize % SLICECAP == 0)
+// 	{
+// 		 *pnslice_o = filesize/SLICECAP; 
+// 	} else if ( (n = filesize/SLICECAP + 1) > MAXNSLICE ){
+// 		Error::msg("too large file size: %d\n (MAX: %d)", n, MAXNSLICE);
+// 		return -2; 
+// 	} else {
+// 		 *pnslice_o = filesize/SLICECAP + 1; 
+// 	}
   
-    return 1;  
-}
+//     return 1;  
+// }

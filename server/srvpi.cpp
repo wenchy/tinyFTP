@@ -200,16 +200,39 @@ void SrvPI::cmdGET ()
    	}
 
 	string path = userRootDir + userRCWD + "/" + packet.getSBody();
-	std::cout << "cmdGET path[" << path << "]" << '\n';
+	//std::cout << "cmdGET path[" << path << "]" << '\n';
 	SrvDTP srvDTP(this->connSockStream, &(this->packet), this->connfd);
 	srvDTP.sendFile(path.c_str());
 }
 void SrvPI::cmdPUT()
 {
 	printf("PUT request\n");
-	
-	SrvDTP srvDTP(this->connSockStream,  &(this->packet), this->connfd);
-	srvDTP.recvFile(packet.getSBody().c_str());
+	string path = userRootDir + userRCWD + "/" + packet.getSBody();
+	//std::cout << "cmdPUT path[" << path << "]" << '\n';
+	string msg_o;
+	if (!combineAndValidatePath(PUT, packet.getSBody(), msg_o))
+   	{
+   		packet.sendSTAT_CFM(connSockStream, msg_o.c_str());
+   		recvOnePacket();
+   		if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CFM) {
+   			packet.print();
+			if (packet.getSBody() == "y")
+			{
+				std::cout << "packet.getSBody() == y" << '\n';
+				SrvDTP srvDTP(this->connSockStream,  &(this->packet), this->connfd);
+				srvDTP.recvFile(path.c_str());
+				return;
+			} else {
+				return;
+			}
+		} else {
+			Error::msg("STAT_CFM: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
+			return;
+		}
+   	} else {
+		SrvDTP srvDTP(this->connSockStream,  &(this->packet), this->connfd);
+		srvDTP.recvFile(path.c_str());
+   	}
 }
 void SrvPI::cmdLS()
 {
@@ -222,7 +245,6 @@ void SrvPI::cmdLS()
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	}
-   	printf("LS request 1\n");
 	string tmpDir = userRootDir + userRCWD + "/" + packet.getSBody();
 	DIR * dir= opendir(tmpDir.c_str());
 	if(!dir)
@@ -235,7 +257,6 @@ void SrvPI::cmdLS()
 		// send STAT_OK
 		packet.sendSTAT_OK(connSockStream);
 	}
-	printf("LS request 2\n");
 	struct dirent* e;
 	int cnt = 0;
 	string sbody;
@@ -395,7 +416,7 @@ void SrvPI::cmdPWD()
 		}
 		
 	} else {
-		packet.sendSTAT_OK(connSockStream, userRCWD.c_str());
+		packet.sendSTAT_OK(connSockStream, ("~" + userRCWD).c_str());
 	}
 	
 
@@ -439,16 +460,12 @@ void SrvPI::cmdMKDIR()
 
 bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o)
 {
-	printf("combine 1\n");
 	string absCWD = userRootDir + userRCWD;
 
 	vector<string> absCWDVector;
-	printf("combine 11\n"); 
 	split(absCWD, "/", absCWDVector);
-	printf("combine 2\n");
 	vector<string> userVector; 
 	split(userinput, "/", userVector);
-	printf("combine 3\n");
 	for (vector<string>::iterator iter=userVector.begin(); iter!=userVector.end(); ++iter)
    	{
     	//std::cout << "userinput[" << *iter << "]" << '\n';
@@ -494,10 +511,10 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 				if (S_ISREG(statBuf.st_mode)){
 					return true;
 			    } else if (S_ISDIR(statBuf.st_mode)){
-					msg_o = "get: cannot download '" + newAbsDir + "': Is a directory";
+					msg_o = "get: cannot download [" + newAbsDir + "]: Is a directory";
 					return false;
 			    } else {
-			    	msg_o = "get: '" + newAbsDir + "' not a regular file or directory";
+			    	msg_o = "get: [" + newAbsDir + "] not a regular file or directory";
 					return false;
 			    }
 				
@@ -509,7 +526,13 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 		}
 		case PUT:
 		{
-
+			if ((access(newAbsDir.c_str(), F_OK)) == 0) {
+				// send STAT_ERR Response
+				msg_o = "File [" + newAbsDir + "] already exists, overwrite (y/n) ? ";
+				return false;
+			} else {
+				return true;
+			}
 			break;
 		}
 		case LS:

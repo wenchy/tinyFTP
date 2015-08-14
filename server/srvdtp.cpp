@@ -41,14 +41,18 @@ void SrvDTP::sendFile(const char *pathname)
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
 		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
 		return;
-	} else if ( (n = getFileNslice(pathname, &nslice)) < 0)  {
-		// send ERR Response
-		if ( n == -2) {
+	} else if ( (n = getFileNslice(pathname, &nslice)) <= 0)  {
+		if ( n == 0) {
+			printf("EOT[%s]\n", pathname);
+			fclose(fp);
+			packet.sendSTAT_EOT(connSockStream, "EOT: 0 bytes");
+		} else if ( n == -2) {
 			snprintf(buf, MAXLINE, "Too large file size");
+			packet.sendSTAT_ERR(connSockStream, buf);
 		} else {
 			snprintf(buf, MAXLINE, "File stat error");
+			packet.sendSTAT_ERR(connSockStream, buf);
 		}
-		packet.sendSTAT_ERR(connSockStream, buf);
 		return;
 	} else {
 		// send STAT_OK
@@ -73,12 +77,7 @@ void SrvDTP::recvFile(const char *pathname)
 	Packet & packet = *(this->ppacket);
 	char buf[MAXLINE];
 	FILE* fp;	// Yo!
-	if ((access(pathname,F_OK)) == 0) {
-		// send STAT_ERR Response
-		snprintf(buf, MAXLINE, "File [%s] already exists", pathname);
-		packet.sendSTAT_ERR(connSockStream, buf);
-		return;
-	} else if ( (fp = fopen(pathname, "wb")) == NULL) {
+	if ( (fp = fopen(pathname, "wb")) == NULL) {
 		// send STAT_ERR Response
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
 		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
@@ -94,8 +93,6 @@ void SrvDTP::recvFile(const char *pathname)
 	while (1)
 	{
 		recvOnePacket();
-		packet.ntohp();
-		//packet.print();
 		if(packet.getTagid() == TAG_DATA) {
 			m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), fp);
 			if (m != packet.getBsize())
@@ -123,8 +120,13 @@ int SrvDTP::getFileNslice(const char *pathname,uint32_t *pnslice_o)
     struct stat statbuff;  
     if(stat(pathname, &statbuff) < 0){  
         return -1;  // error
-    } else {  
-        filesize = statbuff.st_size;  
+    } else {
+	    if (statbuff.st_size == 0)
+		{
+			return 0; // file is empty.
+		} else {
+			filesize = statbuff.st_size;  
+		} 
     }  
     if (filesize % SLICECAP == 0)
 	{

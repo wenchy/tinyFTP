@@ -62,8 +62,14 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 		case CD:
 			cmdCD(cmdVector);
 			break;
+		case LCD:
+			cmdLCD(cmdVector);
+			break;
 		case RM:
 			cmdRM(cmdVector);
+			break;
+		case LRM:
+			cmdLRM(cmdVector);
 			break;	
 		case PWD:
 			cmdPWD(cmdVector);
@@ -73,6 +79,9 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 			break;
 		case MKDIR:
 			cmdMKDIR(cmdVector);
+			break;
+		case LMKDIR:
+			cmdLMKDIR(cmdVector);
 			break;
 		default:
 			Error::msg("Client: Sorry! this command function not finished yet.\n");
@@ -208,6 +217,8 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
 		       		break;
 		       } else if (paramVector[0] == "n"){
 		       		return;
+		       } else {
+		       		continue;
 		       }
 		    } else {
 		        continue;
@@ -240,9 +251,29 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 
 	char pathname[MAXLINE];
 	char buf[MAXLINE];
-	uint32_t nslice;
-	int n;
+	uint32_t nslice = 0;
+
 	strcpy(pathname,cmdVector[1].c_str()); 
+	struct stat statBuf;
+    int n = stat(cmdVector[1].c_str(), &statBuf);
+    if(!n) // stat call success
+	{	
+		if (S_ISREG(statBuf.st_mode)){
+			;
+	    } else if (S_ISDIR(statBuf.st_mode)){
+			cout << "put: cannot upload [" << cmdVector[1] << "]: Is a directory" << endl;
+			return;
+	    } else {
+	    	cout << "put: [" << cmdVector[1] << "] not a regular file or directory" << endl;
+			return;
+	    }
+		
+	} else { // stat error
+		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
+		return;
+	}
+
+	
 	FILE *fp;
 	if ( (fp = fopen(pathname, "rb")) == NULL)
 	{
@@ -251,20 +282,67 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 	} else if ( (n = getFileNslice(pathname, &nslice)) < 0)  {
 		if ( n == -2) {
 			Error::msg("Too large file size.", buf);
-			return;
 		} else {
 			Error::msg("File stat error.");
-			return;
 		}
+		return;
 	} else {
 		// command to packet
 		cmd2pack(0, PUT, cmdVector);
 	    connSockStream.Writen(packet.getPs(), PACKSIZE);
 	}
 
-	// must contain sesssion id
-	CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
-	cliDTP.sendFile(pathname, fp, nslice);
+	while (1)
+	{
+		recvOnePacket();
+		if (packet.getTagid() == TAG_STAT) {
+			if (packet.getStatid() == STAT_OK) {
+				cout << packet.getSBody() <<endl;
+				// must contain sesssion id
+				CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
+				cliDTP.sendFile(pathname, fp, nslice);
+				break;
+			} else if (packet.getStatid() == STAT_CFM) {
+				string inputline, word;
+				vector<string> paramVector;
+				while (printf("%s", packet.getSBody().c_str()), getline(std::cin, inputline))
+		    	{
+					paramVector.clear();
+				    std::istringstream is(inputline);
+				    while(is >> word)
+				        paramVector.push_back(word);
+
+				    // if user enter nothing, assume special anonymous user
+				    if (paramVector.size() == 1){
+				       if (paramVector[0] == "y"){
+				       		packet.sendSTAT_CFM(connSockStream, "y");
+				       		break;
+				       } else if (paramVector[0] == "n"){
+				       		packet.sendSTAT_CFM(connSockStream, "n");
+				       		return;
+				       } else {
+				       		continue;
+				       }
+				    } else {
+				        continue;
+				    }
+				}
+			} else if (packet.getStatid() == STAT_ERR) {
+				cerr << packet.getSBody() <<endl;
+				return;
+			} else {
+				Error::msg("CliDTP::sendFile: unknown statid %d", packet.getStatid());
+				packet.print();
+				return;
+			}
+			
+		} else {
+			Error::msg("CliDTP::sendFile: unknown tagid %d", packet.getTagid());
+			packet.print();
+			return;
+		}
+	}
+	
 }
 void CliPI::cmdLS(std::vector<string> & cmdVector)
 {
@@ -310,11 +388,6 @@ void CliPI::cmdLS(std::vector<string> & cmdVector)
 
 void CliPI::cmdLLS(std::vector<string> & cmdVector)
 {
-	if(cmdVector.size() > 2)
-	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: lls [DIR]");
-		return;
-	}
 	string shellCMD = "ls --color=auto";
 	for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it){
        	//std::cout << *it << std::endl;
@@ -357,6 +430,25 @@ void CliPI::cmdCD(std::vector<string> & cmdVector)
 	}
  
 }
+
+void CliPI::cmdLCD(std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() != 2)
+	{
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: cd [DIR]");
+		return;
+	}
+
+	int n;
+	char buf[MAXLINE];
+	if( (n = chdir(cmdVector[1].c_str())) == -1)
+	{
+		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+		Error::msg("lcd: %s\n", strerror_r(errno, buf, MAXLINE));
+		return;
+	}
+}
+
 void CliPI::cmdRM(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
@@ -387,6 +479,19 @@ void CliPI::cmdRM(std::vector<string> & cmdVector)
 		return;
 	}
 	
+}
+
+void CliPI::cmdLRM(std::vector<string> & cmdVector)
+{
+	string shellCMD = "rm";
+	for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it){
+       	//std::cout << *it << std::endl;
+       	shellCMD += " " + *it;
+	}
+	if (system(shellCMD.c_str()) == -1) {
+		char buf[MAXLINE];
+		std::cout << "system(): " << strerror_r(errno, buf, MAXLINE) << std::endl;
+	}
 }
 
 void CliPI::cmdPWD(std::vector<string> & cmdVector)
@@ -426,11 +531,6 @@ void CliPI::cmdPWD(std::vector<string> & cmdVector)
 
 void CliPI::cmdLPWD(std::vector<string> & cmdVector)
 {
-	if(cmdVector.size() != 1)
-	{
-		Error::msg("\033[31mIllegal Input\033[0m\nUsage: lpwd ");
-		return;
-	}
 	string shellCMD = "pwd";
 	for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it){
        	//std::cout << *it << std::endl;
@@ -473,9 +573,18 @@ void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
 	}
 }
 
-void CliPI::sessionCmd()
-{
 
+void CliPI::cmdLMKDIR(std::vector<string> & cmdVector)
+{
+	string shellCMD = "mkdir";
+	for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it){
+       	//std::cout << *it << std::endl;
+       	shellCMD += " " + *it;
+	}
+	if (system(shellCMD.c_str()) == -1) {
+		char buf[MAXLINE];
+		std::cout << "system(): " << strerror_r(errno, buf, MAXLINE) << std::endl;
+	}
 }
 
 int CliPI::getFileNslice(const char *pathname, uint32_t *pnslice_o)  
@@ -487,7 +596,12 @@ int CliPI::getFileNslice(const char *pathname, uint32_t *pnslice_o)
     if(stat(pathname, &statbuff) < 0){  
         return -1;  // error
     } else {  
-        filesize = statbuff.st_size;  
+        if (statbuff.st_size == 0)
+		{
+			return 0; // file is empty.
+		} else {
+			filesize = statbuff.st_size;  
+		}  
     }  
     if (filesize % SLICECAP == 0)
 	{
