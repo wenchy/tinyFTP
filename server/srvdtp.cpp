@@ -60,16 +60,15 @@ void SrvDTP::sendFile(const char *pathname)
 	}
 
 	char body[PBODYCAP];
-	printf("Send file [%s] now\n", pathname);
+	printf("Send [%s] now\n", pathname);
 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 	{
 		packet.sendDATA(connSockStream, nslice, ++sindex, n, body);
 	}
 
 	fclose(fp);
-
 	// send EOT
-	printf("EOT[%s]\n", pathname);
+	printf("EOT [%s]\n", pathname);
 	packet.sendSTAT_EOT(connSockStream);
 }
 void SrvDTP::recvFile(const char *pathname)

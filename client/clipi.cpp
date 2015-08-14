@@ -8,7 +8,7 @@ std::map<string, string> CliPI::helpMap = {	//{"USER",    "user 	username"},
                                             {"PUT",     "put [file]"},
                                             {"LS",      "ls [dir]"},
                                             {"LLS",     "lls same as local ls"},
-                                            {"CD",      "ls [dir]"},
+                                            {"CD",      "cd [dir]"},
                                             {"LCD",     "lcd [dir]"},
                                             {"RM",      "rm [file]"},
                                             {"LRM",     "lrm same as local rm"},
@@ -131,16 +131,21 @@ void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVe
 	uint32_t nslice = 0;
 	uint32_t sindex = 0;
 	uint16_t statid = 0;
-	uint16_t bsize = 0;
-	char body[PBODYCAP];
-	if(cmdVector.size() > 1)
+	//uint16_t bsize = 0;
+
+	string params;
+	if (cmdVector.size() > 1)
 	{
-		strcpy(body,cmdVector[1].c_str());
-		bsize = strlen(body); 
+		vector<string>::iterator iter=cmdVector.begin() + 1;
+		params += *iter;
+		for (++iter; iter!=cmdVector.end(); ++iter)
+	   	{
+	   		params += DELIMITER + *iter;
+	   	}
 	}
 
 	// Error::msg("body: %s\n", body);
-	packet.fill(TAG_CMD, cmdid, statid, nslice, sindex, bsize, body);
+	packet.fill(TAG_CMD, cmdid, statid, nslice, sindex, params.size(), params.c_str());
 	//packet.print();
 	packet.htonp(); 
 }
@@ -152,21 +157,18 @@ void CliPI::userpass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & 
 	uint32_t nslice = 0;
 	uint32_t sindex = 0;
 	uint16_t statid = 0;
-	uint16_t bsize = 0;
-	char body[PBODYCAP];
+	//uint16_t bsize = 0;
+
 	string params;
 	vector<string>::iterator iter=cmdVector.begin();
 	params += *iter;
 	for (++iter; iter!=cmdVector.end(); ++iter)
    	{
-   		params += "\t" + *iter;
+   		params += DELIMITER + *iter;
    	}
-   	//cout << params << endl;
-   	strcpy(body, params.c_str());
-	bsize = strlen(body); 
 
 	// Error::msg("body: %s\n", body);
-	packet.fill(TAG_CMD, cmdid, statid, nslice, sindex, bsize, body);
+	packet.fill(TAG_CMD, cmdid, statid, nslice, sindex, params.size(), params.c_str());
 	//packet.print();
 	packet.htonp(); 
 }

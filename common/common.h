@@ -45,6 +45,8 @@ using namespace std;
 #define ROOTDIR			"/home/"
 #define ROOTDIR_LEN		strlen(ROOTDIR)
 
+#define DELIMITER		"\x1F" // UD(unit separator)
+
 // MACRO constants
 #define	LISTENQ		1024		// 2nd argument(backlog) to listen()
 
