@@ -37,7 +37,7 @@ public:
 	void recvOnePacket();
 	void run(uint16_t cmdid, std::vector<string> & cmdVector);
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
-	void pass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
+	void userpass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
 	
 	bool cmdUSER(std::vector<string> & cmdVector);
 	bool cmdPASS(std::vector<string> & cmdVector);
@@ -54,6 +54,7 @@ public:
 	void cmdLPWD(std::vector<string> & cmdVector);
 	void cmdMKDIR(std::vector<string> & cmdVector);
 	void cmdLMKDIR(std::vector<string> & cmdVector);
+	void cmdQUIT(std::vector<string> & cmdVector);
 
 
 	int getFileNslice(const char *pathname, uint32_t *pnslice_o);  

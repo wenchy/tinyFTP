@@ -103,10 +103,6 @@ void SrvPI::cmd2pack(uint32_t sesid, uint16_t cmdid, string str)
 	//packet.init(sesid, cmdid, bsize, body);
 }
 
-void SrvPI::cmdUSER()
-{
-	printf("USER request\n");
-}
 void SrvPI::split(std::string src, std::string token, vector<string>& vect)   
 {    
     int nbegin=0;
@@ -145,6 +141,29 @@ void SrvPI::split(std::string src, std::string token, vector<string>& vect)
 //     }   
 //     free(pBuf);   
 // }
+
+void SrvPI::cmdUSER()
+{
+	printf("USER request\n");
+
+	vector<string> paramVector; 
+	split(packet.getSBody(), "\t", paramVector);
+	std::map<string, string> selectParamMap = {  {"username", paramVector[0]} };
+   	if (db.select("user", selectParamMap))
+   	{
+   		vector< map<string ,string> > resultMapVector = db.getResult();
+   		if (!resultMapVector.empty())
+   		{
+			packet.sendSTAT_OK(connSockStream, "this username exists");
+   		} else {
+			packet.sendSTAT_ERR(connSockStream, "no such username");
+   		}
+
+   	}else {
+		packet.sendSTAT_ERR(connSockStream, "Database select error");
+   	}
+}
+
 void SrvPI::cmdPASS()
 {
 	printf("PASS request\n");
@@ -179,7 +198,8 @@ void SrvPI::cmdPASS()
 			// set session ID: important
 			packet.setSessionID(std::stoul(userID));
 			packet.print();
-			packet.sendSTAT_OK(connSockStream, "Welcome! " + resultMapVector[0]["USERNAME"] + ", your last working dir: " + userRCWD);
+			packet.sendSTAT_OK(connSockStream, 	"Welcome to tinyFTP, written by Charles Wenchy <wenchy.zwz@gmail.com>\n" \
+											   	+ resultMapVector[0]["USERNAME"] + ", your last working directory is: ~" + userRCWD);
    		} else {
 			packet.sendSTAT_ERR(connSockStream, "error: username mismatch password");
    		}

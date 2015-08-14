@@ -83,6 +83,9 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 		case LMKDIR:
 			cmdLMKDIR(cmdVector);
 			break;
+		case QUIT:
+			cmdQUIT(cmdVector);
+			break;
 		default:
 			Error::msg("Client: Sorry! this command function not finished yet.\n");
 			break;
@@ -110,7 +113,7 @@ void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVe
 	packet.htonp(); 
 }
 
-void CliPI::pass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::userpass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	packet.reset(HPACKET);
 
@@ -143,7 +146,25 @@ bool CliPI::cmdUSER(std::vector<string> & cmdVector)
 		Error::msg("\033[31mIllegal Input\033[0m\nUsage: [username]");
 		return false;
 	} else {
-		return true;
+		userpass2pack(0, USER, cmdVector);
+		connSockStream.Writen(packet.getPs(), PACKSIZE);
+		// first receive response
+		recvOnePacket();
+		if (packet.getTagid() == TAG_STAT) {
+			if (packet.getStatid() == STAT_OK) {
+				return true;
+			} else if (packet.getStatid() == STAT_ERR){
+				cerr<< packet.getSBody() << endl;
+				return false;
+			} else {
+				Error::msg("CliPI::cmdUSER: unknown statid %d", packet.getStatid());
+				return false;
+			}
+			
+		} else {
+			Error::msg("CliPI::cmdUSER: unknown tagid %d", packet.getTagid());
+			return false;
+		}
 	}
  
 }
@@ -160,7 +181,7 @@ bool CliPI::cmdPASS(std::vector<string> & cmdVector)
 		return false;
 	}
 
-	pass2pack(0, PASS, cmdVector);
+	userpass2pack(0, PASS, cmdVector);
 	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
 	// first receive response
@@ -585,6 +606,19 @@ void CliPI::cmdLMKDIR(std::vector<string> & cmdVector)
 		char buf[MAXLINE];
 		std::cout << "system(): " << strerror_r(errno, buf, MAXLINE) << std::endl;
 	}
+}
+
+void CliPI::cmdQUIT(std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() != 1)
+	{
+		Error::msg("\033[31mIllegal Input\033[0m\nUsage: quit");
+		return;
+	}
+
+	Socket::tcpClose(connfd);
+
+	exit(1);
 }
 
 int CliPI::getFileNslice(const char *pathname, uint32_t *pnslice_o)  

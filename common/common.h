@@ -153,6 +153,7 @@ typedef enum cmdID
 	LPWD,
 	MKDIR,
 	LMKDIR,
+	QUIT,
 	
 	MGET,
 	MPUT,
@@ -161,8 +162,7 @@ typedef enum cmdID
 	RMD,
 
 	BINARY,
-	ASCII,
-	QUIT
+	ASCII
 } CmdID;
 
 typedef enum statID

@@ -16,6 +16,7 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"LPWD",    LPWD},
                                                     {"MKDIR",   MKDIR},
                                                     {"LMKDIR",  LMKDIR},
+                                                    {"QUIT",    QUIT},
 
                                                     {"MGET",    MGET},
                                                     {"MPUT",    MPUT},
