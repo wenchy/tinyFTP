@@ -207,7 +207,7 @@ void SrvPI::cmdPASS()
    	}
 }
 
-void SrvPI::cmdGET ()
+void SrvPI::cmdGET()
 {
 	printf("GET request\n");
 	vector<string> paramVector; 
@@ -224,7 +224,29 @@ void SrvPI::cmdGET ()
 	//std::cout << "cmdGET path[" << path << "]" << '\n';
 	SrvDTP srvDTP(this->connSockStream, &(this->packet), this->connfd);
 	srvDTP.sendFile(path.c_str());
+
+	packet.sendSTAT_EOT(connSockStream);
 }
+
+void SrvPI::cmdRGET()
+{
+	printf("RGET request\n");
+	vector<string> paramVector; 
+	split(packet.getSBody(), DELIMITER, paramVector);
+
+	string msg_o;
+	if (!combineAndValidatePath(GET, paramVector[0], msg_o))
+   	{
+   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+		return;
+   	}
+
+	string path = userRootDir + userRCWD + "/" + paramVector[0];
+	//std::cout << "cmdGET path[" << path << "]" << '\n';
+	SrvDTP srvDTP(this->connSockStream, &(this->packet), this->connfd);
+	srvDTP.sendFile(path.c_str());
+}
+
 void SrvPI::cmdPUT()
 {
 	printf("PUT request\n");
@@ -358,7 +380,7 @@ void SrvPI::cmdCD()
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	} else {
-		packet.sendSTAT_OK(connSockStream, "current working directory: " + userRCWD);
+		packet.sendSTAT_OK(connSockStream, "current working directory: ~" + userRCWD);
 		return;
    	}
 	// if( (n = chdir(newAbsDir.c_str())) == -1)

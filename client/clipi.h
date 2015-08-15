@@ -43,6 +43,7 @@ public:
 	bool cmdPASS(std::vector<string> & cmdVector);
 
 	void cmdGET(std::vector<string> & cmdVector);
+	void cmdRGET(std::vector<string> & cmdVector);
 	void cmdPUT(std::vector<string> & cmdVector);
 	void cmdLS(std::vector<string> & cmdVector);
 	void cmdLLS(std::vector<string> & cmdVector);
@@ -57,10 +58,16 @@ public:
 	void cmdQUIT(std::vector<string> & cmdVector);
 	void cmdHELP(std::vector<string> & cmdVector);
 
-
+private:
 	int getFileNslice(const char *pathname, uint32_t *pnslice_o); 
 	string toUpper(string &s);
 	string toLower(string &s);
+	bool confirmYN(const char * prompt);
+	void rmdirDFS();
+	void removeDir(const char *path_raw, bool removeSelf);
+
+	void cmdMKDIR(const char * path);
+
 
 
 private:

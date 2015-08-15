@@ -174,9 +174,17 @@ typedef enum statID
 	STAT_CFM, 	// confirm
 	STAT_ERR, 	// error
 	STAT_TERM,	// terminate
-	STAT_DONE,	// done
+	//STAT_DONE,	// trasaction done
+	STAT_EOF,	// end of file
 	STAT_EOT	// end of transfer
 } StatID;
+
+// typedef enum dataID
+// {
+// 	DATA_FILE = 1,
+// 	DATA_LIST,
+// 	DATA_NAME
+// } DataID;
 
 /*********************************************************
  ******************* functions ***************************

@@ -19,11 +19,11 @@ std::map<string, string> CliPI::helpMap = {	//{"USER",    "user 	username"},
                                             {"QUIT",    "quit"},
                                             {"HELP",    "help [cmd]"},
 
-                                            //{"MGET",    "mget [file]..."},
-                                            //{"MPUT",    "mput [file]..."},
-                                            //{"RGET",    "rget [dir]"},
-                                            //{"RPUT",    "rput [dir]"},
-                                            //{"RMD",     "rmd [dir]"},
+                                            {"MGET",    "mget [file]..."},
+                                            {"MPUT",    "mput [file]..."},
+                                            {"RGET",    "rget [dir]"},
+                                            {"RPUT",    "rput [dir]"},
+                                            {"RMD",     "rmd [dir]"},
 
                                             //{"BINARY",  "binary"},
                                             //{"ASCII",   "ascii"}  	
@@ -78,6 +78,9 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 			break;
 		case GET:
 			cmdGET(cmdVector);
+			break;
+		case RGET:
+			cmdRGET(cmdVector);
 			break;
 		case PUT:
 			cmdPUT(cmdVector);
@@ -256,28 +259,9 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
 	FILE *fp;
 	if ((access(pathname,F_OK)) == 0) {
 		snprintf(buf, MAXLINE, "File [%s] already exists, overwrite (y/n) ? ", pathname);
-		//Error::msg("%s", buf);
-		string inputline, word;
-		vector<string> paramVector;
-		while (printf("%s", buf), getline(std::cin, inputline))
-    	{
-			paramVector.clear();
-		    std::istringstream is(inputline);
-		    while(is >> word)
-		        paramVector.push_back(word);
-
-		    // if user enter nothing, assume special anonymous user
-		    if (paramVector.size() == 1){
-		       if (paramVector[0] == "y"){
-		       		break;
-		       } else if (paramVector[0] == "n"){
-		       		return;
-		       } else {
-		       		continue;
-		       }
-		    } else {
-		        continue;
-		    }
+		if(!confirmYN(buf))
+		{
+			return;
 		}
 	}
 
@@ -296,6 +280,199 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
 	cliDTP.recvFile(pathname, fp);
  
 }
+bool CliPI::confirmYN(const char * prompt)
+{
+	string inputline, word;
+	vector<string> paramVector;
+	while (printf("%s", prompt), getline(std::cin, inputline))
+	{
+		paramVector.clear();
+	    std::istringstream is(inputline);
+	    while(is >> word)
+	        paramVector.push_back(word);
+
+	    // if user enter nothing, assume special anonymous user
+	    if (paramVector.size() == 1){
+	       if (paramVector[0] == "y"){
+	       		return true;
+	       } else if (paramVector[0] == "n"){
+	       		return false;
+	       } else {
+	       		continue;
+	       }
+	    } else {
+	        continue;
+	    }
+	}
+}
+
+void CliPI::rmdirDFS()
+{
+	DIR *cur_dir = opendir(".");
+	struct dirent *ent = NULL;
+	struct stat st;
+
+	if (!cur_dir)
+	{
+		Error::ret("opendir");
+		return;
+	}
+
+	while ((ent = readdir(cur_dir)) != NULL)
+	{
+		stat(ent->d_name, &st);
+	
+		if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+		{
+			continue;
+		}
+
+		if (S_ISDIR(st.st_mode))
+		{
+			chdir(ent->d_name);
+			this->rmdirDFS();
+			chdir("..");
+		}
+
+		remove(ent->d_name);
+	}
+	
+	closedir(cur_dir);
+}
+
+void CliPI::removeDir(const char *path_raw, bool removeSelf)
+{
+	char old_path[MAXLINE];
+
+	if (!path_raw)
+	{
+		return;
+	}
+
+	getcwd(old_path, MAXLINE);
+	
+	if (chdir(path_raw) == -1)
+	{
+		fprintf(stderr, "not a dir or access error\n");
+		return;
+	}
+
+	printf("path_raw : %s\n", path_raw);
+	this->rmdirDFS();
+	chdir(old_path);
+
+	if (removeSelf)
+	{
+		unlink(old_path); 
+	}
+}
+
+void CliPI::cmdRGET(std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() != 2)
+	{
+		std::cout << "Usage: " << helpMap["RGET"] << std::endl;
+		return;
+	}
+	char pathname[MAXLINE];
+	char buf[MAXLINE];
+	strcpy(pathname,cmdVector[1].c_str()); 
+
+	if ((access(cmdVector[1].c_str(), F_OK)) == 0) { // already exists
+		snprintf(buf, MAXLINE, "[%s] already exists, overwrite (y/n) ? ", pathname);
+		if(!confirmYN(buf))
+		{
+			return;
+		} else {
+			// yes to overwite
+			removeDir(cmdVector[1].c_str(), false);
+		}
+	}
+	
+	while(1)
+	{
+		recvOnePacket();
+		switch(packet.getTagid())
+		{
+			case TAG_CMD:
+			{
+				switch(packet.getCmdid())
+				{
+					case GET:
+					{
+						break;
+					}
+					case MKDIR:
+					{
+						cmdMKDIR(packet.getSBody().c_str());
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown tagid: %d", packet.getCmdid());
+						break;
+					}
+
+				}
+			}
+			case TAG_STAT:
+			{
+				switch(packet.getCmdid())
+				{
+					case STAT_OK:
+					{
+						break;
+					}
+					case STAT_ERR:
+					{
+						break;
+					}
+					case STAT_EOF:
+					{
+						// fclose
+						break;
+					}
+					case STAT_EOT:
+					{
+						// fclose
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown tagid: %d", packet.getStatid());
+						break;
+					}
+
+				}
+			}
+			case TAG_DATA:
+			{
+
+			}
+			default:
+			{
+				Error::msg("unknown tagid: %d", packet.getTagid());
+				break;
+			}
+
+		}
+	}
+
+	// FILE *fp;
+
+	// if ( (fp = fopen(pathname, "wb")) == NULL) {
+	// 	Error::msg("%s", strerror_r(errno, buf, MAXLINE));
+	// 	return;
+	// } else {
+	// 	// command to packet
+	// 	cmd2pack(0, GET, cmdVector);
+	//     connSockStream.Writen(packet.getPs(), PACKSIZE);
+	// }
+
+ //    CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
+	// cliDTP.recvFile(pathname, fp);
+}
+
 void CliPI::cmdPUT(std::vector<string> & cmdVector)
 {
 	if(cmdVector.size() != 2)
@@ -397,6 +574,9 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 			return;
 		}
 	}
+
+	printf("EOT\n", pathname);
+	packet.sendSTAT_EOT(connSockStream);
 	
 }
 void CliPI::cmdLS(std::vector<string> & cmdVector)
@@ -628,6 +808,26 @@ void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
 	}
 }
 
+
+void CliPI::cmdMKDIR(const char * path)
+{
+	printf("MKDIR request\n");
+
+	char buf[MAXLINE]; 
+	if(mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1){
+		printf("\033[31mmkdir [%s] failed: %s\033[0m\n", path, strerror_r(errno, buf, MAXLINE));
+		// send STAT_ERR Response
+		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+		//msg_o += "system call (mkdir): ";
+		//msg_o += strerror_r(errno, buf, MAXLINE);
+		//packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+	}else {
+		printf("Dir [%s] created\n", path);
+		// send STAT_OK
+		//packet.sendSTAT_OK(connSockStream, paramVector[0] + " created");
+	}
+
+}
 
 void CliPI::cmdLMKDIR(std::vector<string> & cmdVector)
 {

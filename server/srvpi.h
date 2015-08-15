@@ -24,6 +24,7 @@ public:
 	void cmdPASS();
 
 	void cmdGET();
+	void cmdRGET();
 	void cmdPUT();
 	void cmdLS();
 	void cmdCD();

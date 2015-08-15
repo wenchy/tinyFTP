@@ -17,6 +17,7 @@ public:
 	void sendFile(const char *pathname, FILE *fp, uint32_t nslice);
 	void recvFile(const char *filename, FILE *fp);
 	//int getFileNslice(const char *pathname, uint32_t *pnslice_o );
+	string getFileSizeString(const char *pathname); 
 	
 private:
 	Packet * ppacket;

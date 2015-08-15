@@ -362,6 +362,31 @@ void Packet::sendSTAT_ERR(SockStream & connSockStream, string msg)
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
 }
+
+void Packet::sendSTAT_EOF(SockStream & connSockStream)
+{
+	// send EOT
+	this->reset(HPACKET);
+	char buf[MAXLINE];
+	snprintf(buf, MAXLINE, "\033[32mEnd of File\033[0m");
+	this->fillStat(STAT_EOF, strlen(buf), buf);
+	//this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+
+void Packet::sendSTAT_EOF(SockStream & connSockStream, string msg)
+{
+	// send ERR
+	this->reset(HPACKET);
+	char buf[MAXLINE];
+	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", msg.c_str());
+	this->fillStat(STAT_EOF, strlen(buf), buf);
+	//this->print();
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+
 void Packet::sendSTAT_EOT(SockStream & connSockStream)
 {
 	// send EOT
