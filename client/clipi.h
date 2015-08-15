@@ -34,7 +34,7 @@ class CliPI
 public:
 	CliPI(const char *host);
 	//void init(const char *host);
-	void recvOnePacket();
+	bool recvOnePacket();
 	void run(uint16_t cmdid, std::vector<string> & cmdVector);
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
 	void userpass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);

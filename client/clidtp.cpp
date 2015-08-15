@@ -45,7 +45,7 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 	}
 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 	{
-		packet.sendDATA(connSockStream, nslice, ++sindex, n, body);
+		packet.sendDATA_FILE(connSockStream, nslice, ++sindex, n, body);
 		newProgress = (sindex*1.0)/nslice*100;
 		if (newProgress > oldProgress)
 		{

@@ -50,7 +50,7 @@ CliPI::CliPI(const char *host)
 	
 // }
 
-void CliPI::recvOnePacket()
+bool CliPI::recvOnePacket()
 {
 	int n;
 	packet.reset(NPACKET);
@@ -64,6 +64,7 @@ void CliPI::recvOnePacket()
 	}
 	packet.ntohp();
 	//packet.print();
+	return true;
 }
 
 void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
@@ -130,12 +131,6 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	packet.reset(HPACKET);
-
-	uint32_t nslice = 0;
-	uint32_t sindex = 0;
-	uint16_t statid = 0;
-	//uint16_t bsize = 0;
-
 	string params;
 	if (cmdVector.size() > 1)
 	{
@@ -148,7 +143,7 @@ void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVe
 	}
 
 	// Error::msg("body: %s\n", body);
-	packet.fill(TAG_CMD, cmdid, statid, nslice, sindex, params.size(), params.c_str());
+	packet.fillCmd(cmdid, params.size(), params.c_str());
 	//packet.print();
 	packet.htonp(); 
 }
@@ -156,12 +151,6 @@ void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVe
 void CliPI::userpass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	packet.reset(HPACKET);
-
-	uint32_t nslice = 0;
-	uint32_t sindex = 0;
-	uint16_t statid = 0;
-	//uint16_t bsize = 0;
-
 	string params;
 	vector<string>::iterator iter=cmdVector.begin();
 	params += *iter;
@@ -171,7 +160,7 @@ void CliPI::userpass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & 
    	}
 
 	// Error::msg("body: %s\n", body);
-	packet.fill(TAG_CMD, cmdid, statid, nslice, sindex, params.size(), params.c_str());
+	packet.fillCmd(cmdid, params.size(), params.c_str());
 	//packet.print();
 	packet.htonp(); 
 }
@@ -304,6 +293,7 @@ bool CliPI::confirmYN(const char * prompt)
 	        continue;
 	    }
 	}
+	return false;
 }
 
 void CliPI::rmdirDFS()
@@ -329,9 +319,18 @@ void CliPI::rmdirDFS()
 
 		if (S_ISDIR(st.st_mode))
 		{
-			chdir(ent->d_name);
-			this->rmdirDFS();
-			chdir("..");
+			if( chdir(ent->d_name) == -1)
+			{
+				Error::sys("CliPI::rmdirDFS chdir");
+				return;
+			} else {
+				this->rmdirDFS();
+				if( chdir("..") == -1)
+				{
+					Error::sys("CliPI::rmdirDFS chdir(..)");
+					return;
+				} 
+			}
 		}
 
 		remove(ent->d_name);
@@ -349,17 +348,25 @@ void CliPI::removeDir(const char *path_raw, bool removeSelf)
 		return;
 	}
 
-	getcwd(old_path, MAXLINE);
+	if ( !getcwd(old_path, MAXLINE))
+	{
+		Error::sys("getcwd");
+	}
 	
 	if (chdir(path_raw) == -1)
 	{
 		fprintf(stderr, "not a dir or access error\n");
+		Error::sys("removeDir chdir(path_raw)");
 		return;
 	}
 
 	printf("path_raw : %s\n", path_raw);
 	this->rmdirDFS();
-	chdir(old_path);
+	if (chdir(old_path) == -1)
+	{
+		Error::sys("removeDir chdir(path_raw)");
+		return;
+	}
 
 	if (removeSelf)
 	{
@@ -376,7 +383,7 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 	}
 	char pathname[MAXLINE];
 	char buf[MAXLINE];
-	strcpy(pathname,cmdVector[1].c_str()); 
+	strcpy(pathname, cmdVector[1].c_str()); 
 
 	if ((access(cmdVector[1].c_str(), F_OK)) == 0) { // already exists
 		snprintf(buf, MAXLINE, "[%s] already exists, overwrite (y/n) ? ", pathname);
@@ -389,9 +396,9 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 		}
 	}
 	
-	while(1)
+	CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
+	while(recvOnePacket())
 	{
-		recvOnePacket();
 		switch(packet.getTagid())
 		{
 			case TAG_CMD:
@@ -409,15 +416,15 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 					}
 					default:
 					{
-						Error::msg("unknown tagid: %d", packet.getCmdid());
+						Error::msg("unknown cmdid: %d", packet.getCmdid());
 						break;
 					}
-
 				}
+				break;
 			}
 			case TAG_STAT:
 			{
-				switch(packet.getCmdid())
+				switch(packet.getStatid())
 				{
 					case STAT_OK:
 					{
@@ -425,36 +432,37 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 					}
 					case STAT_ERR:
 					{
-						break;
+						cout << packet.getSBody() <<endl;
+						return;
 					}
 					case STAT_EOF:
 					{
-						// fclose
+						cout << packet.getSBody() <<endl;
 						break;
 					}
 					case STAT_EOT:
 					{
-						// fclose
-						break;
+						cout << packet.getSBody() <<endl;
+						return;
 					}
 					default:
 					{
-						Error::msg("unknown tagid: %d", packet.getStatid());
+						Error::msg("unknown statid: %d", packet.getStatid());
 						break;
 					}
-
 				}
+				break;
 			}
 			case TAG_DATA:
 			{
-
+				//cliDTP.recvFile(pathname, fp);
+				break;
 			}
 			default:
 			{
 				Error::msg("unknown tagid: %d", packet.getTagid());
 				break;
 			}
-
 		}
 	}
 
@@ -535,29 +543,13 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 				cliDTP.sendFile(pathname, fp, nslice);
 				break;
 			} else if (packet.getStatid() == STAT_CFM) {
-				string inputline, word;
-				vector<string> paramVector;
-				while (printf("%s", packet.getSBody().c_str()), getline(std::cin, inputline))
-		    	{
-					paramVector.clear();
-				    std::istringstream is(inputline);
-				    while(is >> word)
-				        paramVector.push_back(word);
-
-				    // if user enter nothing, assume special anonymous user
-				    if (paramVector.size() == 1){
-				       if (paramVector[0] == "y"){
-				       		packet.sendSTAT_CFM(connSockStream, "y");
-				       		break;
-				       } else if (paramVector[0] == "n"){
-				       		packet.sendSTAT_CFM(connSockStream, "n");
-				       		return;
-				       } else {
-				       		continue;
-				       }
-				    } else {
-				        continue;
-				    }
+				if(confirmYN(packet.getSBody().c_str()))
+				{
+					packet.sendSTAT_CFM(connSockStream, "y");
+					continue;
+				} else {
+					packet.sendSTAT_CFM(connSockStream, "n");
+					return;
 				}
 			} else if (packet.getStatid() == STAT_ERR) {
 				cerr << packet.getSBody() <<endl;
@@ -575,7 +567,7 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 		}
 	}
 
-	printf("EOT\n", pathname);
+	printf("EOT %s\n", pathname);
 	packet.sendSTAT_EOT(connSockStream);
 	
 }

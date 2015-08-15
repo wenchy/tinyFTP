@@ -78,7 +78,7 @@ typedef enum packetStoreType
 
 /************************** CtrPacket **********************************/
 
-#define PHEADSIZE		18			// packet header size
+#define PHEADSIZE		20			// packet header size
 #define	PBODYCAP		512			// packet body capcacity
 #define	SLICECAP		512			// slice capcacity
 #define	MAXNSLICE		4294967295	// max slice count: the maximum positive integer value
@@ -92,6 +92,7 @@ typedef struct packetStruct
 
 	uint16_t cmdid;			// Command: ID
 	uint16_t statid;		// status code id
+	uint16_t dataid;		// data type id
 
 	uint32_t nslice;		// Data: whole number of file slices
 	uint32_t sindex;		// Data: slice index
@@ -179,12 +180,12 @@ typedef enum statID
 	STAT_EOT	// end of transfer
 } StatID;
 
-// typedef enum dataID
-// {
-// 	DATA_FILE = 1,
-// 	DATA_LIST,
-// 	DATA_NAME
-// } DataID;
+typedef enum dataID
+{
+	DATA_FILE = 1,
+	DATA_LIST,
+	DATA_NAME
+} DataID;
 
 /*********************************************************
  ******************* functions ***************************

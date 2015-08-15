@@ -63,11 +63,12 @@ void SrvDTP::sendFile(const char *pathname)
 	printf("Send [%s] now\n", pathname);
 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 	{
-		packet.sendDATA(connSockStream, nslice, ++sindex, n, body);
+		packet.sendDATA_FILE(connSockStream, nslice, ++sindex, n, body);
 	}
 
-	fclose(fp);
+	
 	// send EOF
+	fclose(fp);
 	printf("EOF [%s]\n", pathname);
 	packet.sendSTAT_EOF(connSockStream);
 }

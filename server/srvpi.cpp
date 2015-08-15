@@ -8,7 +8,7 @@ SrvPI::SrvPI(string dbFilename, int connfd):db(DBFILENAME)
 	sessionCommandPacketCount = 0;
 	userID ="0";
 }
-void SrvPI::recvOnePacket()
+bool SrvPI::recvOnePacket()
 {
 	int n;
 	packet.reset(NPACKET);
@@ -23,6 +23,8 @@ void SrvPI::recvOnePacket()
 	}
 	packet.ntohp();
 	packet.print();
+
+	return true;
 }
 void SrvPI::run()
 {
@@ -241,10 +243,73 @@ void SrvPI::cmdRGET()
 		return;
    	}
 
-	string path = userRootDir + userRCWD + "/" + paramVector[0];
-	//std::cout << "cmdGET path[" << path << "]" << '\n';
-	SrvDTP srvDTP(this->connSockStream, &(this->packet), this->connfd);
-	srvDTP.sendFile(path.c_str());
+		
+	while(recvOnePacket())
+	{
+		switch(packet.getTagid())
+		{
+			case TAG_CMD:
+			{
+				switch(packet.getCmdid())
+				{
+					case GET:
+					{
+						break;
+					}
+					case MKDIR:
+					{
+						//cmdMKDIR(packet.getSBody().c_str());
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown tagid: %d", packet.getCmdid());
+						break;
+					}
+				}
+				break;
+			}
+			case TAG_STAT:
+			{
+				switch(packet.getStatid())
+				{
+					case STAT_OK:
+					{
+						break;
+					}
+					case STAT_ERR:
+					{
+						break;
+					}
+					case STAT_EOF:
+					{
+						// fclose
+						break;
+					}
+					case STAT_EOT:
+					{
+						// fclose
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown tagid: %d", packet.getStatid());
+						break;
+					}
+				}
+				break;
+			}
+			case TAG_DATA:
+			{
+				break;
+			}
+			default:
+			{
+				Error::msg("unknown tagid: %d", packet.getTagid());
+				break;
+			}
+		}
+	}
 }
 
 void SrvPI::cmdPUT()
@@ -356,15 +421,17 @@ void SrvPI::cmdLS()
 
 		if ( (sbody.size() + strlen(buf)) > SLICECAP)
 		{
-			packet.sendDATA(connSockStream, 0, 0, sbody.size(), sbody.c_str());
+			packet.sendDATA_LIST(connSockStream, 0, 0, sbody.size(), sbody.c_str());
 			sbody.clear();
 		}
 		sbody += buf;
 		
 	}
-	printf("LS request 3\n");
-	packet.sendDATA(connSockStream, 0, 0, sbody.size(), sbody.c_str());
-	
+	if (!sbody.empty())
+	{
+		packet.sendDATA_LIST(connSockStream, 0, 0, sbody.size(), sbody.c_str());
+	}
+
 	packet.sendSTAT_EOT(connSockStream);
 
 }
@@ -380,7 +447,7 @@ void SrvPI::cmdCD()
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	} else {
-		packet.sendSTAT_OK(connSockStream, "current working directory: ~" + userRCWD);
+		packet.sendSTAT_OK(connSockStream, "CWD: ~" + userRCWD);
 		return;
    	}
 	// if( (n = chdir(newAbsDir.c_str())) == -1)
@@ -582,7 +649,12 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 		{
 			if ((access(newAbsDir.c_str(), F_OK)) == 0) {
 				// send STAT_ERR Response
-				msg_o = "File [" + newAbsDir + "] already exists, overwrite (y/n) ? ";
+				string path = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
+				if (path.empty())
+				{
+					path = "/";
+				}
+				msg_o = "File [~" + path + "] already exists, overwrite (y/n) ? ";
 				return false;
 			} else {
 				return true;
