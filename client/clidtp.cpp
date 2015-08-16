@@ -60,6 +60,14 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 	printf("\nEOF [%s]\n", pathname);
 	packet.sendSTAT_EOF(connSockStream);
 }
+void CliDTP::removeFile(const char *pathname)
+{
+	if( remove(pathname) !=0 )
+	{
+		Error::ret("remove");
+		return;
+	}
+}
 void CliDTP::recvFile(const char *pathname, FILE *fp)
 {
 	Packet & packet = *(this->ppacket);
@@ -72,14 +80,17 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 			hfilesize =  packet.getSBody();
 		} else if (packet.getStatid() == STAT_ERR){
 			cerr << packet.getSBody() <<endl;
+			removeFile(pathname);
 			return;
 		} else {
 			Error::msg("CliDTP::recvFile: unknown statid %d", packet.getStatid());
+			removeFile(pathname);
 			return;
 		}
 		
 	} else {
 		Error::msg("CliDTP::recvFile: unknown tagid %d", packet.getTagid());
+		removeFile(pathname);
 		return;
 	}
 

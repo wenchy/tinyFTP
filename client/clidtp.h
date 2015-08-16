@@ -18,11 +18,13 @@ public:
 	void recvFile(const char *filename, FILE *fp);
 	//int getFileNslice(const char *pathname, uint32_t *pnslice_o );
 	string getFileSizeString(const char *pathname); 
+	void removeFile(const char *pathname);
 	
 private:
 	Packet * ppacket;
 	SockStream connSockStream;
 	int connfd;
+
 
 };
 

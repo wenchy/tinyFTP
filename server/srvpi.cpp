@@ -321,10 +321,20 @@ void SrvPI::cmdPUT()
 	
 	vector<string> paramVector; 
 	split(packet.getSBody(), DELIMITER, paramVector);
-	string path = userRootDir + userRCWD + "/" + paramVector[0];
+	for (auto it = paramVector.cbegin(); it != paramVector.cend(); ++it)
+           std::cout << it->size() << "paramVector: " << *it << std::endl;
+	string path;
+	string userinput;
+	if (paramVector.size() == 1){
+		userinput = paramVector[0];
+		path = userRootDir + userRCWD + "/" + paramVector[0];
+	} else if (paramVector.size() == 2){
+		userinput = paramVector[1];
+		path = userRootDir + userRCWD + "/" + paramVector[1];
+	}
 	//std::cout << "cmdPUT path[" << path << "]" << '\n';
 	string msg_o;
-	if (!combineAndValidatePath(PUT, paramVector[0], msg_o))
+	if (!combineAndValidatePath(PUT, userinput, msg_o))
    	{
    		packet.sendSTAT_CFM(connSockStream, msg_o.c_str());
    		recvOnePacket();

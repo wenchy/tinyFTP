@@ -45,6 +45,7 @@ void UI::run()
     {
         // clear cmdVector each time when user input
         this->cmdVector.clear();
+        
         std::istringstream is(inputline);
         while(is >> word)
             this->cmdVector.push_back(word);
@@ -91,12 +92,37 @@ void UI::run()
 	{
 		// clear cmdVector each time when user input
 		this->cmdVector.clear();
-		//std::cout << inputline << std::endl;
+		std::cout << "inputline: " << inputline << inputline.size() << std::endl;
 
 		// split input string
-		std::istringstream is(inputline);
-		while(is >> word)
-			this->cmdVector.push_back(word);
+        for (auto it = inputline.begin(); it < inputline.end(); ++it)
+        {
+            string param;
+            for(; it < inputline.end(); ++it)
+            {
+                if ((*it) == ' ' || (*it) == '\t')
+                {
+                    break;
+                } else if ((*it) == '\\' && (it + 1) != inputline.end() && *(it + 1) == ' ')
+                {
+                    param += ' ';
+                    ++it;
+                } else {
+                    param += *it;
+                }
+            } 
+            if (!param.empty())
+            {
+                this->cmdVector.push_back(param);
+            }
+        }
+
+        // for (auto it = cmdVector.cbegin(); it != cmdVector.cend(); ++it)
+        //    std::cout << it->size() << "cmdVector: " << *it << std::endl;
+
+		// std::istringstream is(inputline);
+		// while(is >> word)
+		// 	this->cmdVector.push_back(word);
 
 		if (!cmdCheck())
 		{
@@ -104,9 +130,9 @@ void UI::run()
 		} else {
 			cliPI.run(this->cmdid, this->cmdVector);
 		}
-  //       std::cout << "cmdVector" << std::endl;
+
 		// for (auto it = cmdVector.cbegin(); it != cmdVector.cend(); ++it)
-  //          std::cout << *it << std::endl;
+        //     std::cout << "cmdVector" << *it << std::endl;
     	// for (std::vector<string>::size_type i = 0; i < cmdVector.size(); i++)
     	// 	   std::cout << cmdVector[i] << std::endl;
 	}                                                         
@@ -123,6 +149,20 @@ bool UI::cmdCheck()
 	if (iter != cmdMap.end())
 	{
 		this->cmdid = iter->second;
+        // process escape character '\ '
+        // for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it)
+        // {
+        //     if (it->back() == '\\' && (it + 1) != cmdVector.end())
+        //     {
+        //        it->pop_back();
+        //        (*it) += " ";
+        //        (*it) += *(it+1);
+        //        cmdVector.erase(it+1);
+        //        it = cmdVector.begin();
+        //     }
+        //    std::cout << "cmdVector: " << *it << std::endl;
+        // }
+
        	//std::cout << "CommandID: " << iter->first << "(" << iter->second << ")" << std::endl;
         return true;
 	} else {

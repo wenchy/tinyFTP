@@ -4,17 +4,17 @@
 std::map<string, string> CliPI::helpMap = {	//{"USER",    "user 	username"},
                                             //{"PASS",    "pass 	password"},
 
-                                            {"GET",     "get [file]"},
-                                            {"PUT",     "put [file]"},
-                                            {"LS",      "ls [dir]"},
+                                            {"GET",     "get [remote-file] [local-file]"},
+                                            {"PUT",     "put [local-file] [remote-file]"},
+                                            {"LS",      "ls [remote-dir]"},
                                             {"LLS",     "lls same as local ls"},
-                                            {"CD",      "cd [dir]"},
-                                            {"LCD",     "lcd [dir]"},
-                                            {"RM",      "rm [file]"},
+                                            {"CD",      "cd [remote-dir]"},
+                                            {"LCD",     "lcd [local-dir]"},
+                                            {"RM",      "rm [remote-file]"},
                                             {"LRM",     "lrm same as local rm"},
                                             {"PWD",     "pwd [-a]"},
                                             {"LPWD",    "lpwd same as local pwd"},
-                                            {"MKDIR",   "pwd [dir]"},
+                                            {"MKDIR",   "mkdir [remote-dir]"},
                                             {"LMKDIR",  "lmkdir same as local mkdir"},
                                             {"QUIT",    "quit"},
                                             {"HELP",    "help [cmd]"},
@@ -240,14 +240,20 @@ bool CliPI::cmdPASS(std::vector<string> & cmdVector)
 
 void CliPI::cmdGET(std::vector<string> & cmdVector)
 {
-	if(cmdVector.size() != 2)
+	if(cmdVector.size() < 2 || cmdVector.size() > 3)
 	{
-		std::cout << "Usage: " << helpMap["GET"] << std::endl;
+		std::cout << cmdVector.size() << "Usage: " << helpMap["GET"] << std::endl;
 		return;
 	}
+
 	char pathname[MAXLINE];
 	char buf[MAXLINE];
-	strcpy(pathname,cmdVector[1].c_str()); 
+	if (cmdVector.size() == 2){
+		strcpy(pathname,cmdVector[1].c_str()); 
+	} else if (cmdVector.size() == 3){
+		strcpy(pathname,cmdVector[2].c_str()); 
+	}
+	
 	FILE *fp;
 	if ((access(pathname,F_OK)) == 0) {
 		snprintf(buf, MAXLINE, "File [%s] already exists, overwrite (y/n) ? ", pathname);
@@ -486,7 +492,7 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 
 void CliPI::cmdPUT(std::vector<string> & cmdVector)
 {
-	if(cmdVector.size() != 2)
+	if(cmdVector.size() < 2 || cmdVector.size() < 3)
 	{
 		std::cout << "Usage: " << helpMap["PUT"] << std::endl;
 		return;
