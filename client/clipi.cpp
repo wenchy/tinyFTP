@@ -23,7 +23,7 @@ std::map<string, string> CliPI::helpMap = {	//{"USER",    "user 	username"},
                                             {"MPUT",    "mput [file]..."},
                                             {"RGET",    "rget [dir]"},
                                             {"RPUT",    "rput [dir]"},
-                                            {"RMD",     "rmd [dir]"},
+                                            {"RMDIR",   "rmdir [dir]"},
 
                                             //{"BINARY",  "binary"},
                                             //{"ASCII",   "ascii"}  	
@@ -116,6 +116,9 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 		case LMKDIR:
 			cmdLMKDIR(cmdVector);
 			break;
+		case RMDIR:
+			cmdRMDIR(cmdVector);
+			break;
 		case QUIT:
 			cmdQUIT(cmdVector);
 			break;
@@ -128,7 +131,7 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 	}
 	
 }
-void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::cmd2pack(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	packet.reset(HPACKET);
 	string params;
@@ -148,7 +151,7 @@ void CliPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVe
 	packet.htonp(); 
 }
 
-void CliPI::userpass2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::userpass2pack(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	packet.reset(HPACKET);
 	string params;
@@ -172,7 +175,7 @@ bool CliPI::cmdUSER(std::vector<string> & cmdVector)
 		Error::msg("Usage: [username]");
 		return false;
 	} else {
-		userpass2pack(0, USER, cmdVector);
+		userpass2pack(USER, cmdVector);
 		connSockStream.Writen(packet.getPs(), PACKSIZE);
 		// first receive response
 		recvOnePacket();
@@ -207,7 +210,7 @@ bool CliPI::cmdPASS(std::vector<string> & cmdVector)
 		return false;
 	}
 
-	userpass2pack(0, PASS, cmdVector);
+	userpass2pack(PASS, cmdVector);
 	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
 	// first receive response
@@ -259,7 +262,7 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
 		return;
 	} else {
 		// command to packet
-		cmd2pack(0, GET, cmdVector);
+		cmd2pack(GET, cmdVector);
 	    connSockStream.Writen(packet.getPs(), PACKSIZE);
 	}
 
@@ -528,7 +531,7 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 		return;
 	} else {
 		// command to packet
-		cmd2pack(0, PUT, cmdVector);
+		cmd2pack(PUT, cmdVector);
 	    connSockStream.Writen(packet.getPs(), PACKSIZE);
 	}
 
@@ -579,7 +582,7 @@ void CliPI::cmdLS(std::vector<string> & cmdVector)
 		return;
 	}
 	
-	cmd2pack(0, LS, cmdVector);
+	cmd2pack(LS, cmdVector);
 	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
 	// first receive response
@@ -634,7 +637,7 @@ void CliPI::cmdCD(std::vector<string> & cmdVector)
 		return;
 	}
 
-	cmd2pack(0, CD, cmdVector);
+	cmd2pack(CD, cmdVector);
 	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
 	// first receive response
@@ -647,12 +650,12 @@ void CliPI::cmdCD(std::vector<string> & cmdVector)
 			cerr << packet.getSBody() <<endl;
 			return;
 		} else {
-			Error::msg("CliPI::recvFile: unknown statid %d", packet.getStatid());
+			Error::msg("unknown statid %d", packet.getStatid());
 			return;
 		}
 		
 	} else {
-		Error::msg("CliPI::recvFile: unknown tagid %d", packet.getTagid());
+		Error::msg("unknown tagid %d", packet.getTagid());
 		return;
 	}
  
@@ -684,7 +687,7 @@ void CliPI::cmdRM(std::vector<string> & cmdVector)
 		return;
 	}
 
-	cmd2pack(0, RM, cmdVector);
+	cmd2pack(RM, cmdVector);
 	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
 	// first receive response
@@ -733,7 +736,7 @@ void CliPI::cmdPWD(std::vector<string> & cmdVector)
 		return;
 	}
 
-	cmd2pack(0, PWD, cmdVector);
+	cmd2pack(PWD, cmdVector);
 	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
 	// first receive response
@@ -777,7 +780,7 @@ void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
 		return;
 	}
 
-	cmd2pack(0, MKDIR, cmdVector);
+	cmd2pack(MKDIR, cmdVector);
 	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
 	// first receive response
@@ -790,12 +793,12 @@ void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
 			cerr << packet.getSBody() <<endl;
 			return;
 		} else {
-			Error::msg("CliPI::recvFile: unknown statid %d", packet.getStatid());
+			Error::msg("unknown statid %d", packet.getStatid());
 			return;
 		}
 		
 	} else {
-		Error::msg("CliPI::recvFile: unknown tagid %d", packet.getTagid());
+		Error::msg("unknown tagid %d", packet.getTagid());
 		return;
 	}
 }
@@ -831,6 +834,37 @@ void CliPI::cmdLMKDIR(std::vector<string> & cmdVector)
 	if (system(shellCMD.c_str()) == -1) {
 		char buf[MAXLINE];
 		std::cout << "system(): " << strerror_r(errno, buf, MAXLINE) << std::endl;
+	}
+}
+
+void CliPI::cmdRMDIR(std::vector<string> & cmdVector)
+{
+	if(cmdVector.size() != 2)
+	{
+		std::cout << "Usage: " << helpMap["RMDIR"] << std::endl;
+		return;
+	}
+
+	cmd2pack(RMDIR, cmdVector);
+	connSockStream.Writen(packet.getPs(), PACKSIZE);
+
+	// first receive response
+	recvOnePacket();
+	if (packet.getTagid() == TAG_STAT) {
+		if (packet.getStatid() == STAT_OK) {
+			cout << packet.getSBody() <<endl;
+			return;
+		} else if (packet.getStatid() == STAT_ERR){
+			cerr << packet.getSBody() <<endl;
+			return;
+		} else {
+			Error::msg("unknown statid %d", packet.getStatid());
+			return;
+		}
+		
+	} else {
+		Error::msg("unknown tagid %d", packet.getTagid());
+		return;
 	}
 }
 

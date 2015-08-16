@@ -6,14 +6,15 @@
 #include    "../common/packet.h"
 #include    "../common/socket.h"
 #include    "../common/sockstream.h"
+#include    "srvpi.h"
 
+class SrvPI;
 // Server Data Transfer Process (SrvDTP)
 class SrvDTP
 {
 public:
-	SrvDTP(SockStream & connSockStream, Packet * ppacket, int connfd);
+	SrvDTP(SockStream & connSockStream, Packet * ppacket, int connfd, SrvPI * psrvPI);
 	//void init(SockStream & connSockStream, Packet & packet);
-	void recvOnePacket();
 	void sendFile(const char *filename);
 	void recvFile(const char *pathname);
 	int getFileNslice(const char *pathname, uint32_t *pnslice_o );
@@ -24,6 +25,7 @@ private:
 	Packet * ppacket;
 	SockStream connSockStream;
 	int connfd;
+	SrvPI * psrvPI;
 
 };
 

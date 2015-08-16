@@ -31,6 +31,7 @@ public:
 	void cmdRM();
 	void cmdPWD();
 	void cmdMKDIR();
+	void cmdRMDIR();
 
 	
 
@@ -54,6 +55,9 @@ private:
 	bool combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o);
 	bool cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o);
 	void saveUserState();
+
+	void rmdirDFS();
+	void removeDir(const char *path_raw, bool removeSelf);
 
 
 };

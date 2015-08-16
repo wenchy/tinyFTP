@@ -163,7 +163,7 @@ typedef enum cmdID
 	MPUT,
 	RGET,
 	RPUT,
-	RMD,
+	RMDIR,
 
 	BINARY,
 	ASCII

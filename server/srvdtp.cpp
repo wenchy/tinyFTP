@@ -1,32 +1,17 @@
 #include    "srvdtp.h"
 
-SrvDTP::SrvDTP(SockStream & connSockStream, Packet * ppacket, int connfd)
+SrvDTP::SrvDTP(SockStream & connSockStream, Packet * ppacket, int connfd, SrvPI * psrvPI)
 { 
 	this->connSockStream = connSockStream;
 	this->ppacket = ppacket;
 	this->connfd = connfd;
+	this->psrvPI = psrvPI;
 }
 // void SrvDTP::init(SockStream & connSockStream, Packet & packet)
 // { 
 // 	this->connSockStream = connSockStream;
 // 	this->packet = packet;
 // }
-void SrvDTP::recvOnePacket()
-{
-	Packet & packet = *(this->ppacket);
-	int n;
-	packet.reset(NPACKET);
-	if ( (n = connSockStream.Readn(packet.getPs(), PACKSIZE)) == 0)
-	{
-		Socket::tcpClose(connfd);
-		Error::quit_pthread("client terminated prematurely, saveUserState ok");
-	} else if (n < 0){
-		Error::ret("connSockStream.Readn()");
-		Error::quit_pthread("socket connection exception");
-	}
-	packet.ntohp();
-	//packet.print();
-}
 void SrvDTP::sendFile(const char *pathname)
 {
 	Packet & packet = *(this->ppacket);
@@ -92,7 +77,7 @@ void SrvDTP::recvFile(const char *pathname)
 
 	while (1)
 	{
-		recvOnePacket();
+		psrvPI->recvOnePacket();
 		if(packet.getTagid() == TAG_DATA) {
 			m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), fp);
 			if (m != packet.getBsize())

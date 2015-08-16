@@ -22,7 +22,7 @@ bool SrvPI::recvOnePacket()
 		Error::quit_pthread("socket connection exception");
 	}
 	packet.ntohp();
-	packet.print();
+	//packet.print();
 
 	return true;
 }
@@ -77,6 +77,9 @@ void SrvPI::run()
 				break;
 			case MKDIR:
 				cmdMKDIR();
+				break;
+			case RMDIR:
+				cmdRMDIR();
 				break;
 			default:
 				Error::msg("Server: Sorry! this command function not finished yet.\n");
@@ -224,7 +227,7 @@ void SrvPI::cmdGET()
 
 	string path = userRootDir + userRCWD + "/" + paramVector[0];
 	//std::cout << "cmdGET path[" << path << "]" << '\n';
-	SrvDTP srvDTP(this->connSockStream, &(this->packet), this->connfd);
+	SrvDTP srvDTP(this->connSockStream, &(this->packet), this->connfd, this);
 	srvDTP.sendFile(path.c_str());
 
 	packet.sendSTAT_EOT(connSockStream);
@@ -330,7 +333,7 @@ void SrvPI::cmdPUT()
 			if (packet.getSBody() == "y")
 			{
 				std::cout << "packet.getSBody() == y" << '\n';
-				SrvDTP srvDTP(this->connSockStream,  &(this->packet), this->connfd);
+				SrvDTP srvDTP(this->connSockStream,  &(this->packet), this->connfd, this);
 				srvDTP.recvFile(path.c_str());
 				return;
 			} else {
@@ -341,7 +344,7 @@ void SrvPI::cmdPUT()
 			return;
 		}
    	} else {
-		SrvDTP srvDTP(this->connSockStream,  &(this->packet), this->connfd);
+		SrvDTP srvDTP(this->connSockStream,  &(this->packet), this->connfd, this);
 		srvDTP.recvFile(path.c_str());
    	}
 }
@@ -429,6 +432,10 @@ void SrvPI::cmdLS()
 	}
 	if (!sbody.empty())
 	{
+		if ( cnt !=0 && (cnt % 5) == 0)
+		{
+			sbody.pop_back(); // remove '\n'
+		}
 		packet.sendDATA_LIST(connSockStream, 0, 0, sbody.size(), sbody.c_str());
 	}
 
@@ -578,6 +585,106 @@ void SrvPI::cmdMKDIR()
 		}
 	}
 }
+void SrvPI::rmdirDFS()
+{
+	DIR *cur_dir = opendir(".");
+	struct dirent *ent = NULL;
+	struct stat st;
+
+	if (!cur_dir)
+	{
+		Error::ret("opendir");
+		return;
+	}
+
+	while ((ent = readdir(cur_dir)) != NULL)
+	{
+		stat(ent->d_name, &st);
+	
+		if (strcmp(ent->d_name, ".") == 0 || strcmp(ent->d_name, "..") == 0)
+		{
+			continue;
+		}
+
+		if (S_ISDIR(st.st_mode))
+		{
+			if( chdir(ent->d_name) == -1)
+			{
+				Error::sys("CliPI::rmdirDFS chdir");
+				return;
+			} else {
+				this->rmdirDFS();
+				if( chdir("..") == -1)
+				{
+					Error::sys("CliPI::rmdirDFS chdir(..)");
+					return;
+				} 
+			}
+		}
+
+		remove(ent->d_name);
+	}
+	
+	closedir(cur_dir);
+}
+
+void SrvPI::removeDir(const char *path_raw, bool removeSelf)
+{
+	char old_path[MAXLINE];
+
+	if (!path_raw)
+	{
+		return;
+	}
+
+	if ( !getcwd(old_path, MAXLINE))
+	{
+		Error::sys("getcwd");
+	}
+	
+	if (chdir(path_raw) == -1)
+	{
+		fprintf(stderr, "not a dir or access error\n");
+		Error::sys("removeDir chdir(path_raw)");
+		return;
+	}
+
+	printf("path_raw : %s\n", path_raw);
+	this->rmdirDFS();
+	if (chdir(old_path) == -1)
+	{
+		Error::sys("removeDir chdir(path_raw)");
+		return;
+	}
+
+	if (removeSelf)
+	{
+		unlink(old_path); 
+	}
+}
+void SrvPI::cmdRMDIR()
+{
+	printf("RMDIR request\n");
+	vector<string> paramVector; 
+	split(packet.getSBody(), DELIMITER, paramVector);
+	string msg_o;
+   	if (!combineAndValidatePath(RMDIR, paramVector[0], msg_o))
+   	{
+   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+		return;
+   	} else {
+   		string path = userRootDir + userRCWD + "/" + paramVector[0];
+   		string shellCMD = "rm -rf " + path;
+		if (system(shellCMD.c_str()) == -1) {
+			char buf[MAXLINE];
+			packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+		} else {
+			// send STAT_OK
+			packet.sendSTAT_OK(connSockStream, "Dir" + paramVector[0] + " removed");
+		}
+		//packet.sendSTAT_OK(connSockStream, "rmdir: not finished");
+	}
+}
 
 bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o)
 {
@@ -612,7 +719,12 @@ bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & ms
 		//std::cout << "Permission denied: " << newAbsDir << '\n';
 		msg_o = "Permission denied: " + newAbsDir;
 		return false;
-   	} else {  
+   	} else { 
+	   	if (cmdid == RMDIR && newAbsDir == userRootDir)
+	   	{
+	   	 	msg_o = "Permission denied: " + newAbsDir;
+			return false;
+	   	} 
    		return cmdPathProcess(cmdid, newAbsDir, msg_o);
    	}
 }
@@ -632,10 +744,10 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 				if (S_ISREG(statBuf.st_mode)){
 					return true;
 			    } else if (S_ISDIR(statBuf.st_mode)){
-					msg_o = "get: cannot download [" + newAbsDir + "]: Is a directory";
+					msg_o = "get: '" + newAbsDir + "' is a directory";
 					return false;
 			    } else {
-			    	msg_o = "get: [" + newAbsDir + "] not a regular file or directory";
+			    	msg_o = "get: '" + newAbsDir + "' not a regular file or directory";
 					return false;
 			    }
 				
@@ -649,12 +761,12 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 		{
 			if ((access(newAbsDir.c_str(), F_OK)) == 0) {
 				// send STAT_ERR Response
-				string path = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
-				if (path.empty())
+				string rpath = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
+				if (rpath.empty())
 				{
-					path = "/";
+					rpath = "/";
 				}
-				msg_o = "File [~" + path + "] already exists, overwrite (y/n) ? ";
+				msg_o = "File '~" + rpath + "' already exists, overwrite (y/n) ? ";
 				return false;
 			} else {
 				return true;
@@ -708,15 +820,20 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 	   		struct stat statBuf;
 	   		char buf[MAXLINE];
 		    int n = stat(newAbsDir.c_str(), &statBuf);
+		    string rpath = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
+		    if (rpath.empty())
+			{
+				rpath = "/";
+			}
 		    if(!n) // stat call success
 			{	
 				if (S_ISREG(statBuf.st_mode)){
 					return true;
 			    } else if (S_ISDIR(statBuf.st_mode)){
-					msg_o = "rm: cannot remove '" + newAbsDir + "': Is a directory";
+					msg_o = "rm: '~" + rpath + "' is a directory";
 					return false;
 			    } else {
-			    	msg_o = "rm: '" + newAbsDir + "' not a regular file or directory";
+			    	msg_o = "rm: '~" + rpath + "' not a regular file";
 					return false;
 			    }
 				
@@ -741,6 +858,40 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 			}
 			break;
 		}
+		case RMDIR:
+		{
+			// S_ISLINGK(st_mode)
+			// S_ISREG(st_mode)       
+			// S_ISDIR(st_mode)       
+			// S_ISCHR(st_mode) 
+			// S_ISBLK(st_mode)
+			// S_ISSOCK(st_mode)
+	   		struct stat statBuf;
+	   		char buf[MAXLINE];
+		    int n = stat(newAbsDir.c_str(), &statBuf);
+		    string rpath = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
+		    if (rpath.empty())
+			{
+				rpath = "/";
+			}
+		    if(!n) // stat call success
+			{	
+				if (S_ISREG(statBuf.st_mode)){
+					msg_o = "rmdir: '~" + rpath + "' is a regular file";
+					return false;
+			    } else if (S_ISDIR(statBuf.st_mode)){
+					return true;
+			    } else {
+			    	msg_o = "rmdir: '~" + rpath + "' not a directory";
+					return false;
+			    }
+				
+			} else { // stat error
+				msg_o = strerror_r(errno, buf, MAXLINE);
+				return false;
+			}
+			break;
+		}	
 		default:
 		{
 			msg_o = "SrvPI::cmdPathProcess: unknown cmdid";

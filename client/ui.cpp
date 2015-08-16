@@ -23,7 +23,7 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"MPUT",    MPUT},
                                                     {"RGET",    RGET},
                                                     {"RPUT",    RPUT},
-                                                    {"RMD",     RMD},
+                                                    {"RMDIR",   RMDIR},
 
                                                     {"BINARY",  BINARY},
                                                     {"ASCII",   ASCII}
