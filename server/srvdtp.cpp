@@ -170,7 +170,7 @@ string SrvDTP::getFileSizeString(const char *pathname)
 				if (n != 0)
 				{
 					hsize_o += ".";
-					snprintf(buf, MAXLINE, "%2lu", n);
+					snprintf(buf, MAXLINE, "%02lu", n);
 					hsize_o += buf;
 				}
 				hsize_o +="K";
@@ -181,7 +181,7 @@ string SrvDTP::getFileSizeString(const char *pathname)
 				if (n != 0)
 				{
 					hsize_o += ".";
-					snprintf(buf, MAXLINE, "%2lu", n);
+					snprintf(buf, MAXLINE, "%02lu", n);
 					hsize_o += buf;
 				}
 				hsize_o +="M";
@@ -193,7 +193,7 @@ string SrvDTP::getFileSizeString(const char *pathname)
 				if (n != 0)
 				{
 					hsize_o += ".";
-					snprintf(buf, MAXLINE, "%2lu", n);
+					snprintf(buf, MAXLINE, "%02lu", n);
 					hsize_o += buf;
 				}
 				hsize_o +="G";

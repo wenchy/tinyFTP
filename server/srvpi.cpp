@@ -8,6 +8,10 @@ SrvPI::SrvPI(string dbFilename, int connfd):db(DBFILENAME)
 	sessionCommandPacketCount = 0;
 	userID ="0";
 }
+void SrvPI::checkBreakpoint()
+{
+
+}
 bool SrvPI::recvOnePacket()
 {
 	int n;
@@ -253,8 +257,8 @@ void SrvPI::cmdGET(string pathname)
 
 	packet.sendSTAT_EOT(connSockStream);
 }
-// get a diretory, but not recursive 
-void SrvPI::cmdDGET(string srvpath, string clipath)
+ 
+void SrvPI::RGET_recurse(string srvpath, string clipath)
 {
 	DIR * dir= opendir(srvpath.c_str());
 	char buf[MAXLINE];
@@ -289,7 +293,7 @@ void SrvPI::cmdDGET(string srvpath, string clipath)
 			{
 				if (packet.getStatid() == STAT_OK)
 				{
-					cmdDGET(srvpath + e->d_name, clipath + e->d_name);
+					RGET_recurse(srvpath + e->d_name, clipath + e->d_name);
 				} else if (packet.getStatid() == STAT_ERR)
 				{
 					Error::msg("error: mkdir %s", (clipath + e->d_name).c_str());
@@ -320,6 +324,91 @@ void SrvPI::cmdDGET(string srvpath, string clipath)
 	}
 	closedir(dir);
 }
+
+void SrvPI::RGET_iterate(string srvrootpath, string clirootpath)
+{
+	std::queue< pair<string, string > > dirQueue;
+	dirQueue.push(pair<string , string >(srvrootpath, clirootpath));
+
+	while(!dirQueue.empty())
+	 {
+		pair<string , string > dirPair = dirQueue.front();
+		string srvpath = dirPair.first;
+		string clipath = dirPair.second;
+
+		// first create dir on client host
+		packet.sendCMD_LMKDIR(connSockStream, clipath);
+		recvOnePacket();
+		if (packet.getTagid() == TAG_STAT)
+		{
+			if (packet.getStatid() == STAT_OK)
+			{
+				dirQueue.pop(); // client create dir successfully
+			} else if (packet.getStatid() == STAT_ERR)
+			{
+				Error::msg("error: mkdir %s", clipath.c_str());
+				return;
+			} else {
+				Error::msg("unknown statid: %d", packet.getStatid());
+				return;
+			}
+			 
+		} else {
+			Error::msg("unknown tagid: %d", packet.getTagid());
+			return;
+		}
+		// then iterate this dir
+		DIR * dir= opendir(srvpath.c_str());
+		char buf[MAXLINE];
+		if(!dir)
+		{
+			// send STAT_ERR Response
+			// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+			packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+			return;
+		} else {
+			// send STAT_OK
+			packet.sendSTAT_OK(connSockStream);
+		}
+
+		struct dirent* e;
+		if (srvpath.back() != '/')
+		{
+			srvpath += "/";
+		}
+		if (clipath.back() != '/')
+		{
+			clipath += "/";
+		}
+
+		while( (e = readdir(dir)) )
+		{
+			if(e->d_type == 4 && strcmp(e->d_name, ".") && strcmp(e->d_name, ".."))
+			{
+				dirQueue.push(pair<string , string >(srvpath + e->d_name, clipath + e->d_name));
+			}
+			else if(e->d_type == 8)
+			{
+				string str = srvpath + e->d_name;
+				str += DELIMITER;
+				str += clipath + e->d_name;
+				packet.sendCMD_GET(connSockStream, str);
+				recvOnePacket();
+				if (packet.getTagid() == TAG_CMD && packet.getCmdid() == GET)
+				{
+					cmdGET(packet.getSBody());
+				} else {
+					Error::msg("Error: cmdGET unknown tagid with statid");
+					packet.print();
+					return;
+				}
+			}
+		}
+		closedir(dir);
+		
+	}
+}
+
 void SrvPI::cmdRGET()
 {
 	printf("RGET request\n");
@@ -338,26 +427,45 @@ void SrvPI::cmdRGET()
 	split(paramVector[0], "/", pathVector);
 
 	// first create target dir
-	packet.sendCMD_LMKDIR(connSockStream, pathVector.back());
-	recvOnePacket();
-	if (packet.getTagid() == TAG_STAT)
-	{
-		if (packet.getStatid() == STAT_OK)
-		{
-			// then transfer inside dirs and files
-   			cmdDGET(tmpDir, pathVector.back());
-		} else if (packet.getStatid() == STAT_ERR)
-		{
-			Error::msg("error: mkdir %s", pathVector.back().c_str());
-			return;
-		}
+	// packet.sendCMD_LMKDIR(connSockStream, pathVector.back());
+	// recvOnePacket();
+	// if (packet.getTagid() == TAG_STAT)
+	// {
+	// 	if (packet.getStatid() == STAT_OK)
+	// 	{
+	// 		// then transfer inside dirs and files
+ //   			RGET_recurse(tmpDir, pathVector.back());
+	// 	} else if (packet.getStatid() == STAT_ERR)
+	// 	{
+	// 		Error::msg("error: mkdir %s", pathVector.back().c_str());
+	// 		return;
+	// 	}
 		 
-	} else {
-		Error::msg("unknown tagid: %d", packet.getTagid());
-		return;
-	}
+	// } else {
+	// 	Error::msg("unknown tagid: %d", packet.getTagid());
+	// 	return;
+	// }
 
 
+	RGET_iterate(tmpDir, pathVector.back());
+	// packet.sendCMD_LMKDIR(connSockStream, pathVector.back());
+	// recvOnePacket();
+	// if (packet.getTagid() == TAG_STAT)
+	// {
+	// 	if (packet.getStatid() == STAT_OK)
+	// 	{
+	// 		// then transfer inside dirs and files
+ //   			RGET_recurse(tmpDir, pathVector.back());
+	// 	} else if (packet.getStatid() == STAT_ERR)
+	// 	{
+	// 		Error::msg("error: mkdir %s", pathVector.back().c_str());
+	// 		return;
+	// 	}
+		 
+	// } else {
+	// 	Error::msg("unknown tagid: %d", packet.getTagid());
+	// 	return;
+	// }
 	packet.sendSTAT_EOT(connSockStream);		
 	// while(recvOnePacket())
 	// {

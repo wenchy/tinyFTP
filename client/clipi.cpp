@@ -462,7 +462,7 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 				return;
 			} else {
 				// OK
-				//printf("Dir '%s' emptied and removed\n",  cmdVector[1].c_str());
+				printf("Dir '%s' emptied and removed\n",  cmdVector[1].c_str());
 			}
 		}
 	}
@@ -510,6 +510,7 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 							packet.sendSTAT_OK(connSockStream);
 						} else {
 							packet.sendSTAT_ERR(connSockStream);
+							return;
 						}
 						break;
 					}
@@ -925,10 +926,10 @@ bool CliPI::cmdLMKDIR(string path)
 
 	char buf[MAXLINE]; 
 	if(mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1){
-		printf("mkdir [%s] failed: %s\n", path.c_str(), strerror_r(errno, buf, MAXLINE));
+		printf("\033[31mmkdir [%s] failed: %s\033[0m\n", path.c_str(), strerror_r(errno, buf, MAXLINE));
 		return false;
 	}else {
-		printf("Dir [%s] created\n", path.c_str());
+		printf("\033[35mDir [%s] created: \033[0m\n", path.c_str());
 		return true;
 	}
 

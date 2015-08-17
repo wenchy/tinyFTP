@@ -13,6 +13,7 @@ class SrvPI
 {
 public:
 	SrvPI(string dbFilename, int connfd);
+	void checkBreakpoint();
 	bool recvOnePacket();
 	void run();
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
@@ -25,7 +26,8 @@ public:
 
 	void cmdGET();
 	void cmdGET(string pathname);
-	void cmdDGET(string srvpath, string clipath);
+	void RGET_recurse(string srvpath, string clipath);
+	void RGET_iterate(string srvpath, string clipath);
 	void cmdRGET();
 	void cmdPUT();
 	void cmdLS();

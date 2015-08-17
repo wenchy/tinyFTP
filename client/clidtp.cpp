@@ -40,7 +40,7 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 	string hfilesize =  getFileSizeString(pathname);
 	if(nslice == 0)
 	{
-		printf("\033[32mEOF: 0 bytes\033[0m\n");
+		printf("EOF: 0 bytes\n");
 		packet.sendSTAT_EOF(connSockStream);
 	}
 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
@@ -211,7 +211,7 @@ string CliDTP::getFileSizeString(const char *pathname)
 				if (n != 0)
 				{
 					hsize_o += ".";
-					snprintf(buf, MAXLINE, "%2lu", n);
+					snprintf(buf, MAXLINE, "%02lu", n);
 					hsize_o += buf;
 				}
 				hsize_o +="K";
@@ -222,7 +222,7 @@ string CliDTP::getFileSizeString(const char *pathname)
 				if (n != 0)
 				{
 					hsize_o += ".";
-					snprintf(buf, MAXLINE, "%2lu", n);
+					snprintf(buf, MAXLINE, "%02lu", n);
 					hsize_o += buf;
 				}
 				hsize_o +="M";
@@ -234,7 +234,7 @@ string CliDTP::getFileSizeString(const char *pathname)
 				if (n != 0)
 				{
 					hsize_o += ".";
-					snprintf(buf, MAXLINE, "%2lu", n);
+					snprintf(buf, MAXLINE, "%02lu", n);
 					hsize_o += buf;
 				}
 				hsize_o +="G";
