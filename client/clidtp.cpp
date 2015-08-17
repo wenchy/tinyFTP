@@ -106,7 +106,7 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 				{
 					case STAT_OK:
 					{
-						cout << packet.getSBody() <<endl;
+						//cout << packet.getSBody() <<endl;
 						break;
 					}
 					case STAT_ERR:

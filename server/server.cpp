@@ -38,7 +38,7 @@ int main(int argc, char **argv)
     while (1)
     {  
         srvConnfd = listenSocket.tcpAccept(listenfd, (SA *) &cliaddr, &len);
-        printf("control conection from %s, port %d\n",
+        printf("connection from %s, port %d\n",
                 inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, buff, sizeof(buff)), ntohs(cliaddr.sin_port));
         
         threadArg.fd = srvConnfd;

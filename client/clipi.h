@@ -35,6 +35,7 @@ public:
 	CliPI(const char *host);
 	//void init(const char *host);
 	bool recvOnePacket();
+	bool sendOnePacket();
 	void run(uint16_t cmdid, std::vector<string> & cmdVector);
 	void split(std::string src, std::string token, vector<string>& vect);
 	void cmd2pack(uint16_t cmdid, std::vector<string> & cmdVector);

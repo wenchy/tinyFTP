@@ -52,17 +52,58 @@ void SrvDTP::sendFile(const char *pathname)
 
 	char body[PBODYCAP];
 	printf("Send [%s] now\n", pathname);
-	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
-	{
-		packet.sendDATA_FILE(connSockStream, nslice, ++sindex, n, body);
-	}
+	// while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
+	// {
+	// 	packet.sendDATA_FILE(connSockStream, nslice, ++sindex, n, body);
+	// }
+	
+	int			maxfdp1;
+	fd_set		rset, wset;
 
+	FD_ZERO(&rset);
+	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 ) {
+		FD_SET(connfd, &rset);
+		FD_SET(connfd, &wset);
+		maxfdp1 = connfd + 1;
+		if (select(maxfdp1, &rset, &wset, NULL, NULL) < 0)
+			Error::sys("select error");
+
+		if (FD_ISSET(connfd, &rset)) {	/* socket is readable */
+			psrvPI->recvOnePacket();
+		}
+
+		if (FD_ISSET(connfd, &wset)) {  /* socket is writable */
+			packet.sendDATA_FILE(connSockStream, nslice, ++sindex, n, body);
+		}
+	}
 	
 	// send EOF
 	fclose(fp);
 	printf("EOF [%s]\n", pathname);
 	packet.sendSTAT_EOF(connSockStream);
 }
+// void rwSelect(FILE *fp, int sockfd)
+// {
+// 	int			maxfdp1;
+// 	fd_set		rset, wset;
+
+// 	FD_ZERO(&rset);
+// 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 ) {
+// 		FD_SET(sockfd, &rset);
+// 		FD_SET(sockfd, &wset);
+// 		maxfdp1 = max(fileno(fp), sockfd) + 1;
+// 		if (select(maxfdp1, &rset, &wset, NULL, NULL) < 0)
+// 			Error::sys("select error");
+
+// 		if (FD_ISSET(sockfd, &rset)) {	/* socket is readable */
+// 			psrvPI->recvOnePacket();
+// 		}
+
+// 		if (FD_ISSET(sockfd, &wset)) {  /* socket is writable */
+// 			packet.sendDATA_FILE(connSockStream, nslice, ++sindex, n, body);
+// 		}
+// 	}
+// }
 void SrvDTP::recvFile(const char *pathname)
 {
 	Packet & packet = *(this->ppacket);

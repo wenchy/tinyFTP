@@ -54,16 +54,31 @@ bool CliPI::recvOnePacket()
 {
 	int n;
 	packet.reset(NPACKET);
-	if ( (n = connSockStream.Readn(packet.getPs(), PACKSIZE)) == 0)
+	if ( (n = connSockStream.readn(packet.getPs(), PACKSIZE)) == 0)
 	{
 		Socket::tcpClose(connfd);
+		Error::ret("connSockStream.readn()");
 		Error::quit("server terminated prematurely");
 	} else if (n < 0){
-		Error::ret("connSockStream.Readn()");
-		Error::quit("socket connection exception");
+		Socket::tcpClose(connfd);
+		Error::ret("connSockStream.readn() error");
+		Error::quit_pthread("socket connection exception on client");
+	} else {
+		packet.ntohp();
+		//packet.print();
 	}
-	packet.ntohp();
-	//packet.print();
+	return true;
+}
+
+bool CliPI::sendOnePacket()
+{
+	int n;
+	if ( (n = connSockStream.writen(packet.getPs(), PACKSIZE)) < 0 || (size_t)n != PACKSIZE )
+	{
+		Socket::tcpClose(connfd);
+		Error::ret("connSockStream.writen()");
+		Error::quit_pthread("socket connection exception");
+	}
 	return true;
 }
 
@@ -453,7 +468,7 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 		pathname = cmdVector[2];
 	}
 
-	if ((access(cmdVector[1].c_str(), F_OK)) == 0) { // already exists
+	if ((access(pathname.c_str(), F_OK)) == 0) { // already exists
 		snprintf(buf, MAXLINE, "[%s] already exists, overwrite ? (y/n) ", pathname.c_str());
 		if(!confirmYN(buf))
 		{

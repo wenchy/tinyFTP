@@ -22,8 +22,6 @@ public:
 	UI(const char *host);
 	void run();
 
-	void str_cli(int sockfd, string msg);
-
 private:
 	// first elemment is command. other is options
 	std::vector<string> cmdVector;

@@ -15,6 +15,7 @@ public:
 	SrvPI(string dbFilename, int connfd);
 	void checkBreakpoint();
 	bool recvOnePacket();
+	bool sendOnePacket();
 	void run();
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
 	void cmd2pack(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[PBODYCAP]);

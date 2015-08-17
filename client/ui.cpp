@@ -179,21 +179,3 @@ string UI::toUpper(string &s)
 		upperStr += toupper(s[i]);
 	return upperStr;
 }
-
-void UI::str_cli(int sockfd, string msg)
-{
-    char  sendline[MAXLINE], recvline[MAXLINE];
-    strcpy(sendline,msg.c_str());
-    int n = strlen(sendline); 
-    sendline[n+1] = '\0';
-    sendline[n] = 10;
-    std::cerr << "sendline: " << sendline << "size:" << strlen(sendline) << std::endl;
-    SockStream connSockStream(sockfd);
-    connSockStream.Writen(sendline, strlen(sendline));
-
-    if (connSockStream.Readline(recvline, MAXLINE) == 0)
-        Error::quit("str_cli: server terminated prematurely");
-
-    Fputs(recvline, stdout);
-
-}

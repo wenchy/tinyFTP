@@ -16,18 +16,33 @@ bool SrvPI::recvOnePacket()
 {
 	int n;
 	packet.reset(NPACKET);
-	if ( (n = connSockStream.Readn(packet.getPs(), PACKSIZE)) == 0)
+	if ( (n = connSockStream.readn(packet.getPs(), PACKSIZE)) == 0)
 	{
 		this->saveUserState();
 		Socket::tcpClose(connfd);
+		Error::ret("connSockStream.readn()");
 		Error::quit_pthread("client terminated prematurely, saveUserState ok");
 	} else if (n < 0){
-		Error::ret("connSockStream.Readn()");
+		this->saveUserState();
+		Socket::tcpClose(connfd);
+		Error::ret("connSockStream.readn() error");
+		Error::quit_pthread("socket connection exception");
+	} else {
+		packet.ntohp();
+		//packet.print();
+	}
+	return true;
+}
+bool SrvPI::sendOnePacket()
+{
+	int n;
+	if ( (n = connSockStream.writen(packet.getPs(), PACKSIZE)) < 0 || (size_t)n != PACKSIZE )
+	{
+		this->saveUserState();
+		Socket::tcpClose(connfd);
+		Error::ret("connSockStream.writen()");
 		Error::quit_pthread("socket connection exception");
 	}
-	packet.ntohp();
-	//packet.print();
-
 	return true;
 }
 void SrvPI::run()
@@ -241,7 +256,7 @@ void SrvPI::cmdGET()
 }
 void SrvPI::cmdGET(string pathname)
 {
-	printf("SrvPI::cmdGET(string pathname) request\n");
+	// printf("SrvPI::cmdGET(string pathname) request\n");
 
 	// string msg_o;
 	// if (!combineAndValidatePath(GET, pathname, msg_o))
