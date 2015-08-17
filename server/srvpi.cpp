@@ -228,7 +228,7 @@ void SrvPI::cmdGET()
 		return;
    	}
 
-	string path = userRootDir + userRCWD + "/" + paramVector[0];
+	string path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
 	//std::cout << "cmdGET path[" << path << "]" << '\n';
 	SrvDTP srvDTP(this->connSockStream, &(this->packet), this->connfd, this);
 	srvDTP.sendFile(path.c_str());
@@ -253,6 +253,7 @@ void SrvPI::cmdGET(string pathname)
 
 	packet.sendSTAT_EOT(connSockStream);
 }
+// get a diretory, but not recursive 
 void SrvPI::cmdDGET(string srvpath, string clipath)
 {
 	DIR * dir= opendir(srvpath.c_str());
@@ -283,6 +284,22 @@ void SrvPI::cmdDGET(string srvpath, string clipath)
 		if(e->d_type == 4 && strcmp(e->d_name, ".") && strcmp(e->d_name, ".."))
 		{
 			packet.sendCMD_LMKDIR(connSockStream, clipath + e->d_name);
+			recvOnePacket();
+			if (packet.getTagid() == TAG_STAT)
+			{
+				if (packet.getStatid() == STAT_OK)
+				{
+					cmdDGET(srvpath + e->d_name, clipath + e->d_name);
+				} else if (packet.getStatid() == STAT_ERR)
+				{
+					Error::msg("error: mkdir %s", (clipath + e->d_name).c_str());
+					return;
+				}
+				 
+			} else {
+				Error::msg("unknown tagid: %d", packet.getTagid());
+				return;
+			}
 		}
 		else if(e->d_type == 8)
 		{
@@ -295,8 +312,9 @@ void SrvPI::cmdDGET(string srvpath, string clipath)
 			{
 				cmdGET(packet.getSBody());
 			} else {
-				Error::msg("Error: cmdGET(packet.getSBody())");
+				Error::msg("Error: cmdGET unknown tagid with statid");
 				packet.print();
+				return;
 			}
 		}
 	}
@@ -315,10 +333,30 @@ void SrvPI::cmdRGET()
 		return;
    	}
 
-   	string tmpDir = userRootDir + userRCWD + "/" + paramVector[0];
+   	string tmpDir = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
    	vector<string> pathVector; 
 	split(paramVector[0], "/", pathVector);
-   	cmdDGET(tmpDir, pathVector.back());
+
+	// first create target dir
+	packet.sendCMD_LMKDIR(connSockStream, pathVector.back());
+	recvOnePacket();
+	if (packet.getTagid() == TAG_STAT)
+	{
+		if (packet.getStatid() == STAT_OK)
+		{
+			// then transfer inside dirs and files
+   			cmdDGET(tmpDir, pathVector.back());
+		} else if (packet.getStatid() == STAT_ERR)
+		{
+			Error::msg("error: mkdir %s", pathVector.back().c_str());
+			return;
+		}
+		 
+	} else {
+		Error::msg("unknown tagid: %d", packet.getTagid());
+		return;
+	}
+
 
 	packet.sendSTAT_EOT(connSockStream);		
 	// while(recvOnePacket())
@@ -402,11 +440,11 @@ void SrvPI::cmdPUT()
 	if (paramVector.size() == 1){
 		userinput = paramVector[0];
 		vector<string> pathVector; 
-		split(userinput, "/", pathVector);
-		path = userRootDir + userRCWD + "/" + pathVector.back();
+		split(userinput, "/", pathVector); 
+		path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + pathVector.back();
 	} else if (paramVector.size() == 2){
 		userinput = paramVector[1];
-		path = userRootDir + userRCWD + "/" + paramVector[1];
+		path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[1];
 	}
 
 	
@@ -452,7 +490,7 @@ void SrvPI::cmdLS()
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	}
-	string tmpDir = userRootDir + userRCWD + "/" + paramVector[0];
+	string tmpDir = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
 	DIR * dir= opendir(tmpDir.c_str());
 	if(!dir)
 	{
@@ -577,7 +615,7 @@ void SrvPI::cmdRM()
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	} else {
-   		string path = userRootDir + userRCWD + "/" + paramVector[0];
+   		string path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
    		char buf[MAXLINE]; 
    		if( remove(path.c_str()) !=0 )
 		{
@@ -659,7 +697,7 @@ void SrvPI::cmdMKDIR()
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	} else {
-   		string path = userRootDir + userRCWD + "/" + paramVector[0];
+   		string path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
    		char buf[MAXLINE]; 
    		if(mkdir(path.c_str(), 0777) == -1){
    			// send STAT_ERR Response
@@ -761,7 +799,7 @@ void SrvPI::cmdRMDIR()
    		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 		return;
    	} else {
-   		string path = userRootDir + userRCWD + "/" + paramVector[0];
+   		string path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
    		string shellCMD = "rm -rf " + path;
 		if (system(shellCMD.c_str()) == -1) {
 			char buf[MAXLINE];
@@ -880,7 +918,7 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 			    }
 				
 			} else { // stat error
-				msg_o = strerror_r(errno, buf, MAXLINE);
+				msg_o =newAbsDir + strerror_r(errno, buf, MAXLINE);
 				return false;
 			}
 			break;	

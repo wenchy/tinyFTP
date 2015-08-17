@@ -57,7 +57,7 @@ public:
 	void cmdLPWD(std::vector<string> & cmdVector);
 	void cmdMKDIR(std::vector<string> & cmdVector);
 	void cmdLMKDIR(std::vector<string> & cmdVector);
-	void cmdLMKDIR(string path);
+	bool cmdLMKDIR(string path);
 	void cmdRMDIR(std::vector<string> & cmdVector);
 	void cmdQUIT(std::vector<string> & cmdVector);
 	void cmdHELP(std::vector<string> & cmdVector);

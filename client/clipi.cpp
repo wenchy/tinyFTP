@@ -259,8 +259,6 @@ bool CliPI::cmdPASS(std::vector<string> & cmdVector)
 
 void CliPI::cmdGET(std::vector<string> & cmdVector)
 {
-	printf("GET request\n");
-
 	if(cmdVector.size() < 2 || cmdVector.size() > 3)
 	{
 		std::cout << cmdVector.size() << "Usage: " << helpMap["GET"] << std::endl;
@@ -305,7 +303,7 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
 void CliPI::cmdGET(string srvpath, string clipath)
 {
 	//printf("GET request: srvpath:\n");
-	cout << "GET request: " << "srvpath=" << srvpath << " clipath=" << clipath << endl;
+	//cout << "GET request: " << "srvpath=" << srvpath << " clipath=" << clipath << endl;
 
 	char buf[MAXLINE];
 	
@@ -464,19 +462,25 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 				return;
 			} else {
 				// OK
-				printf("Dir '%s' removed\n",  cmdVector[1].c_str());
+				//printf("Dir '%s' emptied and removed\n",  cmdVector[1].c_str());
 			}
 		}
 	}
 
-	if (system(("mkdir " + cmdVector[1]).c_str()) == -1) {
-		char buf[MAXLINE];
-		printf("%s\n", strerror_r(errno, buf, MAXLINE));
-		return;
-	} else {
-		// OK
-		printf("Dir '%s' created\n",  cmdVector[1].c_str());
-	}
+	// if (cmdLMKDIR(packet.getSBody()))
+	// {
+	// 	packet.sendSTAT_OK(connSockStream);
+	// } else {
+	// 	packet.sendSTAT_ERR(connSockStream);
+	// }
+	// if (system(("mkdir " + cmdVector[1]).c_str()) == -1) {
+	// 	char buf[MAXLINE];
+	// 	printf("%s\n", strerror_r(errno, buf, MAXLINE));
+	// 	return;
+	// } else {
+	// 	// OK
+	// 	printf("Dir '%s' created\n",  cmdVector[1].c_str());
+	// }
 
 	cmd2pack(RGET, cmdVector);
 	connSockStream.Writen(packet.getPs(), PACKSIZE);
@@ -501,7 +505,12 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 					}
 					case LMKDIR:
 					{
-						cmdLMKDIR(packet.getSBody());
+						if (cmdLMKDIR(packet.getSBody()))
+						{
+							packet.sendSTAT_OK(connSockStream);
+						} else {
+							packet.sendSTAT_ERR(connSockStream);
+						}
 						break;
 					}
 					default:
@@ -518,12 +527,12 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 				{
 					case STAT_OK:
 					{
-						cout << packet.getSBody() <<endl;
+						//cout << packet.getSBody() <<endl;
 						break;
 					}
 					case STAT_ERR:
 					{
-						cout << packet.getSBody() <<endl;
+						cerr << packet.getSBody() <<endl;
 						return;
 					}
 					// case STAT_EOF:
@@ -910,22 +919,17 @@ void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
 }
 
 
-void CliPI::cmdLMKDIR(string path)
+bool CliPI::cmdLMKDIR(string path)
 {
-	printf("LMKDIR request\n");
+	//printf("LMKDIR(string path) request\n");
 
 	char buf[MAXLINE]; 
 	if(mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1){
-		printf("\033[31mmkdir [%s] failed: %s\033[0m\n", path.c_str(), strerror_r(errno, buf, MAXLINE));
-		// send STAT_ERR Response
-		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-		//msg_o += "system call (mkdir): ";
-		//msg_o += strerror_r(errno, buf, MAXLINE);
-		//packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+		printf("mkdir [%s] failed: %s\n", path.c_str(), strerror_r(errno, buf, MAXLINE));
+		return false;
 	}else {
 		printf("Dir [%s] created\n", path.c_str());
-		// send STAT_OK
-		//packet.sendSTAT_OK(connSockStream, paramVector[0] + " created");
+		return true;
 	}
 
 }

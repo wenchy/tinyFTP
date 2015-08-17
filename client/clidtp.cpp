@@ -50,7 +50,7 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 		if (newProgress > oldProgress)
 		{
 			//printf("\033[2K\r\033[0m");
-			fprintf(stderr, "\033[2K\r\033[0mProgress [%s %s]: %3d%%", pathname, hfilesize.c_str(), newProgress);
+			fprintf(stderr, "\033[2K\r\033[0m%-30s%20s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
 		}
 		oldProgress = newProgress;
 	}
@@ -76,7 +76,7 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 	recvOnePacket();
 	if (packet.getTagid() == TAG_STAT) {
 		if (packet.getStatid() == STAT_OK) {
-			cout << packet.getSBody() <<endl;
+			//cout << "OK to transfer " << packet.getSBody() <<endl;
 			hfilesize =  packet.getSBody();
 		} else if (packet.getStatid() == STAT_ERR){
 			cerr << packet.getSBody() <<endl;
@@ -120,7 +120,7 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 				if (newProgress > oldProgress)
 				{
 					//printf("\033[2K\r\033[0m");
-					fprintf(stderr, "\033[2K\r\033[0mProgress[%s %s]: %3d%%", pathname, hfilesize.c_str(), newProgress);
+					fprintf(stderr, "\033[2K\r\033[0m%-30s%20s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
 				}
 				oldProgress = newProgress;
 			}
@@ -129,10 +129,11 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 			if (packet.getStatid() == STAT_EOF)
 			{
 				fclose(fp);
-				std::cout << "\n" << packet.getSBody() << std::endl;
+				//std::cout << "\n" << packet.getSBody() << std::endl;
 				continue;
 			} else if (packet.getStatid() == STAT_EOT){
-				std::cout << packet.getSBody() << std::endl;
+				//std::cout << packet.getSBody() << std::endl;
+				std::cout << std::endl;
 				return;
 			} else {
 				Error::msg("SrvDTP::recvFile TAG_STAT: unknown statid %d", packet.getStatid());
