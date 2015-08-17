@@ -28,7 +28,7 @@ void SrvDTP::sendFile(const char *pathname)
 		return;
 	} else if ( (n = getFileNslice(pathname, &nslice)) <= 0)  {
 		if ( n == 0) {
-			printf("EOT[%s]\n", pathname);
+			printf("EOT [%s]\n", pathname);
 			fclose(fp);
 			packet.sendSTAT_EOF(connSockStream, "EOF: 0 bytes");
 		} else if ( n == -2) {

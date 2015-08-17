@@ -29,6 +29,11 @@ public:
 
 	void print();
 
+	void sendCMD_GET(SockStream & connSockStream, const char *body);
+	void sendCMD_GET(SockStream & connSockStream, string sbody);
+	void sendCMD_LMKDIR(SockStream & connSockStream, const char *body);
+	void sendCMD_LMKDIR(SockStream & connSockStream, string sbody);
+
 	//void sendDATA_FILE(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, char *body);
 	void sendDATA_FILE(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, const char *body);
 	

@@ -28,7 +28,7 @@ $(SRV_EXE): $(SRV_OBJ) $(COM_OBJ)
 $(CLI_EXE): $(CLI_OBJ) $(COM_OBJ)
 	$(CC) $(CPPFLAGS) $^ -o $@ $(LIBS)
 depend:
-	$(shell if [ -f $(FILE) ]; then break; else @sudo cp lib/libsqlite3.so /usr/lib; fi;)
+	$(shell if [ -f $(FILE) ]; then break; else sudo cp lib/libsqlite3.so /usr/lib; fi;)
 	$(CC) -MM $(SRC) > .depend
 -include .depend
 clean:

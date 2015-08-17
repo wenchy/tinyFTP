@@ -166,6 +166,42 @@ void Packet::print()
 	fflush(stdout);
 }
 
+void Packet::sendCMD_GET(SockStream & connSockStream, const char *body)
+{
+	// send OK
+	this->reset(HPACKET);
+	this->fillCmd(GET, strlen(body), body);
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+
+void Packet::sendCMD_GET(SockStream & connSockStream, string sbody)
+{
+	// send OK
+	this->reset(HPACKET);
+	this->fillCmd(GET, sbody.size(), sbody.c_str());
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+
+void Packet::sendCMD_LMKDIR(SockStream & connSockStream, const char *body)
+{
+	// send OK
+	this->reset(HPACKET);
+	this->fillCmd(LMKDIR, strlen(body), body);
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+
+void Packet::sendCMD_LMKDIR(SockStream & connSockStream, string sbody)
+{
+	// send OK
+	this->reset(HPACKET);
+	this->fillCmd(LMKDIR, sbody.size(), sbody.c_str());
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+
 // void Packet::sendDATA_FILE(SockStream & connSockStream, uint16_t dataid, uint32_t nslice, uint32_t sindex, uint16_t bsize, char * body)
 // {
 // 	//this->print();

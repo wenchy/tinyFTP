@@ -131,6 +131,25 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
 	}
 	
 }
+void CliPI::split(std::string src, std::string token, vector<string>& vect)   
+{    
+    int nbegin=0;
+    int nend=0;    
+    while(nend != -1 && (unsigned int)nbegin < src.length() )    
+    {   
+        nend = src.find_first_of(token, nbegin);   
+        if(nend == -1) {
+        	 vect.push_back(src.substr(nbegin, src.length()-nbegin));
+        } else {
+        	if (nend != nbegin )
+        	{
+        		vect.push_back(src.substr(nbegin, nend-nbegin));  
+        	}
+        	 
+        }     
+        nbegin = nend + 1;   
+    }   
+}
 void CliPI::cmd2pack(uint16_t cmdid, std::vector<string> & cmdVector)
 {
 	packet.reset(HPACKET);
@@ -240,30 +259,33 @@ bool CliPI::cmdPASS(std::vector<string> & cmdVector)
 
 void CliPI::cmdGET(std::vector<string> & cmdVector)
 {
+	printf("GET request\n");
+
 	if(cmdVector.size() < 2 || cmdVector.size() > 3)
 	{
 		std::cout << cmdVector.size() << "Usage: " << helpMap["GET"] << std::endl;
 		return;
 	}
 
-	char pathname[MAXLINE];
+	string pathname;
 	char buf[MAXLINE];
 	if (cmdVector.size() == 2){
-		strcpy(pathname,cmdVector[1].c_str()); 
+		vector<string> pathVector; 
+		split(cmdVector[1], "/", pathVector);
+		pathname = pathVector.back();
 	} else if (cmdVector.size() == 3){
-		strcpy(pathname,cmdVector[2].c_str()); 
+		pathname = cmdVector[2];
 	}
-	
-	FILE *fp;
-	if ((access(pathname,F_OK)) == 0) {
-		snprintf(buf, MAXLINE, "File [%s] already exists, overwrite (y/n) ? ", pathname);
+
+	if ((access(pathname.c_str(), F_OK)) == 0) {
+		snprintf(buf, MAXLINE, "File [%s] already exists, overwrite ? (y/n) ", pathname.c_str());
 		if(!confirmYN(buf))
 		{
 			return;
 		}
 	}
-
-	if ( (fp = fopen(pathname, "wb")) == NULL) {
+	FILE *fp;
+	if ( (fp = fopen(pathname.c_str(), "wb")) == NULL) {
 		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
@@ -275,9 +297,42 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
     // pathname exist on server? need test
     CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
     //cliDTP.init(connSockStream, packet);
-	cliDTP.recvFile(pathname, fp);
+	cliDTP.recvFile(pathname.c_str(), fp);
  
 }
+
+
+void CliPI::cmdGET(string srvpath, string clipath)
+{
+	//printf("GET request: srvpath:\n");
+	cout << "GET request: " << "srvpath=" << srvpath << " clipath=" << clipath << endl;
+
+	char buf[MAXLINE];
+	
+	FILE *fp;
+	if ((access(clipath.c_str(), F_OK)) == 0) {
+		snprintf(buf, MAXLINE, "File [%s] already exists, overwrite ? (y/n) ", clipath.c_str());
+		if(!confirmYN(buf))
+		{
+			packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+			return;
+		}
+	}
+
+	if ( (fp = fopen(clipath.c_str(), "wb")) == NULL) {
+		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
+		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+		return;
+	} else {
+		packet.sendCMD_GET(connSockStream, srvpath);
+	}
+
+    CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
+    //cliDTP.init(connSockStream, packet);
+	cliDTP.recvFile(clipath.c_str(), fp);
+ 
+}
+
 bool CliPI::confirmYN(const char * prompt)
 {
 	string inputline, word;
@@ -395,17 +450,40 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 	strcpy(pathname, cmdVector[1].c_str()); 
 
 	if ((access(cmdVector[1].c_str(), F_OK)) == 0) { // already exists
-		snprintf(buf, MAXLINE, "[%s] already exists, overwrite (y/n) ? ", pathname);
+		snprintf(buf, MAXLINE, "[%s] already exists, overwrite ? (y/n) ", pathname);
 		if(!confirmYN(buf))
 		{
 			return;
 		} else {
 			// yes to overwite
-			removeDir(cmdVector[1].c_str(), false);
+			//removeDir(cmdVector[1].c_str(), false);
+	   		string shellCMD = "rm -rf " + cmdVector[1];
+			if (system(shellCMD.c_str()) == -1) {
+				char buf[MAXLINE];
+				printf("%s\n", strerror_r(errno, buf, MAXLINE));
+				return;
+			} else {
+				// OK
+				printf("Dir '%s' removed\n",  cmdVector[1].c_str());
+			}
 		}
 	}
+
+	if (system(("mkdir " + cmdVector[1]).c_str()) == -1) {
+		char buf[MAXLINE];
+		printf("%s\n", strerror_r(errno, buf, MAXLINE));
+		return;
+	} else {
+		// OK
+		printf("Dir '%s' created\n",  cmdVector[1].c_str());
+	}
+
+	cmd2pack(RGET, cmdVector);
+	connSockStream.Writen(packet.getPs(), PACKSIZE);
+
 	
 	CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
+
 	while(recvOnePacket())
 	{
 		switch(packet.getTagid())
@@ -416,11 +494,14 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 				{
 					case GET:
 					{
+						vector<string> paramVector; 
+						split(packet.getSBody(), DELIMITER, paramVector);
+						cmdGET(paramVector[0], paramVector[1]);
 						break;
 					}
-					case MKDIR:
+					case LMKDIR:
 					{
-						cmdMKDIR(packet.getSBody().c_str());
+						cmdLMKDIR(packet.getSBody());
 						break;
 					}
 					default:
@@ -437,6 +518,7 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 				{
 					case STAT_OK:
 					{
+						cout << packet.getSBody() <<endl;
 						break;
 					}
 					case STAT_ERR:
@@ -444,11 +526,11 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 						cout << packet.getSBody() <<endl;
 						return;
 					}
-					case STAT_EOF:
-					{
-						cout << packet.getSBody() <<endl;
-						break;
-					}
+					// case STAT_EOF:
+					// {
+					// 	cout << packet.getSBody() <<endl;
+					// 	break;
+					// }
 					case STAT_EOT:
 					{
 						cout << packet.getSBody() <<endl;
@@ -464,7 +546,24 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 			}
 			case TAG_DATA:
 			{
-				//cliDTP.recvFile(pathname, fp);
+				switch(packet.getDataid())
+				{
+					// case DATA_FILE:
+					// {
+					// 	cout << "DATA_FILE" << packet.getSBody() <<endl;
+					// 	break;
+					// }
+					case DATA_NAME:
+					{
+						cout << "DATA_NAME" << packet.getSBody() <<endl;
+						return;
+					}
+					default:
+					{
+						Error::msg("unknown statid: %d", packet.getStatid());
+						break;
+					}
+				}
 				break;
 			}
 			default:
@@ -492,7 +591,7 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 
 void CliPI::cmdPUT(std::vector<string> & cmdVector)
 {
-	if(cmdVector.size() < 2 || cmdVector.size() < 3)
+	if(cmdVector.size() < 2 || cmdVector.size() > 3)
 	{
 		std::cout << "Usage: " << helpMap["PUT"] << std::endl;
 		return;
@@ -676,11 +775,11 @@ void CliPI::cmdLCD(std::vector<string> & cmdVector)
 	}
 
 	int n;
-	char buf[MAXLINE];
+	//char buf[MAXLINE];
 	if( (n = chdir(cmdVector[1].c_str())) == -1)
 	{
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-		Error::msg("lcd: %s\n", strerror_r(errno, buf, MAXLINE));
+		Error::ret("lcd");
 		return;
 	}
 }
@@ -780,6 +879,7 @@ void CliPI::cmdLPWD(std::vector<string> & cmdVector)
 
 void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
 {
+	printf("MKDIR request\n");
 	if(cmdVector.size() != 2)
 	{
 		std::cout << "Usage: " << helpMap["MKDIR"] << std::endl;
@@ -810,20 +910,20 @@ void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
 }
 
 
-void CliPI::cmdMKDIR(const char * path)
+void CliPI::cmdLMKDIR(string path)
 {
-	printf("MKDIR request\n");
+	printf("LMKDIR request\n");
 
 	char buf[MAXLINE]; 
-	if(mkdir(path, S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1){
-		printf("\033[31mmkdir [%s] failed: %s\033[0m\n", path, strerror_r(errno, buf, MAXLINE));
+	if(mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1){
+		printf("\033[31mmkdir [%s] failed: %s\033[0m\n", path.c_str(), strerror_r(errno, buf, MAXLINE));
 		// send STAT_ERR Response
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
 		//msg_o += "system call (mkdir): ";
 		//msg_o += strerror_r(errno, buf, MAXLINE);
 		//packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
 	}else {
-		printf("Dir [%s] created\n", path);
+		printf("Dir [%s] created\n", path.c_str());
 		// send STAT_OK
 		//packet.sendSTAT_OK(connSockStream, paramVector[0] + " created");
 	}
@@ -832,6 +932,7 @@ void CliPI::cmdMKDIR(const char * path)
 
 void CliPI::cmdLMKDIR(std::vector<string> & cmdVector)
 {
+	printf("LMKDIR request\n");
 	string shellCMD = "mkdir";
 	for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it){
        	//std::cout << *it << std::endl;

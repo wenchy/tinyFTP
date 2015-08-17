@@ -36,6 +36,7 @@ public:
 	//void init(const char *host);
 	bool recvOnePacket();
 	void run(uint16_t cmdid, std::vector<string> & cmdVector);
+	void split(std::string src, std::string token, vector<string>& vect);
 	void cmd2pack(uint16_t cmdid, std::vector<string> & cmdVector);
 	void userpass2pack(uint16_t cmdid, std::vector<string> & cmdVector);
 	
@@ -43,6 +44,7 @@ public:
 	bool cmdPASS(std::vector<string> & cmdVector);
 
 	void cmdGET(std::vector<string> & cmdVector);
+	void cmdGET(string srvpath, string clipath);
 	void cmdRGET(std::vector<string> & cmdVector);
 	void cmdPUT(std::vector<string> & cmdVector);
 	void cmdLS(std::vector<string> & cmdVector);
@@ -55,6 +57,7 @@ public:
 	void cmdLPWD(std::vector<string> & cmdVector);
 	void cmdMKDIR(std::vector<string> & cmdVector);
 	void cmdLMKDIR(std::vector<string> & cmdVector);
+	void cmdLMKDIR(string path);
 	void cmdRMDIR(std::vector<string> & cmdVector);
 	void cmdQUIT(std::vector<string> & cmdVector);
 	void cmdHELP(std::vector<string> & cmdVector);
@@ -67,7 +70,7 @@ private:
 	void rmdirDFS();
 	void removeDir(const char *path_raw, bool removeSelf);
 
-	void cmdMKDIR(const char * path);
+	
 
 
 

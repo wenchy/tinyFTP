@@ -41,7 +41,8 @@ void UI::run()
 	string inputline;
 
     // user validate commands
-    while (printf("\033[35mUsername for 'tinyFTP': \033[0m"), getline(std::cin, inputline))
+    //while (printf("\033[35mUsername for 'tinyFTP': \033[0m"), getline(std::cin, inputline))
+    while (printf("Username for 'tinyFTP': "), getline(std::cin, inputline))
     {
         // clear cmdVector each time when user input
         this->cmdVector.clear();
@@ -88,11 +89,11 @@ void UI::run()
     this->username = this->cmdVector[0];
 
 	// other ftp commands: first cout prompt (use "," operator)
-	while (printf("\033[35m%s@tinyFTP> \033[0m", username.c_str()), getline(std::cin, inputline))
+	while (printf("%s@tinyFTP> ", username.c_str()), getline(std::cin, inputline))
 	{
 		// clear cmdVector each time when user input
 		this->cmdVector.clear();
-		std::cout << "inputline: " << inputline << inputline.size() << std::endl;
+		//std::cout << "inputline: " << inputline << inputline.size() << std::endl;
 
 		// split input string
         for (auto it = inputline.begin(); it < inputline.end(); ++it)

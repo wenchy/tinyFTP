@@ -24,6 +24,8 @@ public:
 	void cmdPASS();
 
 	void cmdGET();
+	void cmdGET(string pathname);
+	void cmdDGET(string srvpath, string clipath);
 	void cmdRGET();
 	void cmdPUT();
 	void cmdLS();
