@@ -261,6 +261,23 @@ void Packet::sendDATA_NAME(SockStream & connSockStream, uint32_t nslice, uint32_
 	this->htonp();
 	connSockStream.Writen(this->ps, PACKSIZE);
 }
+void Packet::sendDATA_TIP(SockStream & connSockStream, const char *body)
+{
+	// send OK
+	this->reset(HPACKET);
+	this->fillData(DATA_TIP, 0, 0, strlen(body), body);
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
+
+void Packet::sendDATA_TIP(SockStream & connSockStream, string body)
+{
+	// send OK
+	this->reset(HPACKET);
+	this->fillData(DATA_TIP, 0, 0, body.size(), body.c_str());
+	this->htonp();
+	connSockStream.Writen(this->ps, PACKSIZE);
+}
 
 // void Packet::sendDATA(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, string sbody)
 // {

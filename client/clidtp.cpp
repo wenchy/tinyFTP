@@ -1,10 +1,11 @@
 #include    "clidtp.h"
 
-CliDTP::CliDTP(SockStream & connSockStream, Packet * ppacket, int connfd)
+CliDTP::CliDTP(SockStream & connSockStream, Packet * ppacket, int connfd, CliPI * pcliPI)
 { 
 	this->connSockStream = connSockStream;
 	this->ppacket = ppacket;
 	this->connfd = connfd;
+	this->pcliPI = pcliPI;
 }
 // void CliDTP::init(SockStream & connSockStream, Packet & packet)
 // { 
@@ -12,22 +13,22 @@ CliDTP::CliDTP(SockStream & connSockStream, Packet * ppacket, int connfd)
 // 	this->packet = packet;
 // }
 
-void CliDTP::recvOnePacket()
-{
-	Packet & packet = *(this->ppacket);
-	int n;
-	packet.reset(NPACKET);
-	if ( (n = connSockStream.Readn(packet.getPs(), PACKSIZE)) == 0)
-	{
-		Socket::tcpClose(connfd);
-		Error::quit("server terminated prematurely");
-	} else if (n < 0){
-		Error::ret("connSockStream.Readn()");
-		Error::quit("socket connection exception");
-	}
-	packet.ntohp();
-	//packet.print();
-}
+// void CliDTP::recvOnePacket()
+// {
+// 	Packet & packet = *(this->ppacket);
+// 	int n;
+// 	packet.reset(NPACKET);
+// 	if ( (n = connSockStream.Readn(packet.getPs(), PACKSIZE)) == 0)
+// 	{
+// 		Socket::tcpClose(connfd);
+// 		Error::quit("server terminated prematurely");
+// 	} else if (n < 0){
+// 		Error::ret("connSockStream.Readn()");
+// 		Error::quit("socket connection exception");
+// 	}
+// 	packet.ntohp();
+// 	//packet.print();
+// }
 
 void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 {
@@ -40,24 +41,24 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 	string hfilesize =  getFileSizeString(pathname);
 	if(nslice == 0)
 	{
-		printf("EOF: 0 bytes\n");
-		packet.sendSTAT_EOF(connSockStream);
-	}
-	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
-	{
-		packet.sendDATA_FILE(connSockStream, nslice, ++sindex, n, body);
-		newProgress = (sindex*1.0)/nslice*100;
-		if (newProgress > oldProgress)
+		fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t100%%", pathname, hfilesize.c_str());
+	} else {
+		while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 		{
-			//printf("\033[2K\r\033[0m");
-			fprintf(stderr, "\033[2K\r\033[0m%-30s%20s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
+			packet.sendDATA_FILE(connSockStream, nslice, ++sindex, n, body);
+			newProgress = (sindex*1.0)/nslice*100;
+			if (newProgress > oldProgress)
+			{
+				//printf("\033[2K\r\033[0m");
+				fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
+			}
+			oldProgress = newProgress;
 		}
-		oldProgress = newProgress;
 	}
-	
 	// send EOF
 	fclose(fp);
-	printf("\nEOF [%s]\n", pathname);
+	cout << endl;
+	//printf("\nEOF [%s]\n", pathname);
 	packet.sendSTAT_EOF(connSockStream);
 }
 void CliDTP::removeFile(const char *pathname)
@@ -72,8 +73,121 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 {
 	Packet & packet = *(this->ppacket);
 	string hfilesize;
+	int m;
+	int oldProgress = 0, newProgress = 0;
+
+	while(pcliPI->recvOnePacket())
+	{
+		switch(packet.getTagid())
+		{
+			case TAG_CMD:
+			{
+				switch(packet.getCmdid())
+				{
+					case GET:
+					{
+						break;
+					}
+					case LMKDIR:
+					{
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown cmdid: %d", packet.getCmdid());
+						break;
+					}
+				}
+				break;
+			}
+			case TAG_STAT:
+			{
+				switch(packet.getStatid())
+				{
+					case STAT_OK:
+					{
+						cout << packet.getSBody() <<endl;
+						break;
+					}
+					case STAT_ERR:
+					{
+						cerr << packet.getSBody() <<endl;
+						return;
+					}
+					case STAT_EOF:
+					{
+						fclose(fp);
+						//std::cout << "\n" << packet.getSBody() << std::endl;
+						break;
+					}
+					case STAT_EOT:
+					{
+						//std::cout << packet.getSBody() << std::endl;
+						std::cout << std::endl;
+						return;
+					}
+					default:
+					{
+						Error::msg("unknown statid: %d", packet.getStatid());
+						break;
+					}
+				}
+				break;
+			}
+			case TAG_DATA:
+			{
+				switch(packet.getDataid())
+				{
+					case DATA_FILE:
+					{
+						m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), fp);
+
+						if (m != packet.getBsize())
+						{
+							Error::msg("fwirte error %d/%d: %d vs %d Bytes\n", packet.getSindex(), packet.getNslice(), packet.getBsize(), m);
+							fclose(fp);
+							return;
+						} else 
+						{
+							if(packet.getNslice() == 0)
+							{
+								fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t100%%", pathname, hfilesize.c_str());
+								break;
+							}
+							newProgress = (packet.getSindex()*1.0)/packet.getNslice()*100;
+							if (newProgress > oldProgress)
+							{
+								//printf("\033[2K\r\033[0m");
+								fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
+							}
+							oldProgress = newProgress;
+						}
+						//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.getBsize(), m);
+						break;
+					}
+					case DATA_TIP:
+					{
+						hfilesize =  packet.getSBody();
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown statid: %d", packet.getStatid());
+						break;
+					}
+				}
+				break;
+			}
+			default:
+			{
+				Error::msg("unknown tagid: %d", packet.getTagid());
+				break;
+			}
+		}
+	}
+
 	// first receive response
-	recvOnePacket();
+	/*recvOnePacket();
 	if (packet.getTagid() == TAG_STAT) {
 		if (packet.getStatid() == STAT_OK) {
 			//cout << "OK to transfer " << packet.getSBody() <<endl;
@@ -144,7 +258,7 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 			fclose(fp);
 			return;
 		}
-	}
+	}*/
 }
 
 // int CliDTP::getFileNslice(const char *pathname,uint32_t *pnslice_o)  

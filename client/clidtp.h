@@ -6,12 +6,14 @@
 #include    "../common/packet.h"
 #include    "../common/socket.h"
 #include    "../common/sockstream.h"
+#include    "clipi.h"
 
+class CliPI;
 // Client Data Transfer Process (CliDTP)
 class CliDTP
 {
 public:
-	CliDTP(SockStream & connSockStream, Packet * ppacket, int connfd);
+	CliDTP(SockStream & connSockStream, Packet * ppacket, int connfd, CliPI * pcliPI);
 	//void init(SockStream & connSockStream, Packet & packet);
 	void recvOnePacket();
 	void sendFile(const char *pathname, FILE *fp, uint32_t nslice);
@@ -24,7 +26,7 @@ private:
 	Packet * ppacket;
 	SockStream connSockStream;
 	int connfd;
-
+	CliPI * pcliPI;
 
 };
 

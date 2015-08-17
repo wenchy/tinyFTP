@@ -185,7 +185,9 @@ typedef enum dataID
 {
 	DATA_FILE = 1,
 	DATA_LIST,
-	DATA_NAME
+	DATA_NAME,
+	DATA_TIP,
+	DATA_OTHER
 } DataID;
 
 /*********************************************************

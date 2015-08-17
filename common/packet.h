@@ -43,6 +43,9 @@ public:
 	void sendDATA_NAME(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, const char *body);
 	void sendDATA_NAME(SockStream & connSockStream, uint32_t nslice, uint32_t sindex, uint16_t bsize, string body);
 
+	void sendDATA_TIP(SockStream & connSockStream, const char *msg);
+	void sendDATA_TIP(SockStream & connSockStream, string msg);
+
 	void sendSTAT_OK(SockStream & connSockStream);
 	//void sendSTAT_OK(SockStream & connSockStream, char *msg);
 	void sendSTAT_OK(SockStream & connSockStream, const char *msg);

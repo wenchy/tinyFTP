@@ -28,9 +28,13 @@ void SrvDTP::sendFile(const char *pathname)
 		return;
 	} else if ( (n = getFileNslice(pathname, &nslice)) <= 0)  {
 		if ( n == 0) {
-			printf("EOT [%s]\n", pathname);
+			printf("EOF[%s]: 0 bytes\n", pathname);
 			fclose(fp);
+			packet.sendSTAT_OK(connSockStream, getFileSizeString(pathname));
+			packet.sendDATA_TIP(connSockStream, getFileSizeString(pathname));
+			packet.sendDATA_FILE(connSockStream, 0, 0, 0, NULL);
 			packet.sendSTAT_EOF(connSockStream, "EOF: 0 bytes");
+			return;
 		} else if ( n == -2) {
 			snprintf(buf, MAXLINE, "Too large file size");
 			packet.sendSTAT_ERR(connSockStream, buf);
@@ -43,6 +47,8 @@ void SrvDTP::sendFile(const char *pathname)
 		// send STAT_OK
 		packet.sendSTAT_OK(connSockStream, getFileSizeString(pathname));
 	}
+
+	packet.sendDATA_TIP(connSockStream, getFileSizeString(pathname));
 
 	char body[PBODYCAP];
 	printf("Send [%s] now\n", pathname);
@@ -75,10 +81,9 @@ void SrvDTP::recvFile(const char *pathname)
 	printf("Recv file [%s] now\n", pathname);
 	int m;
 
-	while (1)
+	while (psrvPI->recvOnePacket())
 	{
-		psrvPI->recvOnePacket();
-		if(packet.getTagid() == TAG_DATA) {
+		if(packet.getTagid() == TAG_DATA && packet.getDataid() == DATA_FILE){
 			m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), fp);
 			if (m != packet.getBsize())
 			{

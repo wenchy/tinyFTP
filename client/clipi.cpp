@@ -293,7 +293,7 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
 	}
 
     // pathname exist on server? need test
-    CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
+    CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd, this);
     //cliDTP.init(connSockStream, packet);
 	cliDTP.recvFile(pathname.c_str(), fp);
  
@@ -325,7 +325,7 @@ void CliPI::cmdGET(string srvpath, string clipath)
 		packet.sendCMD_GET(connSockStream, srvpath);
 	}
 
-    CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
+    CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd, this);
     //cliDTP.init(connSockStream, packet);
 	cliDTP.recvFile(clipath.c_str(), fp);
  
@@ -443,26 +443,31 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 		std::cout << "Usage: " << helpMap["RGET"] << std::endl;
 		return;
 	}
-	char pathname[MAXLINE];
+	string pathname;
 	char buf[MAXLINE];
-	strcpy(pathname, cmdVector[1].c_str()); 
+	if (cmdVector.size() == 2){
+		vector<string> pathVector; 
+		split(cmdVector[1], "/", pathVector);
+		pathname = pathVector.back();
+	} else if (cmdVector.size() == 3){
+		pathname = cmdVector[2];
+	}
 
 	if ((access(cmdVector[1].c_str(), F_OK)) == 0) { // already exists
-		snprintf(buf, MAXLINE, "[%s] already exists, overwrite ? (y/n) ", pathname);
+		snprintf(buf, MAXLINE, "[%s] already exists, overwrite ? (y/n) ", pathname.c_str());
 		if(!confirmYN(buf))
 		{
 			return;
 		} else {
 			// yes to overwite
 			//removeDir(cmdVector[1].c_str(), false);
-	   		string shellCMD = "rm -rf " + cmdVector[1];
+	   		string shellCMD = "rm -rf " + pathname;
 			if (system(shellCMD.c_str()) == -1) {
-				char buf[MAXLINE];
 				printf("%s\n", strerror_r(errno, buf, MAXLINE));
 				return;
 			} else {
 				// OK
-				printf("Dir '%s' emptied and removed\n",  cmdVector[1].c_str());
+				printf("Dir '%s' emptied and removed\n",  pathname.c_str());
 			}
 		}
 	}
@@ -486,7 +491,7 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 	connSockStream.Writen(packet.getPs(), PACKSIZE);
 
 	
-	CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
+	CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd, this);
 
 	while(recvOnePacket())
 	{
@@ -566,7 +571,7 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 					case DATA_NAME:
 					{
 						cout << "DATA_NAME" << packet.getSBody() <<endl;
-						return;
+						break;
 					}
 					default:
 					{
@@ -650,14 +655,13 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 	    connSockStream.Writen(packet.getPs(), PACKSIZE);
 	}
 
-	while (1)
+	while (recvOnePacket())
 	{
-		recvOnePacket();
 		if (packet.getTagid() == TAG_STAT) {
 			if (packet.getStatid() == STAT_OK) {
-				cout << packet.getSBody() <<endl;
+				//cout << packet.getSBody() <<endl;
 				// must contain sesssion id
-				CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
+				CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd, this);
 				cliDTP.sendFile(pathname, fp, nslice);
 				break;
 			} else if (packet.getStatid() == STAT_CFM) {
@@ -673,19 +677,19 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 				cerr << packet.getSBody() <<endl;
 				return;
 			} else {
-				Error::msg("CliDTP::sendFile: unknown statid %d", packet.getStatid());
+				Error::msg("unknown statid %d", packet.getStatid());
 				packet.print();
 				return;
 			}
 			
 		} else {
-			Error::msg("CliDTP::sendFile: unknown tagid %d", packet.getTagid());
+			Error::msg("unknown tagid %d", packet.getTagid());
 			packet.print();
 			return;
 		}
 	}
 
-	printf("EOT %s\n", pathname);
+	//printf("EOT %s\n", pathname);
 	packet.sendSTAT_EOT(connSockStream);
 	
 }
