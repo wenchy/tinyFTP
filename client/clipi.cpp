@@ -294,7 +294,7 @@ bool CliPI::cmdPASS(std::vector<string> & paramVector)
 
 void CliPI::cmdGET(std::vector<string> & paramVector)
 {
-	if(paramVector.size() < 2 || paramVector.size() > 3)
+	if(paramVector.size() > 2)
 	{
 		std::cout << "Usage: " << helpMap["GET"] << std::endl;
 		return;
@@ -309,7 +309,7 @@ void CliPI::cmdGET(std::vector<string> & paramVector)
 	} else if (paramVector.size() == 2){
 		pathname = paramVector[1];
 	}
-
+	
 	if ((access(pathname.c_str(), F_OK)) == 0) {
 		snprintf(buf, MAXLINE, "File [%s] already exists, overwrite ? (y/n) ", pathname.c_str());
 		if(!confirmYN(buf))

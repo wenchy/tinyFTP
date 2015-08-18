@@ -460,9 +460,17 @@ void SrvPI::cmdRGET()
 		return;
    	}
 
-   	string tmpDir = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
+   	string srvpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
+   	string clipath;
    	vector<string> pathVector; 
-	split(paramVector[0], "/", pathVector);
+   	if (paramVector.size() == 1)
+   	{
+   		split(paramVector[0], "/", pathVector);
+   		clipath = pathVector.back();
+   	} else {
+   		clipath = paramVector[1];
+   	}
+	
 
 	// first create target dir
 	// packet.sendCMD_LMKDIR(pathVector.back());
@@ -485,7 +493,7 @@ void SrvPI::cmdRGET()
 	// }
 
 
-	RGET_iterate(tmpDir, pathVector.back());
+	RGET_iterate(srvpath, clipath);
 	// packet.sendCMD_LMKDIR(pathVector.back());
 	// recvOnePacket();
 	// if (packet.getTagid() == TAG_STAT)
@@ -505,72 +513,6 @@ void SrvPI::cmdRGET()
 	// 	return;
 	// }
 	packet.sendSTAT_EOT();		
-	// while(recvOnePacket())
-	// {
-	// 	switch(packet.getTagid())
-	// 	{
-	// 		case TAG_CMD:
-	// 		{
-	// 			switch(packet.getCmdid())
-	// 			{
-	// 				case GET:
-	// 				{
-	// 					break;
-	// 				}
-	// 				case MKDIR:
-	// 				{
-	// 					//cmdMKDIR(packet.getSBody().c_str());
-	// 					break;
-	// 				}
-	// 				default:
-	// 				{
-	// 					Error::msg("unknown tagid: %d", packet.getCmdid());
-	// 					break;
-	// 				}
-	// 			}
-	// 			break;
-	// 		}
-	// 		case TAG_STAT:
-	// 		{
-	// 			switch(packet.getStatid())
-	// 			{
-	// 				case STAT_OK:
-	// 				{
-	// 					break;
-	// 				}
-	// 				case STAT_ERR:
-	// 				{
-	// 					break;
-	// 				}
-	// 				case STAT_EOF:
-	// 				{
-	// 					// fclose
-	// 					break;
-	// 				}
-	// 				case STAT_EOT:
-	// 				{
-	// 					// fclose
-	// 					break;
-	// 				}
-	// 				default:
-	// 				{
-	// 					Error::msg("unknown tagid: %d", packet.getStatid());
-	// 					break;
-	// 				}
-	// 			}
-	// 			break;
-	// 		}
-	// 		case TAG_DATA:
-	// 		{
-	// 			break;
-	// 		}
-	// 		default:
-	// 		{
-	// 			Error::msg("unknown tagid: %d", packet.getTagid());
-	// 			break;
-	// 		}
-	// 	}
-	// }
 }
 
 void SrvPI::cmdPUT()

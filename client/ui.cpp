@@ -97,8 +97,9 @@ void UI::run()
 
     FD_ZERO(&rset);
 
+    printf("%s@tinyFTP> ", username.c_str());
     while(1) 
-    {   printf("%s@tinyFTP> ", username.c_str());
+    {   
         fflush(stdout);
         FD_SET(connfd, &rset);
         FD_SET(fileno(stdin), &rset);
@@ -114,6 +115,7 @@ void UI::run()
         {  
             getline(std::cin, inputline);
             cmdRun(inputline);
+            printf("%s@tinyFTP> ", username.c_str());
         }
     }
 
@@ -184,21 +186,6 @@ bool UI::cmdCheck()
 	if (iter != cmdMap.end())
 	{
 		this->cmdid = iter->second;
-        // process escape character '\ '
-        // for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it)
-        // {
-        //     if (it->back() == '\\' && (it + 1) != cmdVector.end())
-        //     {
-        //        it->pop_back();
-        //        (*it) += " ";
-        //        (*it) += *(it+1);
-        //        cmdVector.erase(it+1);
-        //        it = cmdVector.begin();
-        //     }
-        //    std::cout << "cmdVector: " << *it << std::endl;
-        // }
-
-       	//std::cout << "CommandID: " << iter->first << "(" << iter->second << ")" << std::endl;
         return true;
 	} else {
         std::cerr << cmdVector[0] << ": command not found"  << std::endl;
