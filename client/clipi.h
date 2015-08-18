@@ -39,6 +39,8 @@ public:
 	void cmdLMKDIR(std::vector<string> & cmdVector);
 	bool cmdLMKDIR(string path);
 	void cmdRMDIR(std::vector<string> & cmdVector);
+	void cmdSHELL(std::vector<string> & cmdVector);
+	void cmdLSHELL(std::vector<string> & cmdVector);
 	void cmdQUIT(std::vector<string> & cmdVector);
 	void cmdHELP(std::vector<string> & cmdVector);
 

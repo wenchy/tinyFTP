@@ -25,6 +25,9 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"RPUT",    RPUT},
                                                     {"RMDIR",   RMDIR},
 
+                                                    {"SHELL",   SHELL},
+                                                    {"LSHELL",  LSHELL},
+
                                                     {"BINARY",  BINARY},
                                                     {"ASCII",   ASCII}
                                                                         };

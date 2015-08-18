@@ -141,7 +141,7 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 						//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.getBsize(), m);
 						break;
 					}
-					case DATA_TIP:
+					case DATA_TEXT:
 					{
 						hfilesize =  packet.getSBody();
 						break;

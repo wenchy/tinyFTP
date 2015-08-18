@@ -35,6 +35,7 @@ public:
 	void cmdPWD();
 	void cmdMKDIR();
 	void cmdRMDIR();
+	void cmdSHELL();
 
 	
 	int getConnfd();

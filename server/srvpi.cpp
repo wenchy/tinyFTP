@@ -148,6 +148,9 @@ void SrvPI::run()
 			case RMDIR:
 				cmdRMDIR();
 				break;
+			case SHELL:
+				cmdSHELL();
+				break;
 			default:
 				Error::msg("Server: Sorry! this command function not finished yet.\n");
 				break;
@@ -955,6 +958,58 @@ void SrvPI::cmdRMDIR()
 	}
 }
 
+void SrvPI::cmdSHELL()
+{
+	printf("SHELL request\n");
+
+	char buf[MAXLINE];
+	vector<string> paramVector; 
+	split(packet.getSBody(), DELIMITER, paramVector);
+
+	string curpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/");
+	string shellcmdstring = "cd " + curpath + "; ";
+	auto it = paramVector.begin();
+	shellcmdstring +=  *it; // first get command name
+	for (++it; it != paramVector.end(); ++it)
+	{
+		if ((*it)[0] == '-')
+		{
+			shellcmdstring += " " + *it;
+		} else {
+			string msg_o;
+		   	if (!combineAndValidatePath(SHELL, *it, msg_o))
+		   	{
+		   		packet.sendSTAT_ERR(msg_o.c_str());
+				return;
+		   	} else {
+		   		string path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + *it;
+				shellcmdstring += " " + path;
+			}
+		}
+		
+	}
+
+	shellcmdstring += " 2>&1";
+	cout<< shellcmdstring << endl;
+	FILE *fp = popen(shellcmdstring.c_str(), "r");
+    if (fp == NULL) 
+    {
+		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+		return;
+    }
+
+    char body[PBODYCAP] = {0};
+    int n;
+    packet.sendSTAT_OK();
+    while ( (n = fread(body, sizeof(char), PBODYCAP, fp)) > 0)
+	{
+		packet.sendDATA_TEXT(n, body);
+	}
+	pclose(fp);
+
+	packet.sendSTAT_EOT();
+}
+
 bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o)
 {
 	if (userinput.front() == '/')
@@ -1017,7 +1072,11 @@ bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & ms
 
 bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 {
-
+	string rpath = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
+    if (rpath.empty())
+	{
+		rpath = "/";
+	}
 	switch(cmdid)
 	{
 		case GET:
@@ -1178,11 +1237,6 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 	   		struct stat statBuf;
 	   		char buf[MAXLINE];
 		    int n = stat(newAbsDir.c_str(), &statBuf);
-		    string rpath = newAbsDir.substr(userRootDir.size(), newAbsDir.size() - userRootDir.size());
-		    if (rpath.empty())
-			{
-				rpath = "/";
-			}
 		    if(!n) // stat call success
 			{	
 				if (S_ISREG(statBuf.st_mode)){
@@ -1197,6 +1251,17 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 				
 			} else { // stat error
 				msg_o = strerror_r(errno, buf, MAXLINE);
+				return false;
+			}
+			break;
+		}
+		case SHELL:
+		{
+			if ((access(newAbsDir.c_str(), F_OK)) == 0) 
+			{
+				return true;
+			} else {
+				msg_o = "~" + rpath + ": No such file or directory";
 				return false;
 			}
 			break;

@@ -24,7 +24,7 @@ void SrvDTP::sendFile(const char *pathname)
 			printf("EOF[%s]: 0 bytes\n", pathname);
 			fclose(fp);
 			packet.sendSTAT_OK(getFileSizeString(pathname));
-			packet.sendDATA_TIP(getFileSizeString(pathname));
+			packet.sendDATA_TEXT(getFileSizeString(pathname));
 			packet.sendDATA_FILE(0, 0, 0, NULL);
 			packet.sendSTAT_EOF("EOF: 0 bytes");
 			return;
@@ -41,7 +41,7 @@ void SrvDTP::sendFile(const char *pathname)
 		packet.sendSTAT_OK(getFileSizeString(pathname));
 	}
 
-	packet.sendDATA_TIP(getFileSizeString(pathname));
+	packet.sendDATA_TEXT(getFileSizeString(pathname));
 
 	char body[PBODYCAP];
 	printf("Send [%s] now\n", pathname);

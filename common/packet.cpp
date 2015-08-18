@@ -272,20 +272,29 @@ void Packet::sendDATA_NAME(uint32_t nslice, uint32_t sindex, uint16_t bsize, str
 	this->htonp();
 	ppi->sendOnePacket(this->ps, PACKSIZE);
 }
-void Packet::sendDATA_TIP(const char *body)
+void Packet::sendDATA_TEXT(const char *body)
 {
 	// send OK
 	this->reset(HPACKET);
-	this->fillData(DATA_TIP, 0, 0, strlen(body), body);
+	this->fillData(DATA_TEXT, 0, 0, strlen(body), body);
 	this->htonp();
 	ppi->sendOnePacket(this->ps, PACKSIZE);
 }
 
-void Packet::sendDATA_TIP(string body)
+void Packet::sendDATA_TEXT(uint16_t bsize, const char *body)
 {
 	// send OK
 	this->reset(HPACKET);
-	this->fillData(DATA_TIP, 0, 0, body.size(), body.c_str());
+	this->fillData(DATA_TEXT, 0, 0, bsize, body);
+	this->htonp();
+	ppi->sendOnePacket(this->ps, PACKSIZE);
+}
+
+void Packet::sendDATA_TEXT(string body)
+{
+	// send OK
+	this->reset(HPACKET);
+	this->fillData(DATA_TEXT, 0, 0, body.size(), body.c_str());
 	this->htonp();
 	ppi->sendOnePacket(this->ps, PACKSIZE);
 }

@@ -24,6 +24,7 @@ std::map<string, string> CliPI::helpMap = {	//{"USER",    "user 	username"},
                                             {"RGET",    "rget [dir]"},
                                             {"RPUT",    "rput [dir]"},
                                             {"RMDIR",   "rmdir [dir]"},
+                                            {"SHELL",   "shell [remote-shell-cmd]"},
 
                                             //{"BINARY",  "binary"},
                                             //{"ASCII",   "ascii"}  	
@@ -168,6 +169,12 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & paramVector)
 			break;
 		case RMDIR:
 			cmdRMDIR(paramVector);
+			break;
+		case SHELL:
+			cmdSHELL(paramVector);
+			break;
+		case LSHELL:
+			cmdLSHELL(paramVector);
 			break;
 		case QUIT:
 			cmdQUIT(paramVector);
@@ -927,7 +934,6 @@ bool CliPI::cmdLMKDIR(string path)
 
 void CliPI::cmdLMKDIR(std::vector<string> & paramVector)
 {
-	printf("LMKDIR request\n");
 	string shellCMD = "mkdir";
 	for (auto it = paramVector.begin(); it != paramVector.end(); ++it){
        	//std::cout << *it << std::endl;
@@ -966,6 +972,117 @@ void CliPI::cmdRMDIR(std::vector<string> & paramVector)
 	} else {
 		Error::msg("unknown tagid %d", packet.getTagid());
 		return;
+	}
+}
+
+void CliPI::cmdLSHELL(std::vector<string> & paramVector)
+{
+	string shellcmdstring;
+	for (auto it = paramVector.begin(); it != paramVector.end(); ++it){
+       	//std::cout << *it << std::endl;
+       	shellcmdstring += " " + *it;
+	}
+	if (system(shellcmdstring.c_str()) == -1) {
+		char buf[MAXLINE];
+		std::cout << "system(): " << strerror_r(errno, buf, MAXLINE) << std::endl;
+	}
+}
+
+void CliPI::cmdSHELL(std::vector<string> & paramVector)
+{
+	if(paramVector.size() == 0)
+	{
+		std::cout << "Usage: " << helpMap["SHELL"] << std::endl;
+		return;
+	}
+
+	packet.sendCMD(SHELL, getEncodedParams(paramVector));
+
+
+	while(recvOnePacket())
+	{
+		switch(packet.getTagid())
+		{
+			case TAG_CMD:
+			{
+				switch(packet.getCmdid())
+				{
+					case GET:
+					{
+						break;
+					}
+					case LMKDIR:
+					{
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown cmdid: %d", packet.getCmdid());
+						break;
+					}
+				}
+				break;
+			}
+			case TAG_STAT:
+			{
+				switch(packet.getStatid())
+				{
+					case STAT_OK:
+					{
+						cout << packet.getSBody() <<endl;
+						break;
+					}
+					case STAT_ERR:
+					{
+						cerr << packet.getSBody() <<endl;
+						return;
+					}
+					case STAT_EOF:
+					{
+						cout << packet.getSBody() <<endl;
+						break;
+					}
+					case STAT_EOT:
+					{
+						cout << packet.getSBody() <<endl;
+						return;
+					}
+					default:
+					{
+						Error::msg("unknown statid: %d", packet.getStatid());
+						break;
+					}
+				}
+				break;
+			}
+			case TAG_DATA:
+			{
+				switch(packet.getDataid())
+				{
+					// case DATA_FILE:
+					// {
+					// 	cout << "DATA_FILE" <<endl;
+					// 	break;
+					// }
+					case DATA_TEXT:
+					{
+						cout << packet.getSBody();
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown statid: %d", packet.getStatid());
+						break;
+					}
+				}
+				break;
+			}
+			default:
+			{
+				Error::msg("unknown tagid: %d", packet.getTagid());
+				break;
+			}
+		}
 	}
 }
 

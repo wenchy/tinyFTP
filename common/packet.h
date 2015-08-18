@@ -45,8 +45,9 @@ public:
 	void sendDATA_NAME(uint32_t nslice, uint32_t sindex, uint16_t bsize, const char *body);
 	void sendDATA_NAME(uint32_t nslice, uint32_t sindex, uint16_t bsize, string body);
 
-	void sendDATA_TIP(const char *msg);
-	void sendDATA_TIP(string msg);
+	void sendDATA_TEXT(const char *msg);
+	void sendDATA_TEXT(uint16_t bsize, const char *body);
+	void sendDATA_TEXT(string msg);
 
 	void sendSTAT_OK();
 	//void sendSTAT_OK(char *msg);

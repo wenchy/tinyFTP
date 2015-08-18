@@ -172,6 +172,9 @@ typedef enum cmdID
 	RPUT,
 	RMDIR,
 
+	SHELL,
+	LSHELL,
+
 	BINARY,
 	ASCII
 } CmdID;
@@ -192,7 +195,7 @@ typedef enum dataID
 	DATA_FILE = 1,
 	DATA_LIST,
 	DATA_NAME,
-	DATA_TIP,
+	DATA_TEXT,
 	DATA_OTHER
 } DataID;
 
