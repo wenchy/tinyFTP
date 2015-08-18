@@ -77,6 +77,12 @@ typedef enum packetStoreType
 	NPACKET						// Network storage type
 } PacketStoreType;
 
+// typedef enum packetType
+// {
+// 	SRV_PACKET,					// server socket tyoe
+// 	CLI_PACKET					// client socket type
+// } PacketType;
+
 /************************** CtrPacket **********************************/
 
 #define PHEADSIZE		20			// packet header size

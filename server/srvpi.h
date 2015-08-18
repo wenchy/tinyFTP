@@ -7,19 +7,17 @@
 #include    "../common/socket.h"
 #include    "../common/sockstream.h"
 #include    "../common/database.h"
+#include    "../common/pi.h"
 #include    "srvdtp.h"
 // Server Protocol Interpreter (SrvPI)
-class SrvPI
+class SrvPI : public PI
 {
 public:
 	SrvPI(string dbFilename, int connfd);
 	void checkBreakpoint();
 	bool recvOnePacket();
-	bool sendOnePacket();
+	bool sendOnePacket(PacketStruct * ps, size_t nbytes);
 	void run();
-	void cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector);
-	void cmd2pack(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[PBODYCAP]);
-	void cmd2pack(uint32_t sesid, uint16_t cmdid, string str);
 	void split(std::string src, std::string token, vector<string>& vect);  
 
 	void cmdUSER();
@@ -39,7 +37,7 @@ public:
 	void cmdRMDIR();
 
 	
-
+	int getConnfd();
 	~SrvPI();
 	
 	

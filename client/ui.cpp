@@ -31,7 +31,6 @@ map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
 
 UI::UI(const char *host): cliPI(host)
 {  
-    //cliPI.init(host);
 
 }
 
@@ -88,58 +87,90 @@ void UI::run()
     }                
     this->username = this->cmdVector[0];
 
-	// other ftp commands: first cout prompt (use "," operator)
-	while (printf("%s@tinyFTP> ", username.c_str()), getline(std::cin, inputline))
-	{
-		// clear cmdVector each time when user input
-		this->cmdVector.clear();
-		//std::cout << "inputline: " << inputline << inputline.size() << std::endl;
 
-		// split input string
-        for (auto it = inputline.begin(); it < inputline.end(); ++it)
-        {
-            string param;
-            for(; it < inputline.end(); ++it)
-            {
-                if ((*it) == ' ' || (*it) == '\t')
-                {
-                    break;
-                } else if ((*it) == '\\' && (it + 1) != inputline.end() && *(it + 1) == ' ')
-                {
-                    param += ' ';
-                    ++it;
-                } else {
-                    param += *it;
-                }
-            } 
-            if (!param.empty())
-            {
-                this->cmdVector.push_back(param);
-            }
+    int         maxfdp1;
+    fd_set      rset;
+    int connfd = cliPI.getConnfd();
+
+    FD_ZERO(&rset);
+
+    while(1) 
+    {   printf("%s@tinyFTP> ", username.c_str());
+        fflush(stdout);
+        FD_SET(connfd, &rset);
+        FD_SET(fileno(stdin), &rset);
+        maxfdp1 = connfd + 1;
+        if (select(maxfdp1, &rset, NULL, NULL, NULL) < 0)
+            Error::sys("select error");
+
+        if (FD_ISSET(connfd, &rset)) {  /* socket is readable */
+            cliPI.recvOnePacket();
         }
 
-        // for (auto it = cmdVector.cbegin(); it != cmdVector.cend(); ++it)
-        //    std::cout << it->size() << "cmdVector: " << *it << std::endl;
+        if (FD_ISSET(fileno(stdin), &rset)) /* input is readable */
+        {  
+            getline(std::cin, inputline);
+            cmdRun(inputline);
+        }
+    }
 
-		// std::istringstream is(inputline);
-		// while(is >> word)
-		// 	this->cmdVector.push_back(word);
-
-		if (!cmdCheck())
-		{
-			continue;
-		} else {
-			cliPI.run(this->cmdid, this->cmdVector);
-		}
-
-		// for (auto it = cmdVector.cbegin(); it != cmdVector.cend(); ++it)
-        //     std::cout << "cmdVector" << *it << std::endl;
-    	// for (std::vector<string>::size_type i = 0; i < cmdVector.size(); i++)
-    	// 	   std::cout << cmdVector[i] << std::endl;
-	}                                                         
+	// other ftp commands: first cout prompt (use "," operator)
+	// while (printf("%s@tinyFTP> ", username.c_str()), getline(std::cin, inputline))
+	// {
+	// 	cmdRun(inputline);
+	// }                                                         
 	
 }
+void UI::cmdRun(string & inputline)
+{
+    // clear cmdVector each time when user input
+    this->cmdVector.clear();
+    //std::cout << "inputline: " << inputline << inputline.size() << std::endl;
 
+    // split input string
+    for (auto it = inputline.begin(); it < inputline.end(); ++it)
+    {
+        string param;
+        for(; it < inputline.end(); ++it)
+        {
+            if ((*it) == ' ' || (*it) == '\t')
+            {
+                break;
+            } else if ((*it) == '\\' && (it + 1) != inputline.end() && *(it + 1) == ' ')
+            {
+                param += ' ';
+                ++it;
+            } else {
+                param += *it;
+            }
+        } 
+        if (!param.empty())
+        {
+            this->cmdVector.push_back(param);
+        }
+    }
+
+    // for (auto it = cmdVector.cbegin(); it != cmdVector.cend(); ++it)
+    //    std::cout << it->size() << "cmdVector: " << *it << std::endl;
+
+    // std::istringstream is(inputline);
+    // while(is >> word)
+    //  this->cmdVector.push_back(word);
+
+    if (!cmdCheck())
+    {
+        return;
+    } else {
+        // remove command word, others are params
+        cmdVector.erase(cmdVector.begin());
+        cliPI.run(this->cmdid, this->cmdVector);
+    }
+
+    // for (auto it = cmdVector.cbegin(); it != cmdVector.cend(); ++it)
+    //     std::cout << "cmdVector" << *it << std::endl;
+    // for (std::vector<string>::size_type i = 0; i < cmdVector.size(); i++)
+    //     std::cout << cmdVecto
+}
 bool UI::cmdCheck()
 {
     if (cmdVector.empty())

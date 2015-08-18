@@ -29,26 +29,12 @@ std::map<string, string> CliPI::helpMap = {	//{"USER",    "user 	username"},
                                             //{"ASCII",   "ascii"}  	
                                         								};
 
-CliPI::CliPI(const char *host)
+CliPI::CliPI(const char *host): packet(this)
 {
     Socket cliSocket(CLI_SOCKET, host, CTRPORT);
     connfd = cliSocket.init();
     connSockStream.init(connfd);
 }
-
-// void CliPI::init(const char *host)
-// {
-// 	int connfd;
-
-//     Socket cliSocket(CLI_SOCKET, host, CTRPORT);
-//     connfd = cliSocket.init();
-//     connSockStream.init(connfd);
-
-// }
-// void CliPI::sendOnePacket()
-// {
-	
-// }
 
 bool CliPI::recvOnePacket()
 {
@@ -56,13 +42,14 @@ bool CliPI::recvOnePacket()
 	packet.reset(NPACKET);
 	if ( (n = connSockStream.readn(packet.getPs(), PACKSIZE)) == 0)
 	{
+		this->saveUserState();
 		Socket::tcpClose(connfd);
-		Error::ret("connSockStream.readn()");
 		Error::quit("server terminated prematurely");
 	} else if (n < 0){
+		this->saveUserState();
 		Socket::tcpClose(connfd);
 		Error::ret("connSockStream.readn() error");
-		Error::quit_pthread("socket connection exception on client");
+		Error::quit_pthread("socket connection exception");
 	} else {
 		packet.ntohp();
 		//packet.print();
@@ -70,75 +57,123 @@ bool CliPI::recvOnePacket()
 	return true;
 }
 
-bool CliPI::sendOnePacket()
+bool CliPI::sendOnePacket(PacketStruct * ps, size_t nbytes)
 {
-	int n;
-	if ( (n = connSockStream.writen(packet.getPs(), PACKSIZE)) < 0 || (size_t)n != PACKSIZE )
-	{
-		Socket::tcpClose(connfd);
-		Error::ret("connSockStream.writen()");
-		Error::quit_pthread("socket connection exception");
+	int n, m;
+	bool sendFlag = false;
+	int			maxfdp1;
+	fd_set		rset, wset;
+
+	FD_ZERO(&rset);
+	FD_ZERO(&wset);
+
+	while(!sendFlag) {
+		FD_SET(connfd, &rset);
+
+		FD_SET(connfd, &wset);
+
+		maxfdp1 = connfd + 1;
+		if (select(maxfdp1, &rset, &wset, NULL, NULL) < 0)
+		{	
+			this->saveUserState();
+			Socket::tcpClose(connfd);
+			Error::ret("select error");
+			Error::quit_pthread("socket connection exception");
+		}
+
+		if (FD_ISSET(connfd, &rset)) /* socket is readable */
+		{	
+			packet.reset(NPACKET);
+			if ( (n = connSockStream.readn(packet.getPs(), PACKSIZE)) == 0)
+			{
+				this->saveUserState();
+				Socket::tcpClose(connfd);
+				Error::quit_pthread("server terminated prematurely");
+			} else if (n < 0){
+				this->saveUserState();
+				Socket::tcpClose(connfd);
+				Error::ret("connSockStream.readn() error");
+				Error::quit_pthread("socket connection exception");
+			} else {
+				printf("sendOnePacket method recive one packet: %s\n", packet.getSBody().c_str());
+				packet.ntohp();
+				//packet.print();
+			}
+		}
+
+		if (FD_ISSET(connfd, &wset)) /* socket is writable */
+		{  
+			if ( (m = connSockStream.writen(ps, nbytes)) < 0 || (size_t)m != nbytes )
+			{
+				this->saveUserState();
+				Socket::tcpClose(connfd);
+				Error::ret("connSockStream.writen()");
+				Error::quit_pthread("socket connection exception");
+			} else {
+				sendFlag = true;
+			}
+		}
 	}
 	return true;
 }
 
-void CliPI::run(uint16_t cmdid, std::vector<string> & cmdVector)
+void CliPI::run(uint16_t cmdid, std::vector<string> & paramVector)
 {
 	switch(cmdid)
 	{
 		case USER:
-			cmdUSER(cmdVector);
+			cmdUSER(paramVector);
 			break;
 		case PASS:
-			cmdPASS(cmdVector);
+			cmdPASS(paramVector);
 			break;
 		case GET:
-			cmdGET(cmdVector);
+			cmdGET(paramVector);
 			break;
 		case RGET:
-			cmdRGET(cmdVector);
+			cmdRGET(paramVector);
 			break;
 		case PUT:
-			cmdPUT(cmdVector);
+			cmdPUT(paramVector);
 			break;
 		case LS:
-			cmdLS(cmdVector);
+			cmdLS(paramVector);
 			break;
 		case LLS:
-			cmdLLS(cmdVector);
+			cmdLLS(paramVector);
 			break;
 		case CD:
-			cmdCD(cmdVector);
+			cmdCD(paramVector);
 			break;
 		case LCD:
-			cmdLCD(cmdVector);
+			cmdLCD(paramVector);
 			break;
 		case RM:
-			cmdRM(cmdVector);
+			cmdRM(paramVector);
 			break;
 		case LRM:
-			cmdLRM(cmdVector);
+			cmdLRM(paramVector);
 			break;	
 		case PWD:
-			cmdPWD(cmdVector);
+			cmdPWD(paramVector);
 			break;
 		case LPWD:
-			cmdLPWD(cmdVector);
+			cmdLPWD(paramVector);
 			break;
 		case MKDIR:
-			cmdMKDIR(cmdVector);
+			cmdMKDIR(paramVector);
 			break;
 		case LMKDIR:
-			cmdLMKDIR(cmdVector);
+			cmdLMKDIR(paramVector);
 			break;
 		case RMDIR:
-			cmdRMDIR(cmdVector);
+			cmdRMDIR(paramVector);
 			break;
 		case QUIT:
-			cmdQUIT(cmdVector);
+			cmdQUIT(paramVector);
 			break;
 		case HELP:
-			cmdHELP(cmdVector);
+			cmdHELP(paramVector);
 			break;
 		default:
 			Error::msg("Client: Sorry! this command function not finished yet.\n");
@@ -165,52 +200,31 @@ void CliPI::split(std::string src, std::string token, vector<string>& vect)
         nbegin = nend + 1;   
     }   
 }
-void CliPI::cmd2pack(uint16_t cmdid, std::vector<string> & cmdVector)
+
+string CliPI::getEncodedParams(std::vector<string> & paramVector)
 {
-	packet.reset(HPACKET);
-	string params;
-	if (cmdVector.size() > 1)
+	string encodedParams;
+	if(!paramVector.empty())
 	{
-		vector<string>::iterator iter=cmdVector.begin() + 1;
-		params += *iter;
-		for (++iter; iter!=cmdVector.end(); ++iter)
+		vector<string>::iterator iter=paramVector.begin();
+		encodedParams += *iter;
+		for (++iter; iter!=paramVector.end(); ++iter)
 	   	{
-	   		params += DELIMITER + *iter;
+	   		encodedParams += DELIMITER + *iter;
 	   	}
-	}
+	} 
 
-	// Error::msg("body: %s\n", body);
-	packet.fillCmd(cmdid, params.size(), params.c_str());
-	//packet.print();
-	packet.htonp(); 
+	return encodedParams;
 }
 
-void CliPI::userpass2pack(uint16_t cmdid, std::vector<string> & cmdVector)
+bool CliPI::cmdUSER(std::vector<string> & paramVector)
 {
-	packet.reset(HPACKET);
-	string params;
-	vector<string>::iterator iter=cmdVector.begin();
-	params += *iter;
-	for (++iter; iter!=cmdVector.end(); ++iter)
-   	{
-   		params += DELIMITER + *iter;
-   	}
-
-	// Error::msg("body: %s\n", body);
-	packet.fillCmd(cmdid, params.size(), params.c_str());
-	//packet.print();
-	packet.htonp(); 
-}
-
-bool CliPI::cmdUSER(std::vector<string> & cmdVector)
-{
-	if(cmdVector.size() != 1)
+	if(paramVector.size() != 1)
 	{
 		Error::msg("Usage: [username]");
 		return false;
 	} else {
-		userpass2pack(USER, cmdVector);
-		connSockStream.Writen(packet.getPs(), PACKSIZE);
+		packet.sendCMD(USER, getEncodedParams(paramVector));
 		// first receive response
 		recvOnePacket();
 		if (packet.getTagid() == TAG_STAT) {
@@ -232,20 +246,19 @@ bool CliPI::cmdUSER(std::vector<string> & cmdVector)
  
 }
 
-bool CliPI::cmdPASS(std::vector<string> & cmdVector)
+bool CliPI::cmdPASS(std::vector<string> & paramVector)
 {
-	if(cmdVector.size() != 2)
+	if(paramVector.size() != 2)
 	{
 		Error::msg("Usage: [password]");
-		for (vector<string>::iterator iter=cmdVector.begin(); iter!=cmdVector.end(); ++iter)
+		for (vector<string>::iterator iter=paramVector.begin(); iter!=paramVector.end(); ++iter)
 	   	{
 	    	std::cout << *iter << '\n';
 	   	}
 		return false;
 	}
 
-	userpass2pack(PASS, cmdVector);
-	connSockStream.Writen(packet.getPs(), PACKSIZE);
+	packet.sendCMD(PASS, getEncodedParams(paramVector));
 
 	// first receive response
 	recvOnePacket();
@@ -272,22 +285,22 @@ bool CliPI::cmdPASS(std::vector<string> & cmdVector)
  
 }
 
-void CliPI::cmdGET(std::vector<string> & cmdVector)
+void CliPI::cmdGET(std::vector<string> & paramVector)
 {
-	if(cmdVector.size() < 2 || cmdVector.size() > 3)
+	if(paramVector.size() < 2 || paramVector.size() > 3)
 	{
-		std::cout << cmdVector.size() << "Usage: " << helpMap["GET"] << std::endl;
+		std::cout << "Usage: " << helpMap["GET"] << std::endl;
 		return;
 	}
 
 	string pathname;
 	char buf[MAXLINE];
-	if (cmdVector.size() == 2){
+	if (paramVector.size() == 1){
 		vector<string> pathVector; 
-		split(cmdVector[1], "/", pathVector);
+		split(paramVector[0], "/", pathVector);
 		pathname = pathVector.back();
-	} else if (cmdVector.size() == 3){
-		pathname = cmdVector[2];
+	} else if (paramVector.size() == 2){
+		pathname = paramVector[1];
 	}
 
 	if ((access(pathname.c_str(), F_OK)) == 0) {
@@ -302,14 +315,11 @@ void CliPI::cmdGET(std::vector<string> & cmdVector)
 		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
-		// command to packet
-		cmd2pack(GET, cmdVector);
-	    connSockStream.Writen(packet.getPs(), PACKSIZE);
+		packet.sendCMD(GET, getEncodedParams(paramVector));
 	}
 
     // pathname exist on server? need test
-    CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd, this);
-    //cliDTP.init(connSockStream, packet);
+    CliDTP cliDTP(&(this->packet), this);
 	cliDTP.recvFile(pathname.c_str(), fp);
  
 }
@@ -327,21 +337,20 @@ void CliPI::cmdGET(string srvpath, string clipath)
 		snprintf(buf, MAXLINE, "File [%s] already exists, overwrite ? (y/n) ", clipath.c_str());
 		if(!confirmYN(buf))
 		{
-			packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+			packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 			return;
 		}
 	}
 
 	if ( (fp = fopen(clipath.c_str(), "wb")) == NULL) {
 		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
-		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
-		packet.sendCMD_GET(connSockStream, srvpath);
+		packet.sendCMD_GET(srvpath);
 	}
 
-    CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd, this);
-    //cliDTP.init(connSockStream, packet);
+    CliDTP cliDTP(&(this->packet), this);
 	cliDTP.recvFile(clipath.c_str(), fp);
  
 }
@@ -451,21 +460,21 @@ void CliPI::removeDir(const char *path_raw, bool removeSelf)
 	}
 }
 
-void CliPI::cmdRGET(std::vector<string> & cmdVector)
+void CliPI::cmdRGET(std::vector<string> & paramVector)
 {
-	if(cmdVector.size() != 2)
+	if(paramVector.size() > 2)
 	{
 		std::cout << "Usage: " << helpMap["RGET"] << std::endl;
 		return;
 	}
 	string pathname;
 	char buf[MAXLINE];
-	if (cmdVector.size() == 2){
+	if (paramVector.size() == 1){
 		vector<string> pathVector; 
-		split(cmdVector[1], "/", pathVector);
+		split(paramVector[0], "/", pathVector);
 		pathname = pathVector.back();
-	} else if (cmdVector.size() == 3){
-		pathname = cmdVector[2];
+	} else if (paramVector.size() == 2){
+		pathname = paramVector[1];
 	}
 
 	if ((access(pathname.c_str(), F_OK)) == 0) { // already exists
@@ -475,7 +484,7 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 			return;
 		} else {
 			// yes to overwite
-			//removeDir(cmdVector[1].c_str(), false);
+			//removeDir(paramVector[0].c_str(), false);
 	   		string shellCMD = "rm -rf " + pathname;
 			if (system(shellCMD.c_str()) == -1) {
 				printf("%s\n", strerror_r(errno, buf, MAXLINE));
@@ -487,26 +496,9 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 		}
 	}
 
-	// if (cmdLMKDIR(packet.getSBody()))
-	// {
-	// 	packet.sendSTAT_OK(connSockStream);
-	// } else {
-	// 	packet.sendSTAT_ERR(connSockStream);
-	// }
-	// if (system(("mkdir " + cmdVector[1]).c_str()) == -1) {
-	// 	char buf[MAXLINE];
-	// 	printf("%s\n", strerror_r(errno, buf, MAXLINE));
-	// 	return;
-	// } else {
-	// 	// OK
-	// 	printf("Dir '%s' created\n",  cmdVector[1].c_str());
-	// }
-
-	cmd2pack(RGET, cmdVector);
-	connSockStream.Writen(packet.getPs(), PACKSIZE);
-
+	packet.sendCMD(RGET, getEncodedParams(paramVector));
 	
-	CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd, this);
+	CliDTP cliDTP(&(this->packet), this);
 
 	while(recvOnePacket())
 	{
@@ -527,9 +519,9 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 					{
 						if (cmdLMKDIR(packet.getSBody()))
 						{
-							packet.sendSTAT_OK(connSockStream);
+							packet.sendSTAT_OK();
 						} else {
-							packet.sendSTAT_ERR(connSockStream);
+							packet.sendSTAT_ERR();
 							return;
 						}
 						break;
@@ -603,25 +595,11 @@ void CliPI::cmdRGET(std::vector<string> & cmdVector)
 			}
 		}
 	}
-
-	// FILE *fp;
-
-	// if ( (fp = fopen(pathname, "wb")) == NULL) {
-	// 	Error::msg("%s", strerror_r(errno, buf, MAXLINE));
-	// 	return;
-	// } else {
-	// 	// command to packet
-	// 	cmd2pack(0, GET, cmdVector);
-	//     connSockStream.Writen(packet.getPs(), PACKSIZE);
-	// }
-
- //    CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd);
-	// cliDTP.recvFile(pathname, fp);
 }
 
-void CliPI::cmdPUT(std::vector<string> & cmdVector)
+void CliPI::cmdPUT(std::vector<string> & paramVector)
 {
-	if(cmdVector.size() < 2 || cmdVector.size() > 3)
+	if(paramVector.size() > 2)
 	{
 		std::cout << "Usage: " << helpMap["PUT"] << std::endl;
 		return;
@@ -631,18 +609,18 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 	char buf[MAXLINE];
 	uint32_t nslice = 0;
 
-	strcpy(pathname,cmdVector[1].c_str()); 
+	strcpy(pathname,paramVector[0].c_str()); 
 	struct stat statBuf;
-    int n = stat(cmdVector[1].c_str(), &statBuf);
+    int n = stat(paramVector[0].c_str(), &statBuf);
     if(!n) // stat call success
 	{	
 		if (S_ISREG(statBuf.st_mode)){
 			;
 	    } else if (S_ISDIR(statBuf.st_mode)){
-			cout << "put: cannot upload [" << cmdVector[1] << "]: Is a directory" << endl;
+			cout << "put: cannot upload [" << paramVector[0] << "]: Is a directory" << endl;
 			return;
 	    } else {
-	    	cout << "put: [" << cmdVector[1] << "] not a regular file or directory" << endl;
+	    	cout << "put: [" << paramVector[0] << "] not a regular file or directory" << endl;
 			return;
 	    }
 		
@@ -665,9 +643,7 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 		}
 		return;
 	} else {
-		// command to packet
-		cmd2pack(PUT, cmdVector);
-	    connSockStream.Writen(packet.getPs(), PACKSIZE);
+		packet.sendCMD(PUT, getEncodedParams(paramVector));
 	}
 
 	while (recvOnePacket())
@@ -676,16 +652,16 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 			if (packet.getStatid() == STAT_OK) {
 				//cout << packet.getSBody() <<endl;
 				// must contain sesssion id
-				CliDTP cliDTP(this->connSockStream, &(this->packet), this->connfd, this);
+				CliDTP cliDTP(&(this->packet), this);
 				cliDTP.sendFile(pathname, fp, nslice);
 				break;
 			} else if (packet.getStatid() == STAT_CFM) {
 				if(confirmYN(packet.getSBody().c_str()))
 				{
-					packet.sendSTAT_CFM(connSockStream, "y");
+					packet.sendSTAT_CFM("y");
 					continue;
 				} else {
-					packet.sendSTAT_CFM(connSockStream, "n");
+					packet.sendSTAT_CFM("n");
 					return;
 				}
 			} else if (packet.getStatid() == STAT_ERR) {
@@ -705,19 +681,18 @@ void CliPI::cmdPUT(std::vector<string> & cmdVector)
 	}
 
 	//printf("EOT %s\n", pathname);
-	packet.sendSTAT_EOT(connSockStream);
+	packet.sendSTAT_EOT();
 	
 }
-void CliPI::cmdLS(std::vector<string> & cmdVector)
+void CliPI::cmdLS(std::vector<string> & paramVector)
 {
-	if(cmdVector.size() > 2)
+	if(paramVector.size() > 1)
 	{
 		std::cout << "Usage: " << helpMap["LS"] << std::endl;
 		return;
 	}
 	
-	cmd2pack(LS, cmdVector);
-	connSockStream.Writen(packet.getPs(), PACKSIZE);
+	packet.sendCMD(LS, getEncodedParams(paramVector));
 
 	// first receive response
 	recvOnePacket();
@@ -750,10 +725,10 @@ void CliPI::cmdLS(std::vector<string> & cmdVector)
 	}
 }
 
-void CliPI::cmdLLS(std::vector<string> & cmdVector)
+void CliPI::cmdLLS(std::vector<string> & paramVector)
 {
 	string shellCMD = "ls --color=auto";
-	for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it){
+	for (auto it = paramVector.begin(); it != paramVector.end(); ++it){
        	//std::cout << *it << std::endl;
        	shellCMD += " " + *it;
 	}
@@ -763,16 +738,15 @@ void CliPI::cmdLLS(std::vector<string> & cmdVector)
 	}
 }
 
-void CliPI::cmdCD(std::vector<string> & cmdVector)
+void CliPI::cmdCD(std::vector<string> & paramVector)
 {
-	if(cmdVector.size() != 2)
+	if(paramVector.size() != 1)
 	{
 		std::cout << "Usage: " << helpMap["CD"] << std::endl;
 		return;
 	}
 
-	cmd2pack(CD, cmdVector);
-	connSockStream.Writen(packet.getPs(), PACKSIZE);
+	packet.sendCMD(CD, getEncodedParams(paramVector));
 
 	// first receive response
 	recvOnePacket();
@@ -795,9 +769,9 @@ void CliPI::cmdCD(std::vector<string> & cmdVector)
  
 }
 
-void CliPI::cmdLCD(std::vector<string> & cmdVector)
+void CliPI::cmdLCD(std::vector<string> & paramVector)
 {
-	if(cmdVector.size() != 2)
+	if(paramVector.size() != 1)
 	{
 		std::cout << "Usage: " << helpMap["LCD"] << std::endl;
 		return;
@@ -805,7 +779,7 @@ void CliPI::cmdLCD(std::vector<string> & cmdVector)
 
 	int n;
 	//char buf[MAXLINE];
-	if( (n = chdir(cmdVector[1].c_str())) == -1)
+	if( (n = chdir(paramVector[0].c_str())) == -1)
 	{
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
 		Error::ret("lcd");
@@ -813,16 +787,15 @@ void CliPI::cmdLCD(std::vector<string> & cmdVector)
 	}
 }
 
-void CliPI::cmdRM(std::vector<string> & cmdVector)
+void CliPI::cmdRM(std::vector<string> & paramVector)
 {
-	if(cmdVector.size() != 2)
+	if(paramVector.size() != 1)
 	{
 		std::cout << "Usage: " << helpMap["RM"] << std::endl;
 		return;
 	}
 
-	cmd2pack(RM, cmdVector);
-	connSockStream.Writen(packet.getPs(), PACKSIZE);
+	packet.sendCMD(RM, getEncodedParams(paramVector));
 
 	// first receive response
 	recvOnePacket();
@@ -845,10 +818,10 @@ void CliPI::cmdRM(std::vector<string> & cmdVector)
 	
 }
 
-void CliPI::cmdLRM(std::vector<string> & cmdVector)
+void CliPI::cmdLRM(std::vector<string> & paramVector)
 {
 	string shellCMD = "rm";
-	for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it){
+	for (auto it = paramVector.begin(); it != paramVector.end(); ++it){
        	//std::cout << *it << std::endl;
        	shellCMD += " " + *it;
 	}
@@ -858,20 +831,19 @@ void CliPI::cmdLRM(std::vector<string> & cmdVector)
 	}
 }
 
-void CliPI::cmdPWD(std::vector<string> & cmdVector)
+void CliPI::cmdPWD(std::vector<string> & paramVector)
 {
-	if(cmdVector.size() > 2)
+	if(paramVector.size() > 1)
 	{
 		std::cout << "Usage: " << helpMap["PWD"] << std::endl;
 		return;
-	} else if (cmdVector.size() == 2 && cmdVector[1] != "-a")
+	} else if (paramVector.size() == 1 && paramVector[1] != "-a")
 	{
 		std::cout << "Usage: " << helpMap["PWD"] << std::endl;
 		return;
 	}
 
-	cmd2pack(PWD, cmdVector);
-	connSockStream.Writen(packet.getPs(), PACKSIZE);
+	packet.sendCMD(PWD, getEncodedParams(paramVector));
 
 	// first receive response
 	recvOnePacket();
@@ -893,10 +865,10 @@ void CliPI::cmdPWD(std::vector<string> & cmdVector)
 	}
 }
 
-void CliPI::cmdLPWD(std::vector<string> & cmdVector)
+void CliPI::cmdLPWD(std::vector<string> & paramVector)
 {
 	string shellCMD = "pwd";
-	for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it){
+	for (auto it = paramVector.begin(); it != paramVector.end(); ++it){
        	//std::cout << *it << std::endl;
        	shellCMD += " " + *it;
 	}
@@ -906,17 +878,16 @@ void CliPI::cmdLPWD(std::vector<string> & cmdVector)
 	}
 }
 
-void CliPI::cmdMKDIR(std::vector<string> & cmdVector)
+void CliPI::cmdMKDIR(std::vector<string> & paramVector)
 {
 	printf("MKDIR request\n");
-	if(cmdVector.size() != 2)
+	if(paramVector.size() != 1)
 	{
 		std::cout << "Usage: " << helpMap["MKDIR"] << std::endl;
 		return;
 	}
 
-	cmd2pack(MKDIR, cmdVector);
-	connSockStream.Writen(packet.getPs(), PACKSIZE);
+	packet.sendCMD(MKDIR, getEncodedParams(paramVector));
 
 	// first receive response
 	recvOnePacket();
@@ -954,11 +925,11 @@ bool CliPI::cmdLMKDIR(string path)
 
 }
 
-void CliPI::cmdLMKDIR(std::vector<string> & cmdVector)
+void CliPI::cmdLMKDIR(std::vector<string> & paramVector)
 {
 	printf("LMKDIR request\n");
 	string shellCMD = "mkdir";
-	for (auto it = cmdVector.begin() + 1; it != cmdVector.end(); ++it){
+	for (auto it = paramVector.begin(); it != paramVector.end(); ++it){
        	//std::cout << *it << std::endl;
        	shellCMD += " " + *it;
 	}
@@ -968,16 +939,15 @@ void CliPI::cmdLMKDIR(std::vector<string> & cmdVector)
 	}
 }
 
-void CliPI::cmdRMDIR(std::vector<string> & cmdVector)
+void CliPI::cmdRMDIR(std::vector<string> & paramVector)
 {
-	if(cmdVector.size() != 2)
+	if(paramVector.size() != 1)
 	{
 		std::cout << "Usage: " << helpMap["RMDIR"] << std::endl;
 		return;
 	}
 
-	cmd2pack(RMDIR, cmdVector);
-	connSockStream.Writen(packet.getPs(), PACKSIZE);
+	packet.sendCMD(RMDIR, getEncodedParams(paramVector));
 
 	// first receive response
 	recvOnePacket();
@@ -999,9 +969,9 @@ void CliPI::cmdRMDIR(std::vector<string> & cmdVector)
 	}
 }
 
-void CliPI::cmdQUIT(std::vector<string> & cmdVector)
+void CliPI::cmdQUIT(std::vector<string> & paramVector)
 {
-	if(cmdVector.size() != 1)
+	if(paramVector.size() != 0)
 	{
 		std::cout << "Usage: " << helpMap["QUIT"] << std::endl;
 		return;
@@ -1012,9 +982,9 @@ void CliPI::cmdQUIT(std::vector<string> & cmdVector)
 	exit(1);
 }
 
-void CliPI::cmdHELP(std::vector<string> & cmdVector)
+void CliPI::cmdHELP(std::vector<string> & paramVector)
 {
-    if(cmdVector.size() == 1)
+    if(paramVector.size() == 0)
 	{
 		int i = 1;
 		std::cout << "commands:" << std::endl;
@@ -1031,13 +1001,13 @@ void CliPI::cmdHELP(std::vector<string> & cmdVector)
 	    	std::cout << std::endl;
 	    }
 	    
-	} else if(cmdVector.size() == 2){
-		map<string, string>::iterator iter = helpMap.find(toUpper(cmdVector[1]));
+	} else if(paramVector.size() == 1){
+		map<string, string>::iterator iter = helpMap.find(toUpper(paramVector[0]));
 		if (iter != helpMap.end())
 		{
-			std::cout << "Usage: " << helpMap[toUpper(cmdVector[1])] << std::endl;
+			std::cout << "Usage: " << helpMap[toUpper(paramVector[0])] << std::endl;
 		} else {
-	        std::cerr << cmdVector[1] << ": command not found"  << std::endl;
+	        std::cerr << paramVector[0] << ": command not found"  << std::endl;
 		}
 	} else {
 		std::cout << "Usage: " << helpMap["HELP"] << std::endl;
@@ -1088,4 +1058,12 @@ string CliPI::toLower(string &s)
 	for(string::size_type i=0; i < s.size(); i++)
 		upperStr += tolower(s[i]);
 	return upperStr;
+}
+int CliPI::getConnfd()
+{
+	return this->connfd;
+}
+void CliPI::saveUserState()
+{
+	std::cout<< "\n\033[32msave user state ok\033[0m" << std::endl;
 }

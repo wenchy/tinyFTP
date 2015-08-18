@@ -13,7 +13,7 @@ class SrvPI;
 class SrvDTP
 {
 public:
-	SrvDTP(SockStream & connSockStream, Packet * ppacket, int connfd, SrvPI * psrvPI);
+	SrvDTP(Packet * ppacket, SrvPI * psrvPI);
 	//void init(SockStream & connSockStream, Packet & packet);
 	void sendFile(const char *filename);
 	void recvFile(const char *pathname);
@@ -23,8 +23,6 @@ public:
 
 private:
 	Packet * ppacket;
-	SockStream connSockStream;
-	int connfd;
 	SrvPI * psrvPI;
 
 };

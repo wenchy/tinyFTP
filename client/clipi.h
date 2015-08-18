@@ -6,40 +6,19 @@
 #include    "../common/packet.h"
 #include    "../common/sockstream.h"
 #include    "../common/socket.h"
+#include    "../common/pi.h"
 #include    "clidtp.h"
-	// USER = 1,
-	// PASS,
-	// GET,
-	// PUT,
-	// MGET,
-	// MPUT,
-	// DELE,
-	// RGET,
-	// RPUT,
-	// CD,
-	// LS,
-	// MKD,
-	// PWD,
-	// RMD,
-	// BINARY,
-	// ASCII,
-	// QUIT,
-
-	// INFO,
-	// EOT
 
 // Client Protocol Interpreter (CliPI)
-class CliPI
+class CliPI : public PI
 {
 public:
 	CliPI(const char *host);
-	//void init(const char *host);
 	bool recvOnePacket();
-	bool sendOnePacket();
+	bool sendOnePacket(PacketStruct * ps, size_t nbytes);
 	void run(uint16_t cmdid, std::vector<string> & cmdVector);
 	void split(std::string src, std::string token, vector<string>& vect);
-	void cmd2pack(uint16_t cmdid, std::vector<string> & cmdVector);
-	void userpass2pack(uint16_t cmdid, std::vector<string> & cmdVector);
+	string getEncodedParams(std::vector<string> & paramVector);
 	
 	bool cmdUSER(std::vector<string> & cmdVector);
 	bool cmdPASS(std::vector<string> & cmdVector);
@@ -63,6 +42,8 @@ public:
 	void cmdQUIT(std::vector<string> & cmdVector);
 	void cmdHELP(std::vector<string> & cmdVector);
 
+	int getConnfd();
+
 private:
 	int getFileNslice(const char *pathname, uint32_t *pnslice_o); 
 	string toUpper(string &s);
@@ -70,6 +51,7 @@ private:
 	bool confirmYN(const char * prompt);
 	void rmdirDFS();
 	void removeDir(const char *path_raw, bool removeSelf);
+	void saveUserState();
 
 	
 

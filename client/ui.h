@@ -29,6 +29,7 @@ private:
 	CliPI cliPI;
 	string username;
 
+	void cmdRun(string & inputline);
 	// decode the input line to a command
 	bool cmdCheck();
 	//void appendArg(struct command* c, char* s);

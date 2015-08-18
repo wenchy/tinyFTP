@@ -1,7 +1,7 @@
 #include    "srvpi.h"
 
 
-SrvPI::SrvPI(string dbFilename, int connfd):db(DBFILENAME)
+SrvPI::SrvPI(string dbFilename, int connfd): packet(this), db(DBFILENAME)
 {
 	this->connfd = connfd;
 	connSockStream.init(connfd);
@@ -20,8 +20,7 @@ bool SrvPI::recvOnePacket()
 	{
 		this->saveUserState();
 		Socket::tcpClose(connfd);
-		Error::ret("connSockStream.readn()");
-		Error::quit_pthread("client terminated prematurely, saveUserState ok");
+		Error::quit_pthread("client terminated prematurely");
 	} else if (n < 0){
 		this->saveUserState();
 		Socket::tcpClose(connfd);
@@ -33,23 +32,69 @@ bool SrvPI::recvOnePacket()
 	}
 	return true;
 }
-bool SrvPI::sendOnePacket()
+
+bool SrvPI::sendOnePacket(PacketStruct * ps, size_t nbytes)
 {
-	int n;
-	if ( (n = connSockStream.writen(packet.getPs(), PACKSIZE)) < 0 || (size_t)n != PACKSIZE )
-	{
-		this->saveUserState();
-		Socket::tcpClose(connfd);
-		Error::ret("connSockStream.writen()");
-		Error::quit_pthread("socket connection exception");
+	int n, m;
+	bool sendFlag = false;
+	int			maxfdp1;
+	fd_set		rset, wset;
+
+	FD_ZERO(&rset);
+	FD_ZERO(&wset);
+
+	while(!sendFlag) {
+		FD_SET(connfd, &rset);
+		FD_SET(connfd, &wset);
+		maxfdp1 = connfd + 1;
+		if (select(maxfdp1, &rset, &wset, NULL, NULL) < 0)
+		{	
+			this->saveUserState();
+			Socket::tcpClose(connfd);
+			Error::ret("select error");
+			Error::quit_pthread("socket connection exception");
+		}
+
+		if (FD_ISSET(connfd, &rset)) /* socket is readable */
+		{	
+			packet.reset(NPACKET);
+			if ( (n = connSockStream.readn(packet.getPs(), PACKSIZE)) == 0)
+			{
+				this->saveUserState();
+				Socket::tcpClose(connfd);
+				Error::quit_pthread("client terminated prematurely");
+			} else if (n < 0){
+				this->saveUserState();
+				Socket::tcpClose(connfd);
+				Error::ret("connSockStream.readn() error");
+				Error::quit_pthread("socket connection exception");
+			} else {
+				printf("sendOnePacket method recive one packet: %s\n", packet.getSBody().c_str());
+				packet.ntohp();
+				//packet.print();
+			}
+		}
+
+		if (FD_ISSET(connfd, &wset)) /* socket is writable */
+		{  
+			if ( (m = connSockStream.writen(ps, nbytes)) < 0 || (size_t)m != nbytes )
+			{
+				this->saveUserState();
+				Socket::tcpClose(connfd);
+				Error::ret("connSockStream.writen()");
+				Error::quit_pthread("socket connection exception");
+			} else {
+				sendFlag = true;
+			}
+		}
 	}
 	return true;
 }
+
 void SrvPI::run()
 {
-	std::cout<<  "connfd: " << connfd <<  " [" << userRootDir <<" " << userRCWD << "]" << std::endl;
-
 	recvOnePacket();
+	std::cout<<  "\n\n\033[32mNewCMD connfd: " << connfd <<  " [" << userRootDir <<" " << userRCWD << "]\033[0m" << std::endl;
 	
 	sessionCommandPacketCount++;
 	// if (std::stoul(userID) != packet.getSesid())
@@ -112,31 +157,6 @@ void SrvPI::run()
     }
 	
 }
-void SrvPI::cmd2pack(uint32_t sesid, uint16_t cmdid, std::vector<string> & cmdVector)
-{
-	packet.reset(HPACKET);
-
-	//uint16_t bsize = 18;
-	//char body[PBODYCAP] = "Server: echo, ctr packet.";
-	//packet.init(sesid, cmdid, bsize, body);
-}
-
-void SrvPI::cmd2pack(uint32_t sesid, uint16_t cmdid, uint16_t bsize, char body[PBODYCAP])
-{
-	packet.reset(HPACKET);
-	//packet.init(sesid, cmdid, bsize, body);
-}
-
-void SrvPI::cmd2pack(uint32_t sesid, uint16_t cmdid, string str)
-{
-	packet.reset(HPACKET);
-	if(str.size() > 65535)
-		Error::msg("body size overflow");
-	//uint16_t bsize = str.size();
-	//char body[PBODYCAP];
-	//std::strcpy(body, str.c_str());
-	//packet.init(sesid, cmdid, bsize, body);
-}
 
 void SrvPI::split(std::string src, std::string token, vector<string>& vect)   
 {    
@@ -189,13 +209,13 @@ void SrvPI::cmdUSER()
    		vector< map<string ,string> > resultMapVector = db.getResult();
    		if (!resultMapVector.empty())
    		{
-			packet.sendSTAT_OK(connSockStream, "this username exists");
+			packet.sendSTAT_OK("this username exists");
    		} else {
-			packet.sendSTAT_ERR(connSockStream, "no such username");
+			packet.sendSTAT_ERR("no such username");
    		}
 
    	}else {
-		packet.sendSTAT_ERR(connSockStream, "Database select error");
+		packet.sendSTAT_ERR("Database select error");
    	}
 }
 
@@ -223,14 +243,14 @@ void SrvPI::cmdPASS()
 			userRCWD = resultMapVector[0]["RCWD"];
 			// set session ID: important
 			packet.setSessionID(std::stoul(userID));
-			packet.print();
-			packet.sendSTAT_OK(connSockStream, 	"Welcome to tinyFTP, written by Charles Wenchy <wenchy.zwz@gmail.com>\n" \
-											   	+ resultMapVector[0]["USERNAME"] + ", your last working directory is: ~" + userRCWD);
+			//packet.print();
+			packet.sendSTAT_OK("Welcome to tinyFTP, written by Charles Wenchy <wenchy.zwz@gmail.com>\n" \
+									 + resultMapVector[0]["USERNAME"] + ", your last working directory is: ~" + userRCWD);
    		} else {
-			packet.sendSTAT_ERR(connSockStream, "error: username mismatch password");
+			packet.sendSTAT_ERR("error: username mismatch password");
    		}
    	} else {
-		packet.sendSTAT_ERR(connSockStream, "Database select error");
+		packet.sendSTAT_ERR("Database select error");
    	}
 }
 
@@ -243,16 +263,16 @@ void SrvPI::cmdGET()
 	string msg_o;
 	if (!combineAndValidatePath(GET, paramVector[0], msg_o))
    	{
-   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+   		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
    	}
 
 	string path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
 	//std::cout << "cmdGET path[" << path << "]" << '\n';
-	SrvDTP srvDTP(this->connSockStream, &(this->packet), this->connfd, this);
+	SrvDTP srvDTP(&(this->packet), this);
 	srvDTP.sendFile(path.c_str());
 
-	packet.sendSTAT_EOT(connSockStream);
+	packet.sendSTAT_EOT();
 }
 void SrvPI::cmdGET(string pathname)
 {
@@ -261,16 +281,16 @@ void SrvPI::cmdGET(string pathname)
 	// string msg_o;
 	// if (!combineAndValidatePath(GET, pathname, msg_o))
  //   	{
- //   		packet.sendSTAT_ERR(connSockStream, pathname + msg_o.c_str());
+ //   		packet.sendSTAT_ERR(pathname + msg_o.c_str());
 	// 	return;
  //   	}
 	// string path = userRootDir + userRCWD + "/" + pathname;
 
 	//std::cout << "cmdGET path[" << path << "]" << '\n';
-	SrvDTP srvDTP(this->connSockStream, &(this->packet), this->connfd, this);
+	SrvDTP srvDTP(&(this->packet), this);
 	srvDTP.sendFile(pathname.c_str());
 
-	packet.sendSTAT_EOT(connSockStream);
+	packet.sendSTAT_EOT();
 }
  
 void SrvPI::RGET_recurse(string srvpath, string clipath)
@@ -281,11 +301,11 @@ void SrvPI::RGET_recurse(string srvpath, string clipath)
 	{
 		// send STAT_ERR Response
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
 		// send STAT_OK
-		packet.sendSTAT_OK(connSockStream);
+		packet.sendSTAT_OK();
 	}
 
 	struct dirent* e;
@@ -302,7 +322,7 @@ void SrvPI::RGET_recurse(string srvpath, string clipath)
 	{
 		if(e->d_type == 4 && strcmp(e->d_name, ".") && strcmp(e->d_name, ".."))
 		{
-			packet.sendCMD_LMKDIR(connSockStream, clipath + e->d_name);
+			packet.sendCMD_LMKDIR(clipath + e->d_name);
 			recvOnePacket();
 			if (packet.getTagid() == TAG_STAT)
 			{
@@ -325,7 +345,7 @@ void SrvPI::RGET_recurse(string srvpath, string clipath)
 			string str = srvpath + e->d_name;
 			str += DELIMITER;
 			str += clipath + e->d_name;
-			packet.sendCMD_GET(connSockStream, str);
+			packet.sendCMD_GET(str);
 			recvOnePacket();
 			if (packet.getTagid() == TAG_CMD && packet.getCmdid() == GET)
 			{
@@ -352,7 +372,7 @@ void SrvPI::RGET_iterate(string srvrootpath, string clirootpath)
 		string clipath = dirPair.second;
 
 		// first create dir on client host
-		packet.sendCMD_LMKDIR(connSockStream, clipath);
+		packet.sendCMD_LMKDIR(clipath);
 		recvOnePacket();
 		if (packet.getTagid() == TAG_STAT)
 		{
@@ -379,11 +399,11 @@ void SrvPI::RGET_iterate(string srvrootpath, string clirootpath)
 		{
 			// send STAT_ERR Response
 			// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-			packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+			packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 			return;
 		} else {
 			// send STAT_OK
-			packet.sendSTAT_OK(connSockStream);
+			packet.sendSTAT_OK();
 		}
 
 		struct dirent* e;
@@ -407,7 +427,7 @@ void SrvPI::RGET_iterate(string srvrootpath, string clirootpath)
 				string str = srvpath + e->d_name;
 				str += DELIMITER;
 				str += clipath + e->d_name;
-				packet.sendCMD_GET(connSockStream, str);
+				packet.sendCMD_GET(str);
 				recvOnePacket();
 				if (packet.getTagid() == TAG_CMD && packet.getCmdid() == GET)
 				{
@@ -433,7 +453,7 @@ void SrvPI::cmdRGET()
 	string msg_o;
 	if (!combineAndValidatePath(RGET, paramVector[0], msg_o))
    	{
-   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+   		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
    	}
 
@@ -442,7 +462,7 @@ void SrvPI::cmdRGET()
 	split(paramVector[0], "/", pathVector);
 
 	// first create target dir
-	// packet.sendCMD_LMKDIR(connSockStream, pathVector.back());
+	// packet.sendCMD_LMKDIR(pathVector.back());
 	// recvOnePacket();
 	// if (packet.getTagid() == TAG_STAT)
 	// {
@@ -463,7 +483,7 @@ void SrvPI::cmdRGET()
 
 
 	RGET_iterate(tmpDir, pathVector.back());
-	// packet.sendCMD_LMKDIR(connSockStream, pathVector.back());
+	// packet.sendCMD_LMKDIR(pathVector.back());
 	// recvOnePacket();
 	// if (packet.getTagid() == TAG_STAT)
 	// {
@@ -481,7 +501,7 @@ void SrvPI::cmdRGET()
 	// 	Error::msg("unknown tagid: %d", packet.getTagid());
 	// 	return;
 	// }
-	packet.sendSTAT_EOT(connSockStream);		
+	packet.sendSTAT_EOT();		
 	// while(recvOnePacket())
 	// {
 	// 	switch(packet.getTagid())
@@ -574,14 +594,14 @@ void SrvPI::cmdPUT()
 	string msg_o;
 	if (!combineAndValidatePath(PUT, userinput, msg_o))
    	{
-   		packet.sendSTAT_CFM(connSockStream, msg_o.c_str());
+   		packet.sendSTAT_CFM(msg_o.c_str());
    		recvOnePacket();
    		if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CFM) {
    			packet.print();
 			if (packet.getSBody() == "y")
 			{
 				std::cout << "packet.getSBody() == y" << '\n';
-				SrvDTP srvDTP(this->connSockStream,  &(this->packet), this->connfd, this);
+				SrvDTP srvDTP(&(this->packet), this);
 				srvDTP.recvFile(path.c_str());
 				return;
 			} else {
@@ -593,7 +613,7 @@ void SrvPI::cmdPUT()
 		}
    	} else {
    		std::cout << "**************cmdPUT path[" << path << "]" << '\n';
-		SrvDTP srvDTP(this->connSockStream,  &(this->packet), this->connfd, this);
+		SrvDTP srvDTP(&(this->packet), this);
 		srvDTP.recvFile(path.c_str());
    	}
 }
@@ -610,7 +630,7 @@ void SrvPI::cmdLS()
 	string msg_o;
 	if (!combineAndValidatePath(LS, paramVector[0], msg_o))
    	{
-   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+   		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
    	}
 	string tmpDir = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
@@ -619,11 +639,11 @@ void SrvPI::cmdLS()
 	{
 		// send STAT_ERR Response
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
 		// send STAT_OK
-		packet.sendSTAT_OK(connSockStream);
+		packet.sendSTAT_OK();
 	}
 	struct dirent* e;
 	int cnt = 0;
@@ -673,7 +693,7 @@ void SrvPI::cmdLS()
 
 		if ( (sbody.size() + strlen(buf)) > SLICECAP)
 		{
-			packet.sendDATA_LIST(connSockStream, 0, 0, sbody.size(), sbody.c_str());
+			packet.sendDATA_LIST(0, 0, sbody.size(), sbody.c_str());
 			sbody.clear();
 		}
 		sbody += buf;
@@ -685,10 +705,10 @@ void SrvPI::cmdLS()
 		{
 			sbody.pop_back(); // remove '\n'
 		}
-		packet.sendDATA_LIST(connSockStream, 0, 0, sbody.size(), sbody.c_str());
+		packet.sendDATA_LIST(0, 0, sbody.size(), sbody.c_str());
 	}
 
-	packet.sendSTAT_EOT(connSockStream);
+	packet.sendSTAT_EOT();
 
 }
 
@@ -700,24 +720,24 @@ void SrvPI::cmdCD()
 	string msg_o;
    	if (!combineAndValidatePath(CD, paramVector[0], msg_o))
    	{
-   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+   		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
    	} else {
-		packet.sendSTAT_OK(connSockStream, "CWD: ~" + userRCWD);
+		packet.sendSTAT_OK("CWD: ~" + userRCWD);
 		return;
    	}
 	// if( (n = chdir(newAbsDir.c_str())) == -1)
 	// {
 	// 	// send STAT_ERR Response
 	// 	// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-	// 	packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+	// 	packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 	// 	return;
 	// } else {
 	// 	// send STAT_OK
 	// 	snprintf(buf, MAXLINE, "server: change CWD to [%s]", packet.ps->body);
-	// 	packet.sendSTAT_OK(connSockStream, buf);
+	// 	packet.sendSTAT_OK(buf);
 	// }
-	//packet.sendSTAT_EOT(connSockStream);
+	//packet.sendSTAT_EOT();
 }
 
 void SrvPI::cmdRM()
@@ -735,7 +755,7 @@ void SrvPI::cmdRM()
 	string msg_o;
    	if (!combineAndValidatePath(RM, paramVector[0], msg_o))
    	{
-   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+   		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
    	} else {
    		string path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
@@ -744,11 +764,11 @@ void SrvPI::cmdRM()
 		{
 			// send STAT_ERR Response 
 			// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-			packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+			packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 			return;
 		} else {
 			// send STAT_OK
-			packet.sendSTAT_OK(connSockStream, paramVector[0] + " is removed");
+			packet.sendSTAT_OK(paramVector[0] + " is removed");
 			return;
 		}
    	}
@@ -762,15 +782,15 @@ void SrvPI::cmdRM()
 	// 	{
 	// 		// send STAT_ERR Response 
 	// 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-	// 		packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+	// 		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 	// 		return;
 	// 	} else {
 	// 		// send STAT_OK
-	// 		packet.sendSTAT_OK(connSockStream, packet.getSBody() + "is removed");
+	// 		packet.sendSTAT_OK(packet.getSBody() + "is removed");
 	// 		return;
 	// 	}
 	// } else if (S_ISDIR(statBuf.st_mode)){
-	// 	packet.sendSTAT_ERR(connSockStream, "rm: cannot remove '" + packet.getSBody() + "': Is a directory");
+	// 	packet.sendSTAT_ERR("rm: cannot remove '" + packet.getSBody() + "': Is a directory");
 	// 	return;
 	// }
     
@@ -786,13 +806,13 @@ void SrvPI::cmdPWD()
 	{
 		if (packet.getSBody() == "-a")
 		{
-			packet.sendSTAT_OK(connSockStream, (userRootDir + userRCWD).c_str());
+			packet.sendSTAT_OK((userRootDir + userRCWD).c_str());
 		} else {
-			packet.sendSTAT_ERR(connSockStream, "command format error");
+			packet.sendSTAT_ERR("command format error");
 		}
 		
 	} else {
-		packet.sendSTAT_OK(connSockStream, ("~" + userRCWD).c_str());
+		packet.sendSTAT_OK(("~" + userRCWD).c_str());
 	}
 	
 
@@ -801,11 +821,11 @@ void SrvPI::cmdPWD()
 	// {
 	// 	// send STAT_ERR Response
 	// 	// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-	// 	packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+	// 	packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 	// 	return;
 	// } else {
 	// 	// send STAT_OK
-	// 	packet.sendSTAT_OK(connSockStream, userRCWD.c_str());
+	// 	packet.sendSTAT_OK(userRCWD.c_str());
 	// }
 }
 
@@ -817,7 +837,7 @@ void SrvPI::cmdMKDIR()
 	string msg_o;
    	if (!combineAndValidatePath(MKDIR, paramVector[0], msg_o))
    	{
-   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+   		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
    	} else {
    		string path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
@@ -827,10 +847,10 @@ void SrvPI::cmdMKDIR()
 			// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
 			msg_o += "system call (mkdir): ";
 			msg_o += strerror_r(errno, buf, MAXLINE);
-			packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+			packet.sendSTAT_ERR(msg_o.c_str());
    		}else {
 			// send STAT_OK
-			packet.sendSTAT_OK(connSockStream, paramVector[0] + " created");
+			packet.sendSTAT_OK(paramVector[0] + " created");
 		}
 	}
 }
@@ -919,19 +939,19 @@ void SrvPI::cmdRMDIR()
 	string msg_o;
    	if (!combineAndValidatePath(RMDIR, paramVector[0], msg_o))
    	{
-   		packet.sendSTAT_ERR(connSockStream, msg_o.c_str());
+   		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
    	} else {
    		string path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
    		string shellCMD = "rm -rf " + path;
 		if (system(shellCMD.c_str()) == -1) {
 			char buf[MAXLINE];
-			packet.sendSTAT_ERR(connSockStream, strerror_r(errno, buf, MAXLINE));
+			packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 		} else {
 			// send STAT_OK
-			packet.sendSTAT_OK(connSockStream, "Dir" + paramVector[0] + " removed");
+			packet.sendSTAT_OK("Dir" + paramVector[0] + " removed");
 		}
-		//packet.sendSTAT_OK(connSockStream, "rmdir: not finished");
+		//packet.sendSTAT_OK("rmdir: not finished");
 	}
 }
 
@@ -1191,6 +1211,11 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o)
 	return false;
 }
 
+int SrvPI::getConnfd()
+{
+	return connfd;
+}
+
 SrvPI::~SrvPI()
 {
 
@@ -1199,4 +1224,5 @@ void SrvPI::saveUserState()
 {
 	map<string, string> updateParamMap = {  {"RCWD", userRCWD} };
 	db.update("user", userID, updateParamMap);
+	std::cout<< "\n\033[32msave user state ok\033[0m" << std::endl;
 }

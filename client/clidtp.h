@@ -13,8 +13,7 @@ class CliPI;
 class CliDTP
 {
 public:
-	CliDTP(SockStream & connSockStream, Packet * ppacket, int connfd, CliPI * pcliPI);
-	//void init(SockStream & connSockStream, Packet & packet);
+	CliDTP(Packet * ppacket, CliPI * pcliPI);
 	void recvOnePacket();
 	void sendFile(const char *pathname, FILE *fp, uint32_t nslice);
 	void recvFile(const char *filename, FILE *fp);
@@ -24,8 +23,6 @@ public:
 	
 private:
 	Packet * ppacket;
-	SockStream connSockStream;
-	int connfd;
 	CliPI * pcliPI;
 
 };

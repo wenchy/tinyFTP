@@ -1,34 +1,10 @@
 #include    "clidtp.h"
 
-CliDTP::CliDTP(SockStream & connSockStream, Packet * ppacket, int connfd, CliPI * pcliPI)
+CliDTP::CliDTP(Packet * ppacket, CliPI * pcliPI)
 { 
-	this->connSockStream = connSockStream;
 	this->ppacket = ppacket;
-	this->connfd = connfd;
 	this->pcliPI = pcliPI;
 }
-// void CliDTP::init(SockStream & connSockStream, Packet & packet)
-// { 
-// 	this->connSockStream = connSockStream;
-// 	this->packet = packet;
-// }
-
-// void CliDTP::recvOnePacket()
-// {
-// 	Packet & packet = *(this->ppacket);
-// 	int n;
-// 	packet.reset(NPACKET);
-// 	if ( (n = connSockStream.Readn(packet.getPs(), PACKSIZE)) == 0)
-// 	{
-// 		Socket::tcpClose(connfd);
-// 		Error::quit("server terminated prematurely");
-// 	} else if (n < 0){
-// 		Error::ret("connSockStream.Readn()");
-// 		Error::quit("socket connection exception");
-// 	}
-// 	packet.ntohp();
-// 	//packet.print();
-// }
 
 void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 {
@@ -45,7 +21,7 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 	} else {
 		while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 		{
-			packet.sendDATA_FILE(connSockStream, nslice, ++sindex, n, body);
+			packet.sendDATA_FILE(nslice, ++sindex, n, body);
 			newProgress = (sindex*1.0)/nslice*100;
 			if (newProgress > oldProgress)
 			{
@@ -59,7 +35,7 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 	fclose(fp);
 	cout << endl;
 	//printf("\nEOF [%s]\n", pathname);
-	packet.sendSTAT_EOF(connSockStream);
+	packet.sendSTAT_EOF();
 }
 void CliDTP::removeFile(const char *pathname)
 {
