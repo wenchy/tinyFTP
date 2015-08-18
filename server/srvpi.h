@@ -9,6 +9,7 @@
 #include    "../common/database.h"
 #include    "../common/pi.h"
 #include    "srvdtp.h"
+
 // Server Protocol Interpreter (SrvPI)
 class SrvPI : public PI
 {
@@ -56,7 +57,10 @@ private:
 	std::string userRootDir;
 	std::string userRCWD; // current working directory relative to userRootDir
 
-	bool combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o);
+	string filename;
+	string abspath;
+
+	bool combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o, string & abspath_o);
 	bool cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o);
 	void saveUserState();
 

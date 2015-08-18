@@ -4,6 +4,7 @@ Packet::Packet(PI * ppi)
 { 
 	this->pstype = HPACKET;
 	ps = (PacketStruct*) Malloc(PACKSIZE);
+	prePs = (PacketStruct*) Malloc(PACKSIZE);
 	ps->sesid = 0; 
 	this->ppi =  ppi;
 }
@@ -62,18 +63,18 @@ void Packet::setSessionID(uint32_t sesid)
 
 void Packet::reset(PacketStoreType pstype)
 {
-	this->pstype = pstype;
-
 	//must keep sesid
 	if (this->pstype == NPACKET){
 		if (pstype == HPACKET){
 			ps->sesid = ntohl(ps->sesid);
 		}
 	} else if (this->pstype == HPACKET){
+		this->savePacketState();
 		if (pstype == NPACKET){
 			ps->sesid = htonl(ps->sesid);
 		}
 	}
+	this->pstype = pstype;
 
 	ps->tagid = 0;
 
@@ -87,6 +88,21 @@ void Packet::reset(PacketStoreType pstype)
 
 	memset(ps->body, 0, PBODYCAP);
 }
+void Packet::savePacketState()
+{
+	prePs->sesid = ps->sesid;
+
+	prePs->tagid = ps->tagid;
+
+	prePs->cmdid = ps->cmdid;
+	prePs->statid = ps->statid;
+	prePs->dataid = ps->dataid;
+
+	prePs->nslice = ps->nslice;
+	prePs->sindex = ps->sindex;
+	prePs->bsize = ps->bsize;
+}
+
 void Packet::zero()
 {
 	memset(ps, 0, PACKSIZE);
@@ -164,6 +180,22 @@ void Packet::print()
 	printf("\t\tsindex = %u\n", ps->sindex);
 	printf("\t\tbsize = %d\n", ps->bsize);
 	printf("\t\tbody = %s\n",  this->getSBody().c_str());
+	
+	fflush(stdout);
+}
+
+
+void Packet::pprint()
+{
+	printf("\t\t[Previous HOST Packet: %p]\n", prePs);
+	printf("\t\tsesid = %u\n", prePs->sesid);
+	printf("\t\ttagid = %d\n", prePs->tagid);
+	printf("\t\tcmdid = %d\n", prePs->cmdid);
+	printf("\t\tstatid = %d\n", prePs->statid);
+	printf("\t\tdataid = %d\n", prePs->dataid);
+	printf("\t\tnslice = %u\n", prePs->nslice);
+	printf("\t\tsindex = %u\n", prePs->sindex);
+	printf("\t\tbsize = %d\n", prePs->bsize);
 	
 	fflush(stdout);
 }
@@ -525,7 +557,68 @@ std::string Packet::getSBody()
 	return string(buf);
 }
 
+
+
+
+PacketStruct * Packet::getPrePs()
+{ 
+	return prePs;
+}
+uint32_t Packet::getPreSesid()
+{ 
+	return prePs->sesid;
+}
+
+uint16_t Packet::getPreTagid()
+{ 
+	return prePs->tagid;
+}
+uint16_t Packet::getPreCmdid()
+{ 
+	return prePs->cmdid;
+}
+
+uint16_t Packet::getPreStatid()
+{ 
+	return prePs->statid;
+}
+
+uint16_t Packet::getPreDataid()
+{ 
+	return prePs->dataid;
+}
+
+uint32_t Packet::getPreNslice()
+{ 
+	return prePs->nslice;
+}
+
+string Packet::getPreSNslice()
+{ 
+	char buf[MAXLINE] = {0};
+	snprintf(buf, MAXLINE, "%u", prePs->nslice);
+	return string(buf);
+}
+
+uint32_t Packet::getPreSindex()
+{ 
+	return prePs->sindex;
+}
+
+string Packet::getPreSSindex()
+{ 
+	char buf[MAXLINE] = {0};
+	snprintf(buf, MAXLINE, "%u", prePs->sindex);
+	return string(buf);
+}
+
+uint16_t Packet::getPreBsize()
+{ 
+	return prePs->bsize;
+}
+
 Packet::~Packet()
 { 
-	free(ps); 
+	free(ps);
+	free(prePs);  
 }

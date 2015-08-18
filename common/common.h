@@ -88,6 +88,7 @@ typedef enum packetStoreType
 #define PHEADSIZE		20			// packet header size
 #define	PBODYCAP		512			// packet body capcacity
 #define	SLICECAP		512			// slice capcacity
+#define	SSLICECAP		"512"			// slice capcacity
 #define	MAXNSLICE		4294967295	// max slice count: the maximum positive integer value
 // TCP control packet definition, communication protocol
  #pragma pack(4)

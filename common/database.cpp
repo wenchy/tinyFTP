@@ -120,9 +120,22 @@ Database & Database::create()
    const char *sql_table_file =  "CREATE TABLE FILE(" \
       "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
       "MD5SUM        TEXT UNIQUE                         NOT NULL," \
-      "FILENAME      TEXT                                NOT NULL," \
+      "FILEPATH      TEXT                                NOT NULL," \
       "DIRECTORY     TEXT                                NOT NULL," \
       "SIZE          INTEGER                             NOT NULL," \
+      "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
+      "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
+      "ACCESS        INTEGER  DEFAULT 0 );";
+   
+   // interrupted file
+   const char *sql_table_ifile =  "CREATE TABLE IFILE(" \
+      "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
+      "USERID        TEXT                                NOT NULL," \
+      "ABSPATH       TEXT                                NOT NULL," \
+      "FILENAME      TEXT                                NOT NULL," \
+      "NSLICE        INTEGER                             NOT NULL," \
+      "SINDEX        INTEGER                             NOT NULL," \
+      "SLICECAP      INTEGER                             NOT NULL," \
       "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
       "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
       "ACCESS        INTEGER  DEFAULT 0 );";
@@ -130,6 +143,7 @@ Database & Database::create()
    /* Execute SQL statement */
    execute(sql_table_user, NULL);
    execute(sql_table_file, NULL);
+   execute(sql_table_ifile, NULL);
 
 return *this;
 }

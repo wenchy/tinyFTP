@@ -21,6 +21,7 @@ public:
 	void setSessionID(uint32_t sesid);
 
 	void reset(PacketStoreType pstype);
+	void savePacketState();
 	void zero();
 
 	// network byte order to host byte order 
@@ -29,6 +30,7 @@ public:
 	void htonp();
 
 	void print();
+	void pprint();
 
 	void sendCMD(uint16_t cmdid, string sbody);
 	void sendCMD_GET(const char *body);
@@ -81,8 +83,23 @@ public:
 	char * getBody();
 	std::string getSBody();
 
+	PacketStruct * getPrePs();
+	uint32_t getPreSesid();
+	uint16_t getPreTagid();
+	uint16_t getPreCmdid();
+	uint16_t getPreStatid();
+	uint16_t getPreDataid();
+	uint32_t getPreNslice();
+	string getPreSNslice();
+	uint32_t getPreSindex();
+	string getPreSSindex();
+	uint16_t getPreBsize();
+
+	PacketStruct *prePs; // previous PacketStruct
+
 private:
 	PacketStruct *ps;
+	
 	PacketStoreType pstype;
 	PI * ppi;
 
