@@ -74,6 +74,22 @@ void Database::init()
    insert("user", insertParamMap3);
    //select("user", selectParamMap);
 
+   //create tinyFTP root working diretory
+   string dirString(ROOTDIR);
+   DIR* d = opendir(dirString.c_str());
+   if(d)
+   {  
+      fprintf(stderr, "Already exists: %s\n",  dirString.c_str());
+      closedir(d);
+   }
+   else if(mkdir(dirString.c_str(), 0777) == -1)
+   {
+      char buf[MAXLINE];
+      fprintf(stdout, "Error(%s): %s\n", dirString.c_str(), strerror_r(errno, buf, MAXLINE));
+   } else {
+      fprintf(stdout, "Directory created: %s\n", dirString.c_str());
+   }
+
    // init user's root working directory
    if(findALL("user"))
    {
@@ -138,7 +154,7 @@ Database & Database::create()
       "SLICECAP      INTEGER                             NOT NULL," \
       "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
       "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
-      "ACCESS        INTEGER  DEFAULT 0 );";
+      "VALID         INTEGER  DEFAULT 1 );";
 
    /* Execute SQL statement */
    execute(sql_table_user, NULL);

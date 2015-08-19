@@ -7,6 +7,14 @@ Fclose(FILE *fp)
 		Error::sys("fclose error");
 }
 
+void
+Fclose(FILE **fp)
+{
+	if (fclose(*fp) != 0)
+		Error::sys("fclose error");
+	*fp = NULL;
+}
+
 FILE *
 Fdopen(int fd, const char *type)
 {

@@ -10,10 +10,11 @@ void SrvDTP::sendFile(const char *pathname)
 	Packet & packet = *(this->ppacket);
 	int n;
 	uint32_t nslice =0, sindex = 0;
-	FILE* fp;	// Yo!
+
 	char buf[MAXLINE];
 
-	if ( (fp = fopen(pathname, "rb")) == NULL)
+	//if ( (fp = fopen(pathname, "rb")) == NULL)
+	if ( psrvPI->setFp(fopen(pathname, "rb")) == NULL)
 	{
 		// send STAT_ERR Response
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
@@ -22,7 +23,7 @@ void SrvDTP::sendFile(const char *pathname)
 	} else if ( (n = getFileNslice(pathname, &nslice)) <= 0)  {
 		if ( n == 0) {
 			printf("EOF[%s]: 0 bytes\n", pathname);
-			fclose(fp);
+			Fclose(&psrvPI->getFp());
 			packet.sendSTAT_OK(getFileSizeString(pathname));
 			packet.sendDATA_TEXT(getFileSizeString(pathname));
 			packet.sendDATA_FILE(0, 0, 0, NULL);
@@ -46,7 +47,7 @@ void SrvDTP::sendFile(const char *pathname)
 	char body[PBODYCAP];
 	printf("Send [%s] now\n", pathname);
 
-	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
+	while( (n = fread(body, sizeof(char), PBODYCAP, psrvPI->getFp())) >0 )
 	{
 		packet.sendDATA_FILE(nslice, ++sindex, n, body);
 	}
@@ -56,7 +57,7 @@ void SrvDTP::sendFile(const char *pathname)
 	// int connfd = psrvPI->getConnfd();
 
 	// FD_ZERO(&rset);
-	// while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 ) {
+	// while( (n = fread(body, sizeof(char), PBODYCAP, psrvPI->getFp())) >0 ) {
 	// 	FD_SET(connfd, &rset);
 	// 	FD_SET(connfd, &wset);
 	// 	maxfdp1 = connfd + 1;
@@ -73,38 +74,18 @@ void SrvDTP::sendFile(const char *pathname)
 	// }
 	
 	// send EOF
-	fclose(fp);
+	Fclose(&psrvPI->getFp());
 	printf("EOF [%s]\n", pathname);
 	packet.sendSTAT_EOF();
 }
-// void rwSelect(FILE *fp, int sockfd)
-// {
-// 	int			maxfdp1;
-// 	fd_set		rset, wset;
 
-// 	FD_ZERO(&rset);
-// 	while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 ) {
-// 		FD_SET(sockfd, &rset);
-// 		FD_SET(sockfd, &wset);
-// 		maxfdp1 = max(fileno(fp), sockfd) + 1;
-// 		if (select(maxfdp1, &rset, &wset, NULL, NULL) < 0)
-// 			Error::sys("select error");
-
-// 		if (FD_ISSET(sockfd, &rset)) {	/* socket is readable */
-// 			psrvPI->recvOnePacket();
-// 		}
-
-// 		if (FD_ISSET(sockfd, &wset)) {  /* socket is writable */
-// 			packet.sendDATA_FILE(nslice, ++sindex, n, body);
-// 		}
-// 	}
-// }
 void SrvDTP::recvFile(const char *pathname)
 {
 	Packet & packet = *(this->ppacket);
 	char buf[MAXLINE];
-	FILE* fp;	// Yo!
-	if ( (fp = fopen(pathname, "wb")) == NULL) {
+
+	if ( psrvPI->setFp(fopen(pathname, "wb")) == NULL)
+	{
 		// send STAT_ERR Response
 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
 		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
@@ -120,7 +101,7 @@ void SrvDTP::recvFile(const char *pathname)
 	while (psrvPI->recvOnePacket())
 	{
 		if(packet.getTagid() == TAG_DATA && packet.getDataid() == DATA_FILE){
-			m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), fp);
+			m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), psrvPI->getFp());
 			if (m != packet.getBsize())
 			{
 				Error::msg("Recieved slice %d/%d: %d vs %d Bytes\n", packet.getSindex(), packet.getNslice(), packet.getBsize(), m);
@@ -130,7 +111,67 @@ void SrvDTP::recvFile(const char *pathname)
 		} else if(packet.getTagid() == TAG_STAT) {
 			if (packet.getStatid() == STAT_EOF)
 			{
-				fclose(fp);
+				Fclose(&psrvPI->getFp());
+				std::cout << packet.getSBody() << std::endl;
+				continue;
+			} else if (packet.getStatid() == STAT_EOT){
+				std::cout << packet.getSBody() << std::endl;
+				return;
+			} else {
+				Error::msg("SrvDTP::recvFile TAG_STAT: unknown statid %d", packet.getStatid());
+				return;
+			}
+			
+		} else {
+			Error::msg("SrvDTP::recvFile: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
+			return;
+		}
+	}
+}
+
+void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, uint16_t slicecap)
+{
+	Packet & packet = *(this->ppacket);
+	char buf[MAXLINE];
+	off64_t n;
+
+	if ( psrvPI->setFp(fopen(pathname, "ab")) == NULL)
+	{
+		// send STAT_ERR Response
+		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+		return;
+	} else {
+
+		off64_t curpos = sindex * slicecap;
+		if ( ( n = lseek64(fileno(psrvPI->getFp()), curpos, SEEK_SET)) < 0)
+		{
+			packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+			return;
+		} else {
+			printf("Send file [%s %u/%u] pos: %lld/%lld now\n", pathname, sindex, nslice, curpos, n);
+			// send STAT_OK
+			packet.sendSTAT_OK();
+		}
+	}
+	
+	printf("Recv file [%s %u/%u] now\n", pathname, sindex, nslice);
+	int m;
+
+	while (psrvPI->recvOnePacket())
+	{
+		if(packet.getTagid() == TAG_DATA && packet.getDataid() == DATA_FILE){
+			m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), psrvPI->getFp());
+			if (m != packet.getBsize())
+			{
+				Error::msg("Recieved slice %d/%d: %d vs %d Bytes\n", packet.getSindex(), packet.getNslice(), packet.getBsize(), m);
+				return;
+			}
+			//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.ps->bsize, m);
+		} else if(packet.getTagid() == TAG_STAT) {
+			if (packet.getStatid() == STAT_EOF)
+			{
+				Fclose(&psrvPI->getFp());
 				std::cout << packet.getSBody() << std::endl;
 				continue;
 			} else if (packet.getStatid() == STAT_EOT){

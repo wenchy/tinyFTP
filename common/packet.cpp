@@ -351,17 +351,6 @@ void Packet::sendSTAT_OK()
 	this->htonp();
 	ppi->sendOnePacket(this->ps, PACKSIZE);
 }
-// void Packet::sendSTAT_OK(char *msg)
-// {
-// 	// send OK
-// 	this->reset(HPACKET);
-// 	char buf[MAXLINE];
-// 	snprintf(buf, MAXLINE, "\033[32m%s\033[0m", msg);
-// 	this->fillStat(STAT_OK, strlen(buf), buf);
-// 	//this->print();
-// 	this->htonp();
-// 	ppi->sendOnePacket(this->ps, PACKSIZE);
-// }
 void Packet::sendSTAT_OK(const char *msg)
 {
 	// send OK
@@ -384,7 +373,13 @@ void Packet::sendSTAT_OK(string msg)
 	ppi->sendOnePacket(this->ps, PACKSIZE);
 }
 
-
+void Packet::sendSTAT_BPR(string body)
+{
+	this->reset(HPACKET);
+	this->fillStat(STAT_BPR, body.size(), body.c_str());
+	this->htonp();
+	ppi->sendOnePacket(this->ps, PACKSIZE);
+}
 // void Packet::sendSTAT_CFM(char *msg)
 // {
 // 	// send CFM

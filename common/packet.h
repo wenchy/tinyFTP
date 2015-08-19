@@ -56,6 +56,8 @@ public:
 	void sendSTAT_OK(const char *msg);
 	void sendSTAT_OK(string msg);
 
+	void sendSTAT_BPR(string body);
+
 	//void sendSTAT_CFM(char *msg);
 	void sendSTAT_CFM(const char *msg);
 	void sendSTAT_CFM(string msg);

@@ -15,7 +15,7 @@ class SrvPI : public PI
 {
 public:
 	SrvPI(string dbFilename, int connfd);
-	void checkBreakpoint();
+	bool checkBreakpoint();
 	bool recvOnePacket();
 	bool sendOnePacket(PacketStruct * ps, size_t nbytes);
 	void run();
@@ -40,6 +40,8 @@ public:
 
 	
 	int getConnfd();
+	FILE* setFp(FILE *fp);
+	FILE* & getFp();
 	~SrvPI();
 	
 	
@@ -59,6 +61,7 @@ private:
 
 	string filename;
 	string abspath;
+	FILE* fp;
 
 	bool combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o, string & abspath_o);
 	bool cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o);

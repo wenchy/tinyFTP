@@ -7,11 +7,9 @@ SrvPI::SrvPI(string dbFilename, int connfd): packet(this), db(DBFILENAME)
 	connSockStream.init(connfd);
 	sessionCommandPacketCount = 0;
 	userID ="0";
+	this->fp = NULL;
 }
-void SrvPI::checkBreakpoint()
-{
 
-}
 bool SrvPI::recvOnePacket()
 {
 	int n;
@@ -515,6 +513,32 @@ void SrvPI::cmdRGET()
 	packet.sendSTAT_EOT();		
 }
 
+bool SrvPI::checkBreakpoint()
+{
+	std::map<string, string> selectParamMap = { {"USERID", this->userID}, {"ABSPATH", this->abspath}, {"VALID", "1"} };
+	std::map<string, string> updateParamMap = { {"VALID", "0"} };
+   	if (db.select("ifile", selectParamMap))
+   	{
+   		vector< map<string, string> > resultMapVector = db.getResult();
+   		if (!resultMapVector.empty())
+   		{
+			string body = resultMapVector[0]["NSLICE"] + DELIMITER + resultMapVector[0]["SINDEX"];
+			packet.sendSTAT_BPR(body);
+			db.update("ifile", resultMapVector[0]["ID"], updateParamMap);
+			SrvDTP srvDTP(&(this->packet), this);
+			srvDTP.recvFile(this->abspath.c_str(), std::stoul(resultMapVector[0]["NSLICE"]), std::stoul(resultMapVector[0]["SINDEX"]));
+			return true;
+   		} else {
+			// packet.sendSTAT_ERR("no such username");r
+			return false;
+   		}
+
+   	}else {
+		//packet.sendSTAT_ERR("Database select error");
+		return false;
+   	}
+}
+
 void SrvPI::cmdPUT()
 {
 	printf("PUT request\n");
@@ -543,6 +567,11 @@ void SrvPI::cmdPUT()
 	string msg_o;
 	if (!combineAndValidatePath(PUT, userinput, msg_o, this->abspath))
    	{
+   		if (checkBreakpoint())
+   		{
+   			return;
+   		}
+
    		packet.sendSTAT_CFM(msg_o.c_str());
    		recvOnePacket();
    		if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CFM) {
@@ -1224,12 +1253,29 @@ int SrvPI::getConnfd()
 	return connfd;
 }
 
+FILE* SrvPI::setFp(FILE *fp)
+{
+	this->fp = fp;
+	return this->fp;
+}
+
+FILE * & SrvPI::getFp()
+{
+	return this->fp;
+}
+
 SrvPI::~SrvPI()
 {
 
 }
 void SrvPI::saveUserState()
 {
+	if (fp != NULL)
+	{
+		cout << "close fp in saveUserState\n" << endl;
+		Fclose(&fp);
+	}
+
 	map<string, string> updateParamMap = {  {"RCWD", userRCWD} };
 	db.update("user", userID, updateParamMap);
 	packet.print();
@@ -1237,7 +1283,7 @@ void SrvPI::saveUserState()
 	if (packet.getPreTagid() == TAG_DATA && packet.getPreDataid() == DATA_FILE)
 	{
 		std::map<string, string> insertParamMap = { 	{"USERID", userID},
-														{"ABSPATH", filename},
+														{"ABSPATH", abspath},
 		 												{"FILENAME", filename},
 		 												{"NSLICE", packet.getPreSNslice()},
 		 												{"SINDEX", packet.getPreSSindex()},

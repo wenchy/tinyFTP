@@ -615,6 +615,7 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 	char pathname[MAXLINE];
 	char buf[MAXLINE];
 	uint32_t nslice = 0;
+	uint32_t sindex = 0;
 
 	strcpy(pathname,paramVector[0].c_str()); 
 	struct stat statBuf;
@@ -653,42 +654,149 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 		packet.sendCMD(PUT, getEncodedParams(paramVector));
 	}
 
-	while (recvOnePacket())
+	while(recvOnePacket())
 	{
-		if (packet.getTagid() == TAG_STAT) {
-			if (packet.getStatid() == STAT_OK) {
-				//cout << packet.getSBody() <<endl;
-				// must contain sesssion id
-				CliDTP cliDTP(&(this->packet), this);
-				cliDTP.sendFile(pathname, fp, nslice);
-				break;
-			} else if (packet.getStatid() == STAT_CFM) {
-				if(confirmYN(packet.getSBody().c_str()))
+		switch(packet.getTagid())
+		{
+			case TAG_CMD:
+			{
+				switch(packet.getCmdid())
 				{
-					packet.sendSTAT_CFM("y");
-					continue;
-				} else {
-					packet.sendSTAT_CFM("n");
-					return;
+					case GET:
+					{
+						break;
+					}
+					case LMKDIR:
+					{
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown cmdid: %d", packet.getCmdid());
+						break;
+					}
 				}
-			} else if (packet.getStatid() == STAT_ERR) {
-				cerr << packet.getSBody() <<endl;
-				return;
-			} else {
-				Error::msg("unknown statid %d", packet.getStatid());
-				packet.print();
-				return;
+				break;
 			}
-			
-		} else {
-			Error::msg("unknown tagid %d", packet.getTagid());
-			packet.print();
-			return;
+			case TAG_STAT:
+			{
+				switch(packet.getStatid())
+				{
+					case STAT_OK:
+					{
+						CliDTP cliDTP(&(this->packet), this);
+						cliDTP.sendFile(pathname, fp, nslice, sindex);
+						packet.sendSTAT_EOT();
+						return;
+					}
+					case STAT_BPR:
+					{
+						cout << packet.getSBody() <<endl;
+						vector<string> paramVector; 
+						split(packet.getSBody(), DELIMITER, paramVector);
+						sindex = std::stoul(paramVector[1]);
+						break;
+					}
+					case STAT_CFM:
+					{
+						if(confirmYN(packet.getSBody().c_str()))
+						{
+							packet.sendSTAT_CFM("y");
+						} else {
+							packet.sendSTAT_CFM("n");
+							return;
+						}
+						break;
+					}
+					case STAT_ERR:
+					{
+						cerr << packet.getSBody() <<endl;
+						return;
+					}
+					case STAT_EOF:
+					{
+						cout << packet.getSBody() <<endl;
+						break;
+					}
+					case STAT_EOT:
+					{
+						cout << packet.getSBody() <<endl;
+						return;
+					}
+					default:
+					{
+						Error::msg("unknown statid: %d", packet.getStatid());
+						break;
+					}
+				}
+				break;
+			}
+			case TAG_DATA:
+			{
+				switch(packet.getDataid())
+				{
+					case DATA_FILE:
+					{
+						cout << "DATA_FILE" << packet.getSBody() <<endl;
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown statid: %d", packet.getStatid());
+						break;
+					}
+				}
+				break;
+			}
+			default:
+			{
+				Error::msg("unknown tagid: %d", packet.getTagid());
+				break;
+			}
 		}
 	}
 
+
+	// while (recvOnePacket())
+	// {
+	// 	if (packet.getTagid() == TAG_STAT) {
+	// 		if (packet.getStatid() == STAT_OK) {
+	// 			//cout << packet.getSBody() <<endl;
+	// 			// must contain sesssion id
+	// 			CliDTP cliDTP(&(this->packet), this);
+	// 			cliDTP.sendFile(pathname, fp, nslice);
+	// 			break;
+	// 		} else if (packet.getStatid() == STAT_BPR) {
+	// 			CliDTP cliDTP(&(this->packet), this);
+	// 			cliDTP.sendFile(pathname, fp, nslice);
+	// 			break;
+	// 		} else if (packet.getStatid() == STAT_CFM) {
+	// 			if(confirmYN(packet.getSBody().c_str()))
+	// 			{
+	// 				packet.sendSTAT_CFM("y");
+	// 				continue;
+	// 			} else {
+	// 				packet.sendSTAT_CFM("n");
+	// 				return;
+	// 			}
+	// 		} else if (packet.getStatid() == STAT_ERR) {
+	// 			cerr << packet.getSBody() <<endl;
+	// 			return;
+	// 		} else {
+	// 			Error::msg("unknown statid %d", packet.getStatid());
+	// 			packet.print();
+	// 			return;
+	// 		}
+			
+	// 	} else {
+	// 		Error::msg("unknown tagid %d", packet.getTagid());
+	// 		packet.print();
+	// 		return;
+	// 	}
+	// }
+
 	//printf("EOT %s\n", pathname);
-	packet.sendSTAT_EOT();
+	//packet.sendSTAT_EOT();
 	
 }
 void CliPI::cmdLS(std::vector<string> & paramVector)
@@ -844,7 +952,7 @@ void CliPI::cmdPWD(std::vector<string> & paramVector)
 	{
 		std::cout << "Usage: " << helpMap["PWD"] << std::endl;
 		return;
-	} else if (paramVector.size() == 1 && paramVector[1] != "-a")
+	} else if (paramVector.size() == 1 && paramVector[0] != "-a")
 	{
 		std::cout << "Usage: " << helpMap["PWD"] << std::endl;
 		return;

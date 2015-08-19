@@ -37,6 +37,47 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 	//printf("\nEOF [%s]\n", pathname);
 	packet.sendSTAT_EOF();
 }
+
+void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t sindex, uint16_t slicecap)
+{
+	Packet & packet = *(this->ppacket);
+	off64_t nn;
+	off64_t curpos = sindex * slicecap;
+	if ( (nn = lseek64(fileno(fp), curpos, SEEK_SET)) < 0)
+	{
+		Error::ret("lseek64");
+		return;
+	}
+	
+	printf("Send file [%s %u/%u] pos: %lld/%lld now\n", pathname, sindex, nslice, curpos, nn);
+
+	int n;
+	char body[PBODYCAP];
+	int oldProgress = 0, newProgress = 0;
+	string hfilesize =  getFileSizeString(pathname);
+	if(nslice == 0)
+	{
+		fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t100%%", pathname, hfilesize.c_str());
+	} else {
+		while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
+		{
+			packet.sendDATA_FILE(nslice, ++sindex, n, body);
+			newProgress = (sindex*1.0)/nslice*100;
+			if (newProgress > oldProgress)
+			{
+				//printf("\033[2K\r\033[0m");
+				fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
+			}
+			oldProgress = newProgress;
+		}
+	}
+	// send EOF
+	fclose(fp);
+	cout << endl;
+	//printf("\nEOF [%s]\n", pathname);
+	packet.sendSTAT_EOF();
+}
+
 void CliDTP::removeFile(const char *pathname)
 {
 	if( remove(pathname) !=0 )

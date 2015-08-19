@@ -3,6 +3,8 @@
 #ifndef _TINYFTP_COMMON_H_
 #define _TINYFTP_COMMON_H_
 
+#define _LARGEFILE64_SOURCE
+
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/socket.h>
@@ -43,7 +45,7 @@ using namespace std;
 #define DEBUG 1
 
 #define DBFILENAME		"tinyFTP.db"
-#define ROOTDIR			"/home/"
+#define ROOTDIR			"/home/tinyFTP/"
 #define ROOTDIR_LEN		strlen(ROOTDIR)
 
 #define DELIMITER		"\x1F" // UD(unit separator)
@@ -183,6 +185,7 @@ typedef enum cmdID
 typedef enum statID
 {
 	STAT_OK = 1,
+	STAT_BPR, 	// breakpoint resume
 	STAT_CFM, 	// confirm
 	STAT_ERR, 	// error
 	STAT_TERM,	// terminate
@@ -194,9 +197,9 @@ typedef enum statID
 typedef enum dataID
 {
 	DATA_FILE = 1,
+	DATA_TEXT,
 	DATA_LIST,
 	DATA_NAME,
-	DATA_TEXT,
 	DATA_OTHER
 } DataID;
 
@@ -205,6 +208,7 @@ typedef enum dataID
  *********************************************************/
 
 void Fclose(FILE *fp);
+void Fclose(FILE **fp);
 FILE * Fdopen(int fd, const char *type);
 char * Fgets(char *ptr, int n, FILE *stream);
 FILE * Fopen(const char *filename, const char *mode);
