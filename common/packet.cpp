@@ -493,7 +493,7 @@ void Packet::sendSTAT_EOT(string msg)
 	// send ERR
 	this->reset(HPACKET);
 	char buf[MAXLINE];
-	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", msg.c_str());
+	snprintf(buf, MAXLINE, "\033[32m%s\033[0m", msg.c_str());
 	this->fillStat(STAT_EOT, strlen(buf), buf);
 	this->htonp();
 	ppi->sendOnePacket(this->ps, PACKSIZE);

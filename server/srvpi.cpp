@@ -262,7 +262,7 @@ void SrvPI::cmdGET()
 	split(packet.getSBody(), DELIMITER, paramVector);
 
 	string msg_o;
-	if (!combineAndValidatePath(GET, paramVector[0], msg_o, this->abspath))
+	if (combineAndValidatePath(GET, paramVector[0], msg_o, this->abspath) < 0)
    	{
    		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
@@ -452,7 +452,7 @@ void SrvPI::cmdRGET()
 	split(packet.getSBody(), DELIMITER, paramVector);
 
 	string msg_o;
-	if (!combineAndValidatePath(RGET, paramVector[0], msg_o, this->abspath))
+	if (combineAndValidatePath(RGET, paramVector[0], msg_o, this->abspath) < 0)
    	{
    		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
@@ -547,6 +547,13 @@ void SrvPI::cmdPUT()
 	split(packet.getSBody(), DELIMITER, paramVector);
 	for (auto it = paramVector.cbegin(); it != paramVector.cend(); ++it)
            std::cout << it->size() << "paramVector: " << *it << std::endl;
+
+	if (paramVector.size() == 4)
+	{
+		flashPUT(paramVector);
+		return;
+	}
+
 	string srvpath;
 	string userinput;
 	if (paramVector.size() == 1){
@@ -565,30 +572,38 @@ void SrvPI::cmdPUT()
 	}
 
 	string msg_o;
-	if (!combineAndValidatePath(PUT, userinput, msg_o, this->abspath))
+	int m;
+	if ( (m = combineAndValidatePath(PUT, userinput, msg_o, this->abspath)) < 0)
    	{
-   		if (checkBreakpoint())
+   		if (m == -2)
    		{
-   			return;
-   		}
+   			if (checkBreakpoint())
+	   		{
+	   			return;  // get breakpoint
+	   		}
 
-   		packet.sendSTAT_CFM(msg_o.c_str());
-   		recvOnePacket();
-   		if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CFM) {
-   			packet.print();
-			if (packet.getSBody() == "y")
-			{
-				std::cout << "packet.getSBody() == y" << '\n';
-				SrvDTP srvDTP(&(this->packet), this);
-				srvDTP.recvFile(srvpath.c_str());
-				return;
+	   		packet.sendSTAT_CFM(msg_o.c_str());
+	   		recvOnePacket();
+	   		if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CFM) {
+	   			packet.print();
+				if (packet.getSBody() == "y")
+				{
+					std::cout << "packet.getSBody() == y" << '\n';
+					SrvDTP srvDTP(&(this->packet), this);
+					srvDTP.recvFile(srvpath.c_str());
+					return;
+				} else {
+					return;
+				}
 			} else {
+				Error::msg("STAT_CFM: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
 				return;
 			}
-		} else {
-			Error::msg("STAT_CFM: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
-			return;
-		}
+   		} else
+   		{
+   			packet.sendSTAT_ERR(msg_o.c_str());
+   		}
+   		
    	} else {
    		std::cout << "**************cmdPUT path[" << srvpath << "]" << '\n';
 		SrvDTP srvDTP(&(this->packet), this);
@@ -596,6 +611,104 @@ void SrvPI::cmdPUT()
    	}
    	this->filename.clear();
    	this->abspath.clear();
+}
+
+void SrvPI::flashPUT(vector<string> & paramVector)
+{
+	printf("flashPUT request\n");
+	paramVector.erase(paramVector.begin());
+	string md5str = paramVector[2];
+	paramVector.erase(paramVector.begin()+2);
+
+	string srvpath;
+	string userinput;
+	if (paramVector.size() == 1){
+		vector<string> pathVector; 
+		split(paramVector[0], "/", pathVector);
+		userinput = pathVector.back();
+		this->filename = pathVector.back();
+		srvpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + pathVector.back();
+	} else if (paramVector.size() == 2){
+		userinput = paramVector[1];
+		srvpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[1];
+
+		vector<string> pathVector; 
+		split(paramVector[1], "/", pathVector);
+		this->filename = pathVector.back();
+	}
+
+	string msg_o;
+	int m;
+	SrvDTP srvDTP(&(this->packet), this);
+	if ( (m = combineAndValidatePath(PUT, userinput, msg_o, this->abspath)) < 0)
+   	{
+   		if (m == -2)
+   		{
+	   		packet.sendSTAT_CFM(msg_o.c_str());
+	   		recvOnePacket();
+	   		if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CFM) {
+	   			packet.print();
+				if (packet.getSBody() == "y")
+				{
+					if (md5check(md5str, this->abspath))
+			   		{
+			   			packet.sendSTAT_EOT("Flash transfer is done");
+			   			return;
+			   		} else {
+			   			srvDTP.recvFile(srvpath.c_str());
+						return;
+			   		}
+					
+				} else {
+					return;
+				}
+			} else {
+				Error::msg("STAT_CFM: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
+				return;
+			}
+   		} else
+   		{
+   			packet.sendSTAT_ERR(msg_o.c_str());
+   		}
+   		
+   	} else {
+   		std::cout << "**************cmdPUT path[" << srvpath << "]" << '\n';
+   		if (md5check(md5str, this->abspath))
+   		{
+   			packet.sendSTAT_EOT("Flash transfer is done");
+   			return;
+   		} else {
+   			srvDTP.recvFile(srvpath.c_str());
+   		}
+		
+   	}
+   	this->filename.clear();
+   	this->abspath.clear();
+}
+
+bool SrvPI::md5check(string & md5str, string newpath)
+{
+	std::map<string, string> selectParamMap = {  {"MD5SUM", md5str} };
+    if (db.select("file", selectParamMap))
+    {
+       vector< map<string ,string> > resultMapVector = db.getResult();
+       if (!resultMapVector.empty())
+       {
+       		if (link(resultMapVector[0]["ABSPATH"].c_str(), newpath.c_str()) < 0)
+			{
+				Error::ret("link");
+				return false;
+			} else {
+				return true;
+			}
+       } else {
+          printf("\033[31mMD5SUM not exist\033[0m\n");
+          return false;
+       }
+    } else {
+       Error::msg("\033[31mDatabase select error\033[0m\n");
+       return false;
+    }   
 }
 void SrvPI::cmdLS()
 {
@@ -608,7 +721,7 @@ void SrvPI::cmdLS()
 		paramVector.push_back(""); // trick, but not elegent
 	}
 	string msg_o;
-	if (!combineAndValidatePath(LS, paramVector[0], msg_o, this->abspath))
+	if (combineAndValidatePath(LS, paramVector[0], msg_o, this->abspath) < 0)
    	{
    		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
@@ -698,7 +811,7 @@ void SrvPI::cmdCD()
 	vector<string> paramVector; 
 	split(packet.getSBody(), DELIMITER, paramVector);
 	string msg_o;
-   	if (!combineAndValidatePath(CD, paramVector[0], msg_o, this->abspath))
+   	if (combineAndValidatePath(CD, paramVector[0], msg_o, this->abspath) < 0)
    	{
    		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
@@ -733,7 +846,7 @@ void SrvPI::cmdRM()
 	vector<string> paramVector; 
 	split(packet.getSBody(), DELIMITER, paramVector);
 	string msg_o;
-   	if (!combineAndValidatePath(RM, paramVector[0], msg_o, this->abspath))
+   	if (combineAndValidatePath(RM, paramVector[0], msg_o, this->abspath) < 0)
    	{
    		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
@@ -815,7 +928,7 @@ void SrvPI::cmdMKDIR()
 	vector<string> paramVector; 
 	split(packet.getSBody(), DELIMITER, paramVector);
 	string msg_o;
-   	if (!combineAndValidatePath(MKDIR, paramVector[0], msg_o, this->abspath))
+   	if (combineAndValidatePath(MKDIR, paramVector[0], msg_o, this->abspath) < 0)
    	{
    		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
@@ -917,7 +1030,7 @@ void SrvPI::cmdRMDIR()
 	vector<string> paramVector; 
 	split(packet.getSBody(), DELIMITER, paramVector);
 	string msg_o;
-   	if (!combineAndValidatePath(RMDIR, paramVector[0], msg_o, this->abspath))
+   	if (combineAndValidatePath(RMDIR, paramVector[0], msg_o, this->abspath) < 0)
    	{
    		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
@@ -954,7 +1067,7 @@ void SrvPI::cmdSHELL()
 			shellcmdstring += " " + *it;
 		} else {
 			string msg_o;
-		   	if (!combineAndValidatePath(SHELL, *it, msg_o, this->abspath))
+		   	if (combineAndValidatePath(SHELL, *it, msg_o, this->abspath) < 0)
 		   	{
 		   		packet.sendSTAT_ERR(msg_o.c_str());
 				return;
@@ -987,7 +1100,7 @@ void SrvPI::cmdSHELL()
 	packet.sendSTAT_EOT();
 }
 
-bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o, string & abspath_o)
+int SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o, string & abspath_o)
 {
 	if (userinput.front() == '/')
 	{
@@ -996,12 +1109,12 @@ bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & ms
 	   	{
 			//std::cout << "Permission denied: " << newAbsDir << '\n';
 			msg_o = "Permission denied: " + newAbsDir;
-			return false;
+			return -1;
 	   	} else { 
 		   	if (cmdid == RMDIR && newAbsDir == userRootDir)
 		   	{
 		   	 	msg_o = "Permission denied: " + newAbsDir;
-				return false;
+				return -1;
 		   	} 
 	   		return cmdPathProcess(cmdid, newAbsDir, msg_o);
 	   	}
@@ -1037,18 +1150,18 @@ bool SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & ms
    	{
 		//std::cout << "Permission denied: " << newAbsPath << '\n';
 		msg_o = "Permission denied: " + newAbsPath;
-		return false;
+		return -1;
    	} else { 
 	   	if (cmdid == RMDIR && newAbsPath == userRootDir)
 	   	{
 	   	 	msg_o = "Permission denied: " + newAbsPath;
-			return false;
+			return -1;
 	   	} 
    		return cmdPathProcess(cmdid, newAbsPath, msg_o);
    	}
 }
 
-bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
+int SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 {
 	string rpath = newAbsPath.substr(userRootDir.size(), newAbsPath.size() - userRootDir.size());
     if (rpath.empty())
@@ -1065,18 +1178,18 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 		    if(!n) // stat call success
 			{	
 				if (S_ISREG(statBuf.st_mode)){
-					return true;
+					return 0;
 			    } else if (S_ISDIR(statBuf.st_mode)){
 					msg_o = "get: '" + newAbsPath + "' is a directory";
-					return false;
+					return -1;
 			    } else {
 			    	msg_o = "get: '" + newAbsPath + "' not a regular file";
-					return false;
+					return -1;
 			    }
 				
 			} else { // stat error
 				msg_o = newAbsPath + strerror_r(errno, buf, MAXLINE);
-				return false;
+				return -1;
 			}
 			break;	
 		}
@@ -1089,17 +1202,17 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 			{	
 				if (S_ISREG(statBuf.st_mode)){
 					msg_o = "rget: '" + newAbsPath + "' is a regular file";
-					return false;
+					return -1;
 			    } else if (S_ISDIR(statBuf.st_mode)){
-					return true;
+					return 0;
 			    } else {
 			    	msg_o = "rget: '" + newAbsPath + "' not a directory";
-					return false;
+					return -1;
 			    }
 				
 			} else { // stat error
 				msg_o =newAbsPath + strerror_r(errno, buf, MAXLINE);
-				return false;
+				return -1;
 			}
 			break;	
 		}
@@ -1107,9 +1220,9 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 		{
 			if ((access(newAbsPath.c_str(), F_OK)) == 0) {
 				msg_o = "File '~" + rpath + "' already exists, overwrite ? (y/n) ";
-				return false;
+				return -2;
 			} else {
-				return true;
+				return 0;
 			}
 			break;
 		}
@@ -1121,11 +1234,11 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 			{	
 				//msg_o = strerror_r(errno, buf, MAXLINE);
 				msg_o = strerror_r(errno, buf, MAXLINE);
-				return false;
+				return -1;
 				
 			} else { // dir already exists
 				closedir(d);
-				return true;
+				return 0;
 			}
 			break;
 		}
@@ -1136,7 +1249,7 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 			if(!d) //On error
 			{	
 				msg_o = strerror_r(errno, buf, MAXLINE);
-				return false;
+				return -1;
 				
 			} else { // dir already exists
 				closedir(d);
@@ -1147,7 +1260,7 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 			{
 				this->userRCWD = "/";
 			}
-	   		return true;
+	   		return 0;
 		}
 		case RM:
 		{
@@ -1168,18 +1281,18 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 		    if(!n) // stat call success
 			{	
 				if (S_ISREG(statBuf.st_mode)){
-					return true;
+					return 0;
 			    } else if (S_ISDIR(statBuf.st_mode)){
 					msg_o = "rm: '~" + rpath + "' is a directory";
-					return false;
+					return -1;
 			    } else {
 			    	msg_o = "rm: '~" + rpath + "' not a regular file";
-					return false;
+					return -1;
 			    }
 				
 			} else { // stat error
 				msg_o = strerror_r(errno, buf, MAXLINE);
-				return false;
+				return -1;
 			}
 			break;
 		}	
@@ -1189,12 +1302,12 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 			//char buf[MAXLINE];
 			if(!d) // dir not exist
 			{	
-				return true;
+				return 0;
 				
 			} else { // dir already exists
 				closedir(d);
 				msg_o = "already exsits: " + newAbsPath;
-				return false;
+				return -1;
 			}
 			break;
 		}
@@ -1213,17 +1326,17 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 			{	
 				if (S_ISREG(statBuf.st_mode)){
 					msg_o = "rmdir: '~" + rpath + "' is a regular file";
-					return false;
+					return -1;
 			    } else if (S_ISDIR(statBuf.st_mode)){
-					return true;
+					return 0;
 			    } else {
 			    	msg_o = "rmdir: '~" + rpath + "' not a directory";
-					return false;
+					return -1;
 			    }
 				
 			} else { // stat error
 				msg_o = strerror_r(errno, buf, MAXLINE);
-				return false;
+				return -1;
 			}
 			break;
 		}
@@ -1231,21 +1344,21 @@ bool SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 		{
 			if ((access(newAbsPath.c_str(), F_OK)) == 0) 
 			{
-				return true;
+				return 0;
 			} else {
 				msg_o = "~" + rpath + ": No such file or directory";
-				return false;
+				return -1;
 			}
 			break;
 		}	
 		default:
 		{
 			msg_o = "SrvPI::cmdPathProcess: unknown cmdid";
-			return false;
+			return -1;
 			break;
 		}
 	}
-	return false;
+	return -1;
 }
 
 int SrvPI::getConnfd()

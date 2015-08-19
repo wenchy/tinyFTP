@@ -240,6 +240,7 @@ void	Pthread_setspecific(pthread_key_t, const void *);
 void	Pthread_once(pthread_once_t *, void (*)(void));
 
 string md5sum(const char * pathname);
+string md5sum(const char * str, int len);
 unsigned long getFilesize(const char * pathname);
 string getFilesize(string pathname);
 #endif	/* __TINYFTP_COMMON_H__ */

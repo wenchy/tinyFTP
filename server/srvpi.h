@@ -30,6 +30,8 @@ public:
 	void RGET_iterate(string srvpath, string clipath);
 	void cmdRGET();
 	void cmdPUT();
+	void flashPUT(vector<string> & paramVector);
+	bool md5check(string & md5str, string newpath);
 	void cmdLS();
 	void cmdCD();
 	void cmdRM();
@@ -62,9 +64,9 @@ private:
 	string filename;
 	string abspath;
 	FILE* fp;
-
-	bool combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o, string & abspath_o);
-	bool cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o);
+	// -1: error, -2: CFM, 0: ok
+	int combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o, string & abspath_o);
+	int cmdPathProcess(uint16_t cmdid, string newAbsDir, string & msg_o);
 	void saveUserState();
 
 	void rmdirDFS();

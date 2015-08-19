@@ -185,7 +185,7 @@ void Database::init()
             fprintf(stdout, "Directory created: %s\n", dirString.c_str());
          }
 
-         traverseFiles(dirString);
+         //traverseFiles(dirString);
       }
    }
 

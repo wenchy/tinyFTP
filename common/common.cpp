@@ -281,6 +281,28 @@ string md5sum(const char * pathname)
     return md5str;        
 }
 
+string md5sum(const char * str, int len)
+{
+	int n;
+    MD5_CTX ctx;
+    char buf[SLICECAP];
+    unsigned char out[MD5_DIGEST_LENGTH];
+    string md5str;
+
+	MD5_Init(&ctx);
+	MD5_Update(&ctx, str, len);
+
+    MD5_Final(out, &ctx);
+
+    for(n = 0; n< MD5_DIGEST_LENGTH; n++)
+	{
+		snprintf(buf, SLICECAP, "%02x", out[n]);
+		md5str += buf;
+	}
+
+    return md5str;     
+}
+
 unsigned long getFilesize(const char * pathname)
 {
 	struct stat statbuff;  
