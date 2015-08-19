@@ -813,7 +813,7 @@ void CliPI::cmdLS(std::vector<string> & paramVector)
 	recvOnePacket();
 	if (packet.getTagid() == TAG_STAT) {
 		if (packet.getStatid() == STAT_OK) {
-			cout<< packet.getSBody() << endl;
+			//cout<< packet.getSBody() << endl;
 		} else if (packet.getStatid() == STAT_ERR){
 			cerr<< packet.getSBody() << endl;
 			return;
@@ -834,7 +834,8 @@ void CliPI::cmdLS(std::vector<string> & paramVector)
 			cout<< packet.getSBody() << endl;
 			
 		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT){
-			cout<< packet.getSBody() << endl;
+			//cout<< packet.getSBody() << endl;
+			cout<< endl;
 			break;
 		}
 	}
@@ -995,7 +996,6 @@ void CliPI::cmdLPWD(std::vector<string> & paramVector)
 
 void CliPI::cmdMKDIR(std::vector<string> & paramVector)
 {
-	printf("MKDIR request\n");
 	if(paramVector.size() != 1)
 	{
 		std::cout << "Usage: " << helpMap["MKDIR"] << std::endl;

@@ -1285,6 +1285,7 @@ void SrvPI::saveUserState()
 		std::map<string, string> insertParamMap = { 	{"USERID", userID},
 														{"ABSPATH", abspath},
 		 												{"FILENAME", filename},
+		 												{"SIZE", "0"},
 		 												{"NSLICE", packet.getPreSNslice()},
 		 												{"SINDEX", packet.getPreSSindex()},
                                                 		{"SLICECAP", SSLICECAP} };

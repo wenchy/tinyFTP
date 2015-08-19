@@ -26,16 +26,105 @@ static int callback(void *pDatabase, int argc, char **argv, char **azColName){
 
 Database::Database(const char * zDbFilename): dbFilename(zDbFilename)
 {
-   //clean();
-   zErrMsg = NULL;
-   /* Open database */
-   rc = sqlite3_open(dbFilename.c_str(), &pDb);
-   if( rc ){
+
+   //create tinyFTP root working diretory
+   string dirString(ROOTDIR);
+   DIR* d = opendir(dirString.c_str());
+   if(d)
+   {  
+      fprintf(stderr, "Already exists: %s\n",  dirString.c_str());
+      closedir(d);
+   } else if(mkdir(dirString.c_str(), 0777) == -1)
+   {
+      char buf[MAXLINE];
+      fprintf(stdout, "Error(%s): %s\n", dirString.c_str(), strerror_r(errno, buf, MAXLINE));
+   } else {
+      fprintf(stdout, "Directory created: %s\n", dirString.c_str());
+   }
+
+   // create .tinyFTP important working diretory
+   dirString += ".tinyFTP/";
+   d = opendir(dirString.c_str());
+   if(d)
+   {  
+      fprintf(stderr, "Already exists: %s\n",  dirString.c_str());
+      closedir(d);
+   } else if(mkdir(dirString.c_str(), 0777) == -1)
+   {
+      char buf[MAXLINE];
+      fprintf(stdout, "Error(%s): %s\n", dirString.c_str(), strerror_r(errno, buf, MAXLINE));
+   } else {
+      fprintf(stdout, "Directory created: %s\n", dirString.c_str());
+   }
+
+    
+
+    //clean();
+    zErrMsg = NULL;
+    /* Open database */
+    rc = sqlite3_open((dirString + dbFilename).c_str(), &pDb);
+    if( rc ){
     fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(pDb));
     exit(0);
- }else{
-    fprintf(stdout, "Open database successfully\n");
- }
+    }else{
+       fprintf(stdout, "Open database successfully\n");
+    }
+}
+
+void Database::traverseFiles(string dirpath)
+{
+   DIR * dir= opendir(dirpath.c_str());
+
+   if(!dir)
+   {
+      Error::ret("opendir");
+      return;
+   }
+
+   if (dirpath.back() != '/')
+   {
+      dirpath += "/";
+   }
+   struct dirent* e;
+   while( (e = readdir(dir)) )
+   {
+      if(e->d_type == 4 && strcmp(e->d_name, ".") && strcmp(e->d_name, ".."))
+      {
+         traverseFiles(dirpath + e->d_name);
+      }
+      else if(e->d_type == 8)
+      {
+         string filepath = dirpath + e->d_name;     
+         cout << "\n\nmd5sum: " << filepath << " ..." << endl;
+         string md5str = md5sum(filepath.c_str());
+         string sizestr = getFilesize(filepath);
+         cout << "filepath: " << filepath << "md5str: " << md5str << "sizestr: " << sizestr << endl;
+
+         if (!md5str.empty() && !sizestr.empty())
+         {
+            std::map<string, string> selectParamMap = {  {"MD5SUM", md5str} };
+            if (select("file", selectParamMap))
+            {
+               vector< map<string ,string> > resultMapVector = getResult();
+               if (resultMapVector.empty())
+               {
+                  std::map<string, string> insertParamMap = {  {"MD5SUM", md5str},
+                                                               {"MD5RAND", "NULL"},
+                                                               {"ABSPATH", filepath},
+                                                               {"SIZE", sizestr} };
+                  insert("file", insertParamMap);
+
+               } else {
+                  Error::msg("\033[31mMD5SUM already exist\033[0m");
+                  printResult();
+               }
+            } else {
+               Error::msg("\033[31mDatabase select error\033[0m");
+            }   
+         }   
+      }
+   }
+   closedir(dir);
 }
 
 // void Database::init1(const char * zDbFilename)
@@ -74,26 +163,12 @@ void Database::init()
    insert("user", insertParamMap3);
    //select("user", selectParamMap);
 
-   //create tinyFTP root working diretory
-   string dirString(ROOTDIR);
-   DIR* d = opendir(dirString.c_str());
-   if(d)
-   {  
-      fprintf(stderr, "Already exists: %s\n",  dirString.c_str());
-      closedir(d);
-   }
-   else if(mkdir(dirString.c_str(), 0777) == -1)
-   {
-      char buf[MAXLINE];
-      fprintf(stdout, "Error(%s): %s\n", dirString.c_str(), strerror_r(errno, buf, MAXLINE));
-   } else {
-      fprintf(stdout, "Directory created: %s\n", dirString.c_str());
-   }
-
    // init user's root working directory
    if(findALL("user"))
    {
-      for (vector< map<string ,string> >::iterator iter=resultMapVector.begin(); iter!=resultMapVector.end(); ++iter)
+      vector< map<string ,string> > myresultMapVector;
+      getResult(myresultMapVector);
+      for (vector< map<string ,string> >::iterator iter=myresultMapVector.begin(); iter!=myresultMapVector.end(); ++iter)
       {
          string dirString(ROOTDIR);
          dirString += (*iter)["USERNAME"];
@@ -102,14 +177,15 @@ void Database::init()
          {  
             fprintf(stderr, "Already exists: %s\n",  dirString.c_str());
             closedir(d);
-         }
-         else if(mkdir(dirString.c_str(), 0777) == -1)
+         }else if(mkdir(dirString.c_str(), 0777) == -1)
          {
             char buf[MAXLINE];
             fprintf(stdout, "Error(%s): %s\n", dirString.c_str(), strerror_r(errno, buf, MAXLINE));
          } else {
             fprintf(stdout, "Directory created: %s\n", dirString.c_str());
          }
+
+         traverseFiles(dirString);
       }
    }
 
@@ -136,8 +212,8 @@ Database & Database::create()
    const char *sql_table_file =  "CREATE TABLE FILE(" \
       "ID            INTEGER PRIMARY KEY AUTOINCREMENT   NOT NULL," \
       "MD5SUM        TEXT UNIQUE                         NOT NULL," \
-      "FILEPATH      TEXT                                NOT NULL," \
-      "DIRECTORY     TEXT                                NOT NULL," \
+      "MD5RAND       TEXT                                NOT NULL," \
+      "ABSPATH       TEXT                                NOT NULL," \
       "SIZE          INTEGER                             NOT NULL," \
       "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
       "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
@@ -149,6 +225,7 @@ Database & Database::create()
       "USERID        TEXT                                NOT NULL," \
       "ABSPATH       TEXT                                NOT NULL," \
       "FILENAME      TEXT                                NOT NULL," \
+      "SIZE          INTEGER                             NOT NULL," \
       "NSLICE        INTEGER                             NOT NULL," \
       "SINDEX        INTEGER                             NOT NULL," \
       "SLICECAP      INTEGER                             NOT NULL," \
@@ -294,9 +371,16 @@ bool Database::findALL(string tblname)
    return execute(sqlSring.c_str(), this);
 }
 
+void Database::getResult(vector< map<string ,string> >  & resultMapVector_o)
+{
+   resultMapVector_o.swap(this->resultMapVector);
+}
+
 vector< map<string ,string> >  & Database::getResult()
 {
-   return this->resultMapVector;
+
+   return this->resultMapVector;      
+
 }
 
 bool Database::first()

@@ -1,7 +1,7 @@
 CC := g++
 CFLAGS := -std=c++11 -g -Wall -O3 -Iinclude
 CPPFLAGS := $(CFLAGS)
-LIBS := -pthread -lsqlite3 -Llib #-Wl,-rpath=/home/wenchy/GitHub/tinyFTP/lib
+LIBS := -pthread -lsqlite3 -lcrypto -Llib #-Wl,-rpath=/home/wenchy/GitHub/tinyFTP/lib
 
 FILE:=/usr/lib/libsqlite3.so
 

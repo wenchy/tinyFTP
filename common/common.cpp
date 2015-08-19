@@ -248,5 +248,67 @@ Pthread_setspecific(pthread_key_t key, const void *value)
 	Error::sys("pthread_setspecific error");
 }
 
+string md5sum(const char * pathname)
+{
+    int n;
+    MD5_CTX ctx;
+    char buf[SLICECAP];
+    unsigned char out[MD5_DIGEST_LENGTH];
+    string md5str;
+
+   
+	FILE *fp;
+    if ( (fp = fopen(pathname, "rb")) == NULL)
+	{
+		Error::ret("md5sum#fopen");
+		return md5str;
+	}
+
+	MD5_Init(&ctx);
+	while( (n = fread(buf, sizeof(char), SLICECAP, fp)) >0 )
+	{
+		 MD5_Update(&ctx, buf, n);
+	}
+
+    MD5_Final(out, &ctx);
+
+    for(n = 0; n< MD5_DIGEST_LENGTH; n++)
+	{
+		snprintf(buf, SLICECAP, "%02x", out[n]);
+		md5str += buf;
+	}
+
+    return md5str;        
+}
+
+unsigned long getFilesize(const char * pathname)
+{
+	struct stat statbuff;  
+	if(stat(pathname, &statbuff) < 0)
+	{
+		Error::ret("getFilesize#stat");
+		return 0;
+	} else 
+	{
+		return statbuff.st_size;
+	}
+}
+
+string getFilesize(string pathname)
+{
+	struct stat statbuff;  
+	char buf[MAXLINE];
+	string sizestr;
+	if(stat(pathname.c_str(), &statbuff) < 0)
+	{
+		Error::ret("getFilesize#stat");
+		return sizestr;
+	} else 
+	{
+		snprintf(buf, MAXLINE, "%lu", statbuff.st_size);
+		sizestr = buf;
+		return sizestr;
+	}
+}
 
 

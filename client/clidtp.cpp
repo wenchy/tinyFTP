@@ -41,15 +41,17 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
 void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t sindex, uint16_t slicecap)
 {
 	Packet & packet = *(this->ppacket);
-	off64_t nn;
+
 	off64_t curpos = sindex * slicecap;
-	if ( (nn = lseek64(fileno(fp), curpos, SEEK_SET)) < 0)
+	if (lseek64(fileno(fp), curpos, SEEK_SET) < 0)
 	{
 		Error::ret("lseek64");
 		return;
 	}
-	
-	printf("Send file [%s %u/%u] pos: %lld/%lld now\n", pathname, sindex, nslice, curpos, nn);
+	if (sindex != 0)
+	{
+		printf("\033[32mBreakpoint resume: [%s %u/%u]\033[0m\n", pathname, sindex, nslice);
+	}
 
 	int n;
 	char body[PBODYCAP];

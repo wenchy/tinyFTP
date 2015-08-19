@@ -133,7 +133,7 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 {
 	Packet & packet = *(this->ppacket);
 	char buf[MAXLINE];
-	off64_t n;
+	
 
 	if ( psrvPI->setFp(fopen(pathname, "ab")) == NULL)
 	{
@@ -142,14 +142,14 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
-
+		off64_t n;
 		off64_t curpos = sindex * slicecap;
 		if ( ( n = lseek64(fileno(psrvPI->getFp()), curpos, SEEK_SET)) < 0)
 		{
 			packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 			return;
 		} else {
-			printf("Send file [%s %u/%u] pos: %lld/%lld now\n", pathname, sindex, nslice, curpos, n);
+			printf("Send file [%s %u/%u] now\n", pathname, sindex, nslice);
 			// send STAT_OK
 			packet.sendSTAT_OK();
 		}

@@ -14,7 +14,7 @@
 #include <pthread.h>
 #include <signal.h>
 #include <dirent.h>
-
+#include <openssl/md5.h>
 
 
 #include <unistd.h>
@@ -239,5 +239,7 @@ void	Pthread_key_create(pthread_key_t *, void (*)(void *));
 void	Pthread_setspecific(pthread_key_t, const void *);
 void	Pthread_once(pthread_once_t *, void (*)(void));
 
-
+string md5sum(const char * pathname);
+unsigned long getFilesize(const char * pathname);
+string getFilesize(string pathname);
 #endif	/* __TINYFTP_COMMON_H__ */

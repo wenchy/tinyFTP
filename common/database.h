@@ -2,6 +2,7 @@
 #define _TINYFTP_DATABASE_H_
 
 #include    "common.h"
+#include    "error.h"
 #include	<sqlite3.h>
 
 // Database class
@@ -14,12 +15,14 @@ public:
 
 	Database & create();
 	Database & createTable();
+	void traverseFiles(string dirpath);
 	bool execute(const char *sql, Database * pDatabase);
 	bool insert(string tblname, map<string, string> & paramMap);
 	bool select(string tblname, map<string, string> & paramMap);
 	bool update(string tblname, string id, map<string, string> & paramMap);
 	bool remove(string tblname, string id);
 	vector< map<string ,string> > & getResult();
+	void getResult(vector< map<string ,string> > & resultMapVector_o);
 	//Database & select(string tblname, map<string, string> & paramMap);
 	bool first();
 	bool find(string tblname, string id);
