@@ -880,14 +880,14 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 		}
 		return;
 	} else {
-		printf("Prepare for flash transmission ...\n");
-		string md5str = md5sum(pathname);
-		if (md5str.empty())
+		// first check file size
+		string sizestr = getFilesize(string(pathname));
+		if (sizestr.empty())
 		{
-			printf("md5sum error\n");
+			Error::ret("getFilesize error");
 			return;
 		}
-		paramVector.push_back(md5str);
+		paramVector.push_back(sizestr);
 		packet.sendCMD(PUT, getEncodedParams(paramVector));
 	}
 
@@ -928,10 +928,22 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 					}
 					case STAT_BPR:
 					{
-						//cout << packet.getSBody() <<endl;
+						cout << packet.getSBody() <<endl;
 						vector<string> paramVector; 
 						split(packet.getSBody(), DELIMITER, paramVector);
 						sindex = std::stoul(paramVector[1]);
+						break;
+					}
+					case STAT_MD5:
+					{
+						cout << packet.getSBody() <<endl;
+						string md5str = visualmd5sum(pathname);
+						if (md5str.empty())
+						{
+							printf("md5sum error\n");
+							return;
+						}
+						packet.sendSTAT_MD5(md5str);
 						break;
 					}
 					case STAT_CFM:

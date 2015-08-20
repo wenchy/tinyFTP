@@ -3,7 +3,9 @@
 #ifndef _TINYFTP_COMMON_H_
 #define _TINYFTP_COMMON_H_
 
+#define _LARGEFILE_SOURCE
 #define _LARGEFILE64_SOURCE
+#define _FILE_OFFSET_BITS 64
 
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -47,6 +49,8 @@ using namespace std;
 #define DBFILENAME		"tinyFTP.db"
 #define ROOTDIR			"/home/tinyFTP/"
 #define ROOTDIR_LEN		strlen(ROOTDIR)
+#define KERNELDIR		"/home/tinyFTP/.tinyFTP/"
+#define GHOSTDIR		"/home/tinyFTP/.tinyFTP/ghost/"
 
 #define PASSSALT0		"&5@f#fe)"	// password salt
 #define PASSSALT1		"@tinyFTP"	// password salt	
@@ -203,6 +207,7 @@ typedef enum statID
 	STAT_OK = 1,
 	STAT_BPR, 	// breakpoint resume
 	STAT_CFM, 	// confirm
+	STAT_MD5, 	// confirm
 	STAT_ERR, 	// error
 	STAT_TERM,	// terminate
 	//STAT_DONE,	// trasaction done
@@ -255,9 +260,12 @@ void	Pthread_key_create(pthread_key_t *, void (*)(void *));
 void	Pthread_setspecific(pthread_key_t, const void *);
 void	Pthread_once(pthread_once_t *, void (*)(void));
 
+int getFileNslice(const char *pathname, uint32_t *pnslice_o);
+string getFileSizeString(const char *pathname);
+string visualmd5sum(const char * pathname);
 string md5sum(const char * pathname);
 string md5sum(const char * str, int len);
-unsigned long getFilesize(const char * pathname);
+unsigned long long getFilesize(const char * pathname);
 string getFilesize(string pathname);
 string encryptPassword(string password);
 #endif	/* __TINYFTP_COMMON_H__ */

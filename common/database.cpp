@@ -28,33 +28,46 @@ Database::Database(const char * zDbFilename): dbFilename(zDbFilename)
 {
 
    //create tinyFTP root working diretory
-   string dirString(ROOTDIR);
-   DIR* d = opendir(dirString.c_str());
+
+   DIR* d = opendir(ROOTDIR);
    if(d)
    {  
-      fprintf(stderr, "Already exists: %s\n",  dirString.c_str());
+      fprintf(stderr, "Already exists: %s\n",  ROOTDIR);
       closedir(d);
-   } else if(mkdir(dirString.c_str(), 0777) == -1)
+   } else if(mkdir(ROOTDIR, 0777) == -1)
    {
       char buf[MAXLINE];
-      fprintf(stdout, "Error(%s): %s\n", dirString.c_str(), strerror_r(errno, buf, MAXLINE));
+      fprintf(stdout, "Error(%s): %s\n", ROOTDIR, strerror_r(errno, buf, MAXLINE));
    } else {
-      fprintf(stdout, "Directory created: %s\n", dirString.c_str());
+      fprintf(stdout, "Directory created: %s\n", ROOTDIR);
    }
 
-   // create .tinyFTP important working diretory
-   dirString += ".tinyFTP/";
-   d = opendir(dirString.c_str());
+   // create tinyFTP/.tinyFTP/ working diretory
+   d = opendir(KERNELDIR);
    if(d)
    {  
-      fprintf(stderr, "Already exists: %s\n",  dirString.c_str());
+      fprintf(stderr, "Already exists: %s\n",  KERNELDIR);
       closedir(d);
-   } else if(mkdir(dirString.c_str(), 0777) == -1)
+   } else if(mkdir(KERNELDIR, 0777) == -1)
    {
       char buf[MAXLINE];
-      fprintf(stdout, "Error(%s): %s\n", dirString.c_str(), strerror_r(errno, buf, MAXLINE));
+      fprintf(stdout, "Error(%s): %s\n", KERNELDIR, strerror_r(errno, buf, MAXLINE));
    } else {
-      fprintf(stdout, "Directory created: %s\n", dirString.c_str());
+      fprintf(stdout, "Directory created: %s\n", KERNELDIR);
+   }
+   
+   // create tinyFTP/.tinyFTP/ghost/ working diretory
+   d = opendir(GHOSTDIR);
+   if(d)
+   {  
+      fprintf(stderr, "Already exists: %s\n",  GHOSTDIR);
+      closedir(d);
+   } else if(mkdir(GHOSTDIR, 0777) == -1)
+   {
+      char buf[MAXLINE];
+      fprintf(stdout, "Error(%s): %s\n", GHOSTDIR, strerror_r(errno, buf, MAXLINE));
+   } else {
+      fprintf(stdout, "Directory created: %s\n", GHOSTDIR);
    }
 
     
@@ -62,6 +75,7 @@ Database::Database(const char * zDbFilename): dbFilename(zDbFilename)
     //clean();
     zErrMsg = NULL;
     /* Open database */
+    string dirString = KERNELDIR;
     rc = sqlite3_open((dirString + dbFilename).c_str(), &pDb);
     if( rc ){
     fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(pDb));

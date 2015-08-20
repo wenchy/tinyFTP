@@ -380,6 +380,15 @@ void Packet::sendSTAT_BPR(string body)
 	this->htonp();
 	ppi->sendOnePacket(this->ps, PACKSIZE);
 }
+
+
+void Packet::sendSTAT_MD5(string body)
+{
+	this->reset(HPACKET);
+	this->fillStat(STAT_MD5, body.size(), body.c_str());
+	this->htonp();
+	ppi->sendOnePacket(this->ps, PACKSIZE);
+}
 // void Packet::sendSTAT_CFM(char *msg)
 // {
 // 	// send CFM

@@ -32,6 +32,7 @@ public:
 	void RGET_iterate(string srvpath, string clipath);
 	void cmdRGET();
 	void cmdPUT();
+	bool sizecheck(string & sizestr);
 	bool md5check(string & md5str, string newpath);
 	void cmdLS();
 	void cmdCD();

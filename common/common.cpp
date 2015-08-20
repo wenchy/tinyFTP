@@ -248,13 +248,166 @@ Pthread_setspecific(pthread_key_t key, const void *value)
 	Error::sys("pthread_setspecific error");
 }
 
-string md5sum(const char * pathname)
+
+
+int getFileNslice(const char *pathname, uint32_t *pnslice_o)  
+{  
+ 
+    unsigned long filesize = 0, n = MAXNSLICE;
+
+    struct stat statbuff;  
+    if(stat(pathname, &statbuff) < 0){  
+        return -1;  // error
+    } else {  
+        if (statbuff.st_size == 0)
+		{
+			return 0; // file is empty.
+		} else {
+			filesize = statbuff.st_size;  
+		}  
+    }  
+    if (filesize % SLICECAP == 0)
+	{
+		 *pnslice_o = filesize/SLICECAP; 
+	} else if ( (n = filesize/SLICECAP + 1) > MAXNSLICE ){
+		Error::msg("too large file size: %d\n (MAX: %d)", n, MAXNSLICE);
+		return -2; 
+	} else {
+		 *pnslice_o = filesize/SLICECAP + 1; 
+	}
+  	//printf("getFileNslice nslice: %d\n", *pnslice_o);
+    return 1;  
+}
+
+string getFileSizeString(const char *pathname)  
+{  
+ 
+    unsigned long filesize = 0;
+    unsigned long n = 0;
+    string hsize_o;
+    char buf[MAXLINE];
+    unsigned long kbase = 1024;
+    unsigned long mbase = 1024 * 1024;
+    unsigned long gbase = 1024 * 1024 * 1024;
+
+
+    struct stat statbuff;  
+    if(stat(pathname, &statbuff) < 0){
+    	hsize_o = "error"; 
+        return hsize_o;  // error
+    } else {  
+        if (statbuff.st_size == 0)
+		{
+			hsize_o = "0B"; // file is empty.
+		} else {
+			filesize = statbuff.st_size;
+			if (filesize / kbase == 0)
+			{ 
+				snprintf(buf, MAXLINE, "%lu", filesize);
+				hsize_o += buf;
+				hsize_o +="B";
+			} else if ( filesize / mbase == 0 ){
+				snprintf(buf, MAXLINE, "%lu", filesize / kbase);
+				hsize_o += buf;
+				n = (filesize % kbase)* 100 / kbase;
+				if (n != 0)
+				{
+					hsize_o += ".";
+					snprintf(buf, MAXLINE, "%02lu", n);
+					hsize_o += buf;
+				}
+				hsize_o +="K";
+			} else if ( filesize / gbase == 0 ){
+				snprintf(buf, MAXLINE, "%2lu", filesize / mbase);
+				hsize_o += buf;
+				n = (filesize % mbase)* 100 / mbase;
+				if (n != 0)
+				{
+					hsize_o += ".";
+					snprintf(buf, MAXLINE, "%02lu", n);
+					hsize_o += buf;
+				}
+				hsize_o +="M";
+			} else {
+				snprintf(buf, MAXLINE, "%lu", filesize / gbase);
+				hsize_o += buf;
+				n = (filesize % gbase) * 100 / gbase ;
+				//printf("filesize n: %lu\n", n);
+				if (n != 0)
+				{
+					hsize_o += ".";
+					snprintf(buf, MAXLINE, "%02lu", n);
+					hsize_o += buf;
+				}
+				hsize_o +="G";
+			}
+		}  
+    }  
+	return hsize_o;
+}
+
+string visualmd5sum(const char * pathname)
 {
     int n;
-    MD5_CTX ctx;
     char buf[SLICECAP];
     unsigned char out[MD5_DIGEST_LENGTH];
     string md5str;
+    int oldProgress = 0, newProgress = 0;
+    MD5_CTX ctx;
+
+    uint32_t nslice = 0, sindex = 0;
+    string 	tipstr;
+    		tipstr += "\033[32mMD5SUM\033[0m(";
+    		tipstr += pathname;
+    		tipstr += ")";
+    string hfilesize = getFileSizeString(pathname);
+    if ( (n = getFileNslice(pathname, &nslice)) < 0) {
+		Error::msg("getFileNslice error");
+		return md5str;
+	}
+   
+	FILE *fp;
+    if ( (fp = fopen(pathname, "rb")) == NULL)
+	{
+		Error::ret("md5sum#fopen");
+		return md5str;
+	}
+
+	MD5_Init(&ctx);
+	while( (n = fread(buf, sizeof(char), SLICECAP, fp)) >0 )
+	{
+		MD5_Update(&ctx, buf, n);
+		if (nslice > (1024 * 1024))
+		{
+			newProgress = (++sindex*1.0)/nslice*100;
+			if (newProgress > oldProgress)
+			{
+				//printf("\033[2K\r\033[0m");
+				fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t%3d%%", tipstr.c_str(), hfilesize.c_str(), newProgress);
+			}
+			oldProgress = newProgress;
+		}	
+	}
+	printf("\n");
+
+    MD5_Final(out, &ctx);
+
+    for(n = 0; n< MD5_DIGEST_LENGTH; n++)
+	{
+		snprintf(buf, SLICECAP, "%02x", out[n]);
+		md5str += buf;
+	}
+
+    return md5str;        
+}
+
+string md5sum(const char * pathname)
+{
+    int n;
+    char buf[SLICECAP];
+    unsigned char out[MD5_DIGEST_LENGTH];
+    string md5str;
+    MD5_CTX ctx;
 
    
 	FILE *fp;
@@ -267,8 +420,9 @@ string md5sum(const char * pathname)
 	MD5_Init(&ctx);
 	while( (n = fread(buf, sizeof(char), SLICECAP, fp)) >0 )
 	{
-		 MD5_Update(&ctx, buf, n);
+		MD5_Update(&ctx, buf, n);
 	}
+	printf("\n");
 
     MD5_Final(out, &ctx);
 
@@ -302,7 +456,7 @@ string md5sum(const char * str, int len)
     return md5str;     
 }
 
-unsigned long getFilesize(const char * pathname)
+unsigned long long getFilesize(const char * pathname)
 {
 	struct stat statbuff;  
 	if(stat(pathname, &statbuff) < 0)
@@ -311,7 +465,7 @@ unsigned long getFilesize(const char * pathname)
 		return 0;
 	} else 
 	{
-		return statbuff.st_size;
+		return (unsigned long long)statbuff.st_size;
 	}
 }
 
@@ -326,7 +480,7 @@ string getFilesize(string pathname)
 		return sizestr;
 	} else 
 	{
-		snprintf(buf, MAXLINE, "%lu", statbuff.st_size);
+		snprintf(buf, MAXLINE, "%llu", (unsigned long long)statbuff.st_size);
 		sizestr = buf;
 		return sizestr;
 	}
