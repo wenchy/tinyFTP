@@ -23,6 +23,8 @@ public:
 
 	void cmdUSER();
 	void cmdPASS();
+	void cmdUSERADD();
+	void cmdUSERDEL();
 
 	void cmdGET();
 	void cmdGET(string pathname);

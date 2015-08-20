@@ -22,6 +22,8 @@ public:
 	
 	bool cmdUSER(std::vector<string> & cmdVector);
 	bool cmdPASS(std::vector<string> & cmdVector);
+	void cmdUSERADD(std::vector<string> & cmdVector);
+	void cmdUSERDEL(std::vector<string> & cmdVector);
 
 	void cmdGET(std::vector<string> & cmdVector);
 	void cmdGET(string srvpath, string clipath);

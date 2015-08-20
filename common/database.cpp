@@ -269,7 +269,7 @@ bool Database::execute(const char *sql, Database * pDatabase)
       sqlite3_free(zErrMsg);
       return false;
    } else {
-      //fprintf(stdout, "insert: Records created successfully\n");
+      //fprintf(stdout, "execute successfully\n");
       printResult();
       return true;
    }

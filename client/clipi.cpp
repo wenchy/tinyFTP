@@ -3,6 +3,8 @@
 
 std::map<string, string> CliPI::helpMap = {	//{"USER",    "user 	username"},
                                             //{"PASS",    "pass 	password"},
+                                            {"USERADD",    "useradd -u [username] -p [password]"},
+                                            {"USERDEL",    "userdel [username]"},
 
                                             {"GET",     "get [remote-file] [local-file]"},
                                             {"PUT",     "put [local-file] [remote-file]"},
@@ -127,6 +129,12 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & paramVector)
 			break;
 		case PASS:
 			cmdPASS(paramVector);
+			break;
+		case USERADD:
+			cmdUSERADD(paramVector);
+			break;	
+		case USERDEL:
+			cmdUSERDEL(paramVector);
 			break;
 		case GET:
 			cmdGET(paramVector);
@@ -290,6 +298,70 @@ bool CliPI::cmdPASS(std::vector<string> & paramVector)
 		return false;
 	}
  
+}
+
+void CliPI::cmdUSERADD(std::vector<string> & paramVector)
+{
+	if(paramVector.size() == 4 && paramVector[0] == "-u" && paramVector[2] == "-p")
+	{
+		paramVector.erase(paramVector.begin());
+		paramVector.erase(paramVector.begin()+1);
+
+		packet.sendCMD(USERADD, getEncodedParams(paramVector));
+
+		// first receive response
+		recvOnePacket();
+		if (packet.getTagid() == TAG_STAT) {
+			if (packet.getStatid() == STAT_OK) {
+				cout<< packet.getSBody() << endl;
+				return;
+			} else if (packet.getStatid() == STAT_ERR){
+				cerr<< packet.getSBody() << endl;
+				return;
+			} else {
+				Error::msg("CliPI::cmdPASS: unknown statid %d", packet.getStatid());
+				return;
+			}
+			
+		} else {
+			Error::msg("CliPI::cmdPASS: unknown tagid %d", packet.getTagid());
+			return;
+		}
+	} else {
+		std::cout << "Usage: " << helpMap["USERADD"] << std::endl;
+		return;
+	}
+ 
+}
+
+void CliPI::cmdUSERDEL(std::vector<string> & paramVector)
+{
+	if(paramVector.size() == 1)
+	{
+		packet.sendCMD(USERDEL, getEncodedParams(paramVector));
+
+		// first receive response
+		recvOnePacket();
+		if (packet.getTagid() == TAG_STAT) {
+			if (packet.getStatid() == STAT_OK) {
+				cout<< packet.getSBody() << endl;
+				return;
+			} else if (packet.getStatid() == STAT_ERR){
+				cerr<< packet.getSBody() << endl;
+				return;
+			} else {
+				Error::msg("CliPI::cmdPASS: unknown statid %d", packet.getStatid());
+				return;
+			}
+			
+		} else {
+			Error::msg("CliPI::cmdPASS: unknown tagid %d", packet.getTagid());
+			return;
+		}
+	} else {
+		std::cout << "Usage: " << helpMap["USERDEL"] << std::endl;
+		return;
+	}
 }
 
 void CliPI::cmdGET(std::vector<string> & paramVector)

@@ -153,6 +153,8 @@ typedef enum cmdID
 {
 	USER = 1,
 	PASS,
+	USERADD,
+	USERDEL,
 
 	GET,
 	PUT,

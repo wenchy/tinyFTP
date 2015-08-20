@@ -3,6 +3,8 @@
 // command init
 map<const string, const uint16_t> UI::cmdMap = {    {"USER",    USER},
                                                     {"PASS",    PASS},
+                                                    {"USERADD", USERADD},
+                                                    {"USERDEL", USERDEL},
 
                                                     {"GET",     GET},
                                                     {"PUT",     PUT},

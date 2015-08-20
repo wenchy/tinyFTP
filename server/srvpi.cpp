@@ -119,6 +119,12 @@ void SrvPI::run()
 			case PASS:
 				cmdPASS();
 				break;
+			case USERADD:
+				cmdUSERADD();
+				break;
+			case USERDEL:
+				cmdUSERDEL();
+				break;
 			case GET:
 				cmdGET();
 				break;
@@ -251,6 +257,74 @@ void SrvPI::cmdPASS()
 			packet.sendSTAT_ERR("error: username mismatch password");
    		}
    	} else {
+		packet.sendSTAT_ERR("Database select error");
+   	}
+}
+
+void SrvPI::cmdUSERADD()
+{
+	printf("USERADD request\n");
+	if (userID != "1")
+	{
+		packet.sendSTAT_ERR("Permission denied, admin required");
+		return;
+	}
+
+	vector<string> paramVector; 
+	split(packet.getSBody(), DELIMITER, paramVector);
+
+	std::map<string, string> selectParamMap = {  {"username", paramVector[0]} };
+   	if (db.select("user", selectParamMap))
+   	{
+   		vector< map<string ,string> > resultMapVector = db.getResult();
+   		if (!resultMapVector.empty())
+   		{
+			packet.sendSTAT_ERR("User '" + paramVector[0] + "' already exists");
+			return;
+   		}
+   	}else {
+		packet.sendSTAT_ERR("Database select error");
+   	}
+
+   	std::map<string, string> insertParamMap = {  {"username", paramVector[0]}, {"password", paramVector[1]} };
+   	if (db.insert("user", insertParamMap))
+   	{
+   		packet.sendSTAT_OK("New tinyFTP user '" + paramVector[0] + "' created");
+   	} else {
+		packet.sendSTAT_ERR("Database insert error");
+   	}
+}
+
+void SrvPI::cmdUSERDEL()
+{
+	printf("USERDEL request\n");
+	if (userID != "1")
+	{
+		packet.sendSTAT_ERR("Permission denied, admin required");
+		return;
+	}
+
+	vector<string> paramVector; 
+	split(packet.getSBody(), DELIMITER, paramVector);
+
+	std::map<string, string> selectParamMap = {  {"username", paramVector[0]} };
+   	if (db.select("user", selectParamMap))
+   	{
+   		vector< map<string ,string> > resultMapVector = db.getResult();
+   		if (resultMapVector.empty())
+   		{
+			packet.sendSTAT_ERR("Cannot find user '" + paramVector[0] + "'");
+			return;
+   		} else {
+   			if (db.remove("user", resultMapVector[0]["ID"]))
+   			{
+   				packet.sendSTAT_OK("User '" + paramVector[0] + "' deleted");
+   			} else {
+				packet.sendSTAT_ERR("Database remove error");
+		   	}
+ 
+   		}
+   	}else {
 		packet.sendSTAT_ERR("Database select error");
    	}
 }
