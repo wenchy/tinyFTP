@@ -221,6 +221,7 @@ Database & Database::create()
       "SIZE          INTEGER                             NOT NULL," \
       "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
       "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
+      "VALID         INTEGER  DEFAULT 1 ," \
       "ACCESS        INTEGER  DEFAULT 0 );";
    
    // interrupted file
@@ -341,6 +342,33 @@ bool Database::update(string tblname, string id, map<string, string> & kvMap)
       sqlSring += ", " + it->first + "='" + it->second + "'";
    }
    sqlSring += " WHERE id='" + id + "'";
+   std::cout << "update: " << sqlSring << std::endl;
+   /* Execute SQL statement */
+   return execute(sqlSring.c_str(), this);
+}
+
+bool Database::update(string tblname, map<string, string> & whereMap, map<string, string> & kvMap)
+{
+   /* Construct SQL statement */
+   sqlSring.clear();
+   sqlSring += "UPDATE ";
+   sqlSring += tblname;
+   sqlSring += " SET ";
+
+   map<string ,string>::iterator it=kvMap.begin();
+   sqlSring += it->first + "='" + it->second + "'";
+   for (++it; it!=kvMap.end(); ++it)
+   {
+      sqlSring += ", " + it->first + "='" + it->second + "'";
+   }
+   sqlSring += " WHERE ";
+
+   map<string ,string>::iterator iter=whereMap.begin();
+   sqlSring += iter->first + "='" + iter->second + "'";
+   for (++iter; iter!=whereMap.end(); ++iter)
+   {
+      sqlSring += " and " + iter->first + "='" + iter->second + "'";
+   }
    std::cout << "update: " << sqlSring << std::endl;
    /* Execute SQL statement */
    return execute(sqlSring.c_str(), this);

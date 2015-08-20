@@ -32,7 +32,6 @@ public:
 	void RGET_iterate(string srvpath, string clipath);
 	void cmdRGET();
 	void cmdPUT();
-	void flashPUT(vector<string> & paramVector);
 	bool md5check(string & md5str, string newpath);
 	void cmdLS();
 	void cmdCD();
@@ -46,6 +45,7 @@ public:
 	int getConnfd();
 	FILE* setFp(FILE *fp);
 	FILE* & getFp();
+	Database * getPDB();
 	~SrvPI();
 	
 	

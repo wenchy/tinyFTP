@@ -67,6 +67,17 @@ using namespace std;
 // Following shortens all the typecasts of pointer arguments
 #define	SA	struct sockaddr
 
+class Database;
+typedef struct threadArg
+{
+    int fd;
+    uint32_t sesid;
+ 
+    char buf[MAXLINE];
+    Database * pdb;
+    
+} ThreadArg;
+
 typedef enum sockType
 {
 	SRV_SOCKET,					// server socket tyoe

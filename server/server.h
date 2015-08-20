@@ -10,12 +10,4 @@
 #include    "srvpi.h"
 
 
-
-typedef struct threadArg
-{
-    int fd;
-    uint32_t sesid;
-    
-} ThreadArg;
-
 #endif /* _TINYFTP_SERVER_H_ */

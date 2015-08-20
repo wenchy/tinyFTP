@@ -20,6 +20,7 @@ public:
 	bool insert(string tblname, map<string, string> & paramMap);
 	bool select(string tblname, map<string, string> & paramMap);
 	bool update(string tblname, string id, map<string, string> & paramMap);
+	bool update(string tblname, map<string, string> & whereMap, map<string, string> & kvMap);
 	bool remove(string tblname, string id);
 	bool remove(string tblname, map<string, string> & kvMap);
 	vector< map<string ,string> > & getResult();

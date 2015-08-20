@@ -637,32 +637,111 @@ bool SrvPI::checkBreakpoint()
    	}
 }
 
+// void SrvPI::cmdPUT()
+// {
+// 	printf("PUT request\n");
+	
+// 	vector<string> paramVector; 
+// 	split(packet.getSBody(), DELIMITER, paramVector);
+// 	for (auto it = paramVector.cbegin(); it != paramVector.cend(); ++it)
+//            std::cout << it->size() << "paramVector: " << *it << std::endl;
+
+// 	if (paramVector.size() == 4)
+// 	{
+// 		flashPUT(paramVector);
+// 		return;
+// 	}
+
+// 	string srvpath;
+// 	string userinput;
+// 	if (paramVector.size() == 1){
+// 		vector<string> pathVector; 
+// 		split(paramVector[0], "/", pathVector);
+// 		userinput = pathVector.back();
+// 		this->filename = pathVector.back();
+// 		srvpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + pathVector.back();
+// 	} else if (paramVector.size() == 2){
+// 		userinput = paramVector[1];
+// 		srvpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[1];
+
+// 		vector<string> pathVector; 
+// 		split(paramVector[1], "/", pathVector);
+// 		this->filename = pathVector.back();
+// 	}
+
+// 	string msg_o;
+// 	int m;
+// 	if ( (m = combineAndValidatePath(PUT, userinput, msg_o, this->abspath)) < 0)
+//    	{
+//    		if (m == -2)
+//    		{
+//    			if (checkBreakpoint())
+// 	   		{
+// 	   			return;  // get breakpoint
+// 	   		}
+
+// 	   		packet.sendSTAT_CFM(msg_o.c_str());
+// 	   		recvOnePacket();
+// 	   		if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CFM) {
+// 	   			packet.print();
+// 				if (packet.getSBody() == "y")
+// 				{
+// 					std::cout << "packet.getSBody() == y" << '\n';
+// 					SrvDTP srvDTP(&(this->packet), this);
+// 					srvDTP.recvFile(srvpath.c_str());
+// 					return;
+// 				} else {
+// 					return;
+// 				}
+// 			} else {
+// 				Error::msg("STAT_CFM: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
+// 				return;
+// 			}
+//    		} else
+//    		{
+//    			packet.sendSTAT_ERR(msg_o.c_str());
+//    		}
+   		
+//    	} else {
+//    		std::cout << "**************cmdPUT path[" << srvpath << "]" << '\n';
+// 		SrvDTP srvDTP(&(this->packet), this);
+// 		srvDTP.recvFile(srvpath.c_str());
+//    	}
+//    	this->filename.clear();
+//    	this->abspath.clear();
+// }
+
 void SrvPI::cmdPUT()
 {
-	printf("PUT request\n");
-	
 	vector<string> paramVector; 
 	split(packet.getSBody(), DELIMITER, paramVector);
 	for (auto it = paramVector.cbegin(); it != paramVector.cend(); ++it)
            std::cout << it->size() << "paramVector: " << *it << std::endl;
 
-	if (paramVector.size() == 4)
+	printf("PUT request\n");
+
+	string md5str;
+	if (paramVector.size() == 2)
 	{
-		flashPUT(paramVector);
+		 md5str = paramVector[1];
+		 paramVector.erase(paramVector.begin()+1);
+	} else if (paramVector.size() == 3)
+	{
+		md5str = paramVector[2];
+		paramVector.erase(paramVector.begin()+2);
+	} else {
+		packet.sendSTAT_ERR("PUT params error");
 		return;
 	}
 
-	string srvpath;
 	string userinput;
 	if (paramVector.size() == 1){
 		vector<string> pathVector; 
 		split(paramVector[0], "/", pathVector);
 		userinput = pathVector.back();
 		this->filename = pathVector.back();
-		srvpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + pathVector.back();
 	} else if (paramVector.size() == 2){
 		userinput = paramVector[1];
-		srvpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[1];
 
 		vector<string> pathVector; 
 		split(paramVector[1], "/", pathVector);
@@ -671,6 +750,8 @@ void SrvPI::cmdPUT()
 
 	string msg_o;
 	int m;
+	char buf[MAXLINE];
+	SrvDTP srvDTP(&(this->packet), this);
 	if ( (m = combineAndValidatePath(PUT, userinput, msg_o, this->abspath)) < 0)
    	{
    		if (m == -2)
@@ -686,74 +767,18 @@ void SrvPI::cmdPUT()
 	   			packet.print();
 				if (packet.getSBody() == "y")
 				{
-					std::cout << "packet.getSBody() == y" << '\n';
-					SrvDTP srvDTP(&(this->packet), this);
-					srvDTP.recvFile(srvpath.c_str());
-					return;
-				} else {
-					return;
-				}
-			} else {
-				Error::msg("STAT_CFM: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
-				return;
-			}
-   		} else
-   		{
-   			packet.sendSTAT_ERR(msg_o.c_str());
-   		}
-   		
-   	} else {
-   		std::cout << "**************cmdPUT path[" << srvpath << "]" << '\n';
-		SrvDTP srvDTP(&(this->packet), this);
-		srvDTP.recvFile(srvpath.c_str());
-   	}
-   	this->filename.clear();
-   	this->abspath.clear();
-}
+					if( remove(this->abspath.c_str()) !=0 )
+					{
+						packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+						return;
+					} 
 
-void SrvPI::flashPUT(vector<string> & paramVector)
-{
-	printf("flashPUT request\n");
-	paramVector.erase(paramVector.begin());
-	string md5str = paramVector[2];
-	paramVector.erase(paramVector.begin()+2);
-
-	string srvpath;
-	string userinput;
-	if (paramVector.size() == 1){
-		vector<string> pathVector; 
-		split(paramVector[0], "/", pathVector);
-		userinput = pathVector.back();
-		this->filename = pathVector.back();
-		srvpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + pathVector.back();
-	} else if (paramVector.size() == 2){
-		userinput = paramVector[1];
-		srvpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[1];
-
-		vector<string> pathVector; 
-		split(paramVector[1], "/", pathVector);
-		this->filename = pathVector.back();
-	}
-
-	string msg_o;
-	int m;
-	SrvDTP srvDTP(&(this->packet), this);
-	if ( (m = combineAndValidatePath(PUT, userinput, msg_o, this->abspath)) < 0)
-   	{
-   		if (m == -2)
-   		{
-	   		packet.sendSTAT_CFM(msg_o.c_str());
-	   		recvOnePacket();
-	   		if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CFM) {
-	   			packet.print();
-				if (packet.getSBody() == "y")
-				{
 					if (md5check(md5str, this->abspath))
 			   		{
 			   			packet.sendSTAT_EOT("Flash transfer is done");
 			   			return;
 			   		} else {
-			   			srvDTP.recvFile(srvpath.c_str());
+			   			srvDTP.recvFile(this->abspath.c_str());
 						return;
 			   		}
 					
@@ -770,13 +795,13 @@ void SrvPI::flashPUT(vector<string> & paramVector)
    		}
    		
    	} else {
-   		std::cout << "**************cmdPUT path[" << srvpath << "]" << '\n';
+   		std::cout << "**************cmdPUT path[" << this->abspath << "]" << '\n';
    		if (md5check(md5str, this->abspath))
    		{
    			packet.sendSTAT_EOT("Flash transfer is done");
    			return;
    		} else {
-   			srvDTP.recvFile(srvpath.c_str());
+   			srvDTP.recvFile(this->abspath.c_str());
    		}
 		
    	}
@@ -786,7 +811,7 @@ void SrvPI::flashPUT(vector<string> & paramVector)
 
 bool SrvPI::md5check(string & md5str, string newpath)
 {
-	std::map<string, string> selectParamMap = {  {"MD5SUM", md5str} };
+	std::map<string, string> selectParamMap = {  {"MD5SUM", md5str}, {"VALID", "1"} };
     if (db.select("file", selectParamMap))
     {
        vector< map<string ,string> > resultMapVector = db.getResult();
@@ -800,7 +825,7 @@ bool SrvPI::md5check(string & md5str, string newpath)
 				return true;
 			}
        } else {
-          printf("\033[31mMD5SUM not exist\033[0m\n");
+          printf("\033[31mMD5SUM not exist or not valid\033[0m\n");
           return false;
        }
     } else {
@@ -892,7 +917,7 @@ void SrvPI::cmdLS()
 	}
 	if (!sbody.empty())
 	{
-		if ( cnt !=0 && (cnt % 5) == 0)
+		if ( sbody.back() == '\n')
 		{
 			sbody.pop_back(); // remove '\n'
 		}
@@ -949,8 +974,29 @@ void SrvPI::cmdRM()
    		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
    	} else {
-   		string path = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
    		char buf[MAXLINE]; 
+   		string path = this->abspath;//userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
+   		struct stat statBuf; 
+	    if (stat(path.c_str(), &statBuf) < 0)
+	    {
+	    	packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+			return;
+	    } else {
+	    	if (statBuf.st_nlink == 1)
+	    	{
+	    		std::map<string, string> whereParamMap = { {"MD5SUM", md5sum(this->abspath.c_str())} };
+	    		std::map<string, string> updateParamMap = { {"VALID", "0"} };
+
+				if (db.update("file", whereParamMap, updateParamMap))
+		        {
+					printf("Success: update VALID=0\n");
+		        } else {
+		           Error::msg("\033[31mDatabase update error\033[0m");
+		        }   
+	    	}
+	    	
+	    }
+	
    		if( remove(path.c_str()) !=0 )
 		{
 			// send STAT_ERR Response 
@@ -1473,6 +1519,11 @@ FILE* SrvPI::setFp(FILE *fp)
 FILE * & SrvPI::getFp()
 {
 	return this->fp;
+}
+
+Database * SrvPI::getPDB()
+{
+	return &(this->db);
 }
 
 SrvPI::~SrvPI()

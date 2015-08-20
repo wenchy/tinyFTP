@@ -679,22 +679,168 @@ void CliPI::cmdRGET(std::vector<string> & paramVector)
 	}
 }
 
+// void CliPI::cmdPUT(std::vector<string> & paramVector)
+// {
+// 	if(paramVector.size() > 2)
+// 	{
+// 		std::cout << "Usage: " << helpMap["PUT"] << std::endl;
+// 		return;
+// 	}
+
+// 	char pathname[MAXLINE];
+// 	char buf[MAXLINE];
+// 	uint32_t nslice = 0;
+// 	uint32_t sindex = 0;
+
+// 	strcpy(pathname,paramVector[0].c_str()); 
+// 	struct stat statBuf;
+//     int n = stat(paramVector[0].c_str(), &statBuf);
+//     if(!n) // stat call success
+// 	{	
+// 		if (S_ISREG(statBuf.st_mode)){
+// 			;
+// 	    } else if (S_ISDIR(statBuf.st_mode)){
+// 			cout << "put: cannot upload [" << paramVector[0] << "]: Is a directory" << endl;
+// 			return;
+// 	    } else {
+// 	    	cout << "put: [" << paramVector[0] << "] not a regular file or directory" << endl;
+// 			return;
+// 	    }
+		
+// 	} else { // stat error
+// 		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
+// 		return;
+// 	}
+
+	
+// 	FILE *fp;
+// 	if ( (fp = fopen(pathname, "rb")) == NULL)
+// 	{
+// 		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
+// 		return;
+// 	} else if ( (n = getFileNslice(pathname, &nslice)) < 0)  {
+// 		if ( n == -2) {
+// 			Error::msg("Too large file size.", buf);
+// 		} else {
+// 			Error::msg("File stat error.");
+// 		}
+// 		return;
+// 	} else {
+// 		//printf("Prepare for flash transmission\n");
+// 		packet.sendCMD(PUT, getEncodedParams(paramVector));
+// 	}
+
+// 	while(recvOnePacket())
+// 	{
+// 		switch(packet.getTagid())
+// 		{
+// 			case TAG_CMD:
+// 			{
+// 				switch(packet.getCmdid())
+// 				{
+// 					case GET:
+// 					{
+// 						break;
+// 					}
+// 					case LMKDIR:
+// 					{
+// 						break;
+// 					}
+// 					default:
+// 					{
+// 						Error::msg("unknown cmdid: %d", packet.getCmdid());
+// 						break;
+// 					}
+// 				}
+// 				break;
+// 			}
+// 			case TAG_STAT:
+// 			{
+// 				switch(packet.getStatid())
+// 				{
+// 					case STAT_OK:
+// 					{
+// 						CliDTP cliDTP(&(this->packet), this);
+// 						cliDTP.sendFile(pathname, fp, nslice, sindex);
+// 						packet.sendSTAT_EOT();
+// 						return;
+// 					}
+// 					case STAT_BPR:
+// 					{
+// 						//cout << packet.getSBody() <<endl;
+// 						vector<string> paramVector; 
+// 						split(packet.getSBody(), DELIMITER, paramVector);
+// 						sindex = std::stoul(paramVector[1]);
+// 						break;
+// 					}
+// 					case STAT_CFM:
+// 					{
+// 						if(confirmYN(packet.getSBody().c_str()))
+// 						{
+// 							packet.sendSTAT_CFM("y");
+// 						} else {
+// 							packet.sendSTAT_CFM("n");
+// 							return;
+// 						}
+// 						break;
+// 					}
+// 					case STAT_ERR:
+// 					{
+// 						cerr << packet.getSBody() <<endl;
+// 						return;
+// 					}
+// 					case STAT_EOF:
+// 					{
+// 						cout << packet.getSBody() <<endl;
+// 						break;
+// 					}
+// 					case STAT_EOT:
+// 					{
+// 						cout << packet.getSBody() <<endl;
+// 						return;
+// 					}
+// 					default:
+// 					{
+// 						Error::msg("unknown statid: %d", packet.getStatid());
+// 						break;
+// 					}
+// 				}
+// 				break;
+// 			}
+// 			case TAG_DATA:
+// 			{
+// 				switch(packet.getDataid())
+// 				{
+// 					case DATA_FILE:
+// 					{
+// 						cout << "DATA_FILE" << packet.getSBody() <<endl;
+// 						break;
+// 					}
+// 					default:
+// 					{
+// 						Error::msg("unknown statid: %d", packet.getStatid());
+// 						break;
+// 					}
+// 				}
+// 				break;
+// 			}
+// 			default:
+// 			{
+// 				Error::msg("unknown tagid: %d", packet.getTagid());
+// 				break;
+// 			}
+// 		}
+// 	}
+	
+// }
+
 void CliPI::cmdPUT(std::vector<string> & paramVector)
 {
-	if(paramVector.size() > 3)
+	if(paramVector.size() > 2)
 	{
 		std::cout << "Usage: " << helpMap["PUT"] << std::endl;
-		return;
-	} else if(paramVector.size() == 3 && paramVector[0] !="--flash")
-	{
-		std::cout << "Usage: " << helpMap["PUT"] << std::endl;
-		return;
-	} else if (paramVector.size() == 3 && paramVector[0] =="--flash")
-	{
-		flashPUT(paramVector);
 		return;
 	}
-
 	char pathname[MAXLINE];
 	char buf[MAXLINE];
 	uint32_t nslice = 0;
@@ -708,155 +854,6 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 		if (S_ISREG(statBuf.st_mode)){
 			;
 	    } else if (S_ISDIR(statBuf.st_mode)){
-			cout << "put: cannot upload [" << paramVector[0] << "]: Is a directory" << endl;
-			return;
-	    } else {
-	    	cout << "put: [" << paramVector[0] << "] not a regular file or directory" << endl;
-			return;
-	    }
-		
-	} else { // stat error
-		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
-		return;
-	}
-
-	
-	FILE *fp;
-	if ( (fp = fopen(pathname, "rb")) == NULL)
-	{
-		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
-		return;
-	} else if ( (n = getFileNslice(pathname, &nslice)) < 0)  {
-		if ( n == -2) {
-			Error::msg("Too large file size.", buf);
-		} else {
-			Error::msg("File stat error.");
-		}
-		return;
-	} else {
-		//printf("Prepare for flash transmission\n");
-		packet.sendCMD(PUT, getEncodedParams(paramVector));
-	}
-
-	while(recvOnePacket())
-	{
-		switch(packet.getTagid())
-		{
-			case TAG_CMD:
-			{
-				switch(packet.getCmdid())
-				{
-					case GET:
-					{
-						break;
-					}
-					case LMKDIR:
-					{
-						break;
-					}
-					default:
-					{
-						Error::msg("unknown cmdid: %d", packet.getCmdid());
-						break;
-					}
-				}
-				break;
-			}
-			case TAG_STAT:
-			{
-				switch(packet.getStatid())
-				{
-					case STAT_OK:
-					{
-						CliDTP cliDTP(&(this->packet), this);
-						cliDTP.sendFile(pathname, fp, nslice, sindex);
-						packet.sendSTAT_EOT();
-						return;
-					}
-					case STAT_BPR:
-					{
-						cout << packet.getSBody() <<endl;
-						vector<string> paramVector; 
-						split(packet.getSBody(), DELIMITER, paramVector);
-						sindex = std::stoul(paramVector[1]);
-						break;
-					}
-					case STAT_CFM:
-					{
-						if(confirmYN(packet.getSBody().c_str()))
-						{
-							packet.sendSTAT_CFM("y");
-						} else {
-							packet.sendSTAT_CFM("n");
-							return;
-						}
-						break;
-					}
-					case STAT_ERR:
-					{
-						cerr << packet.getSBody() <<endl;
-						return;
-					}
-					case STAT_EOF:
-					{
-						cout << packet.getSBody() <<endl;
-						break;
-					}
-					case STAT_EOT:
-					{
-						cout << packet.getSBody() <<endl;
-						return;
-					}
-					default:
-					{
-						Error::msg("unknown statid: %d", packet.getStatid());
-						break;
-					}
-				}
-				break;
-			}
-			case TAG_DATA:
-			{
-				switch(packet.getDataid())
-				{
-					case DATA_FILE:
-					{
-						cout << "DATA_FILE" << packet.getSBody() <<endl;
-						break;
-					}
-					default:
-					{
-						Error::msg("unknown statid: %d", packet.getStatid());
-						break;
-					}
-				}
-				break;
-			}
-			default:
-			{
-				Error::msg("unknown tagid: %d", packet.getTagid());
-				break;
-			}
-		}
-	}
-	
-}
-
-void CliPI::flashPUT(std::vector<string> & paramVector)
-{
-	char pathname[MAXLINE];
-	char buf[MAXLINE];
-	uint32_t nslice = 0;
-	uint32_t sindex = 0;
-
-	strcpy(pathname,paramVector[1].c_str()); 
-	struct stat statBuf;
-    int n = stat(paramVector[1].c_str(), &statBuf);
-    if(!n) // stat call success
-	{	
-		if (S_ISREG(statBuf.st_mode)){
-			;
-	    } else if (S_ISDIR(statBuf.st_mode)){
 			cout << "put: cannot upload [" << pathname << "]: Is a directory" << endl;
 			return;
 	    } else {
@@ -865,7 +862,7 @@ void CliPI::flashPUT(std::vector<string> & paramVector)
 	    }
 		
 	} else { // stat error
-		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
+		Error::msg("stat: %s", strerror_r(errno, buf, MAXLINE));
 		return;
 	}
 
@@ -931,7 +928,7 @@ void CliPI::flashPUT(std::vector<string> & paramVector)
 					}
 					case STAT_BPR:
 					{
-						cout << packet.getSBody() <<endl;
+						//cout << packet.getSBody() <<endl;
 						vector<string> paramVector; 
 						split(packet.getSBody(), DELIMITER, paramVector);
 						sindex = std::stoul(paramVector[1]);
@@ -1034,7 +1031,6 @@ void CliPI::cmdLS(std::vector<string> & paramVector)
 			
 		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT){
 			//cout<< packet.getSBody() << endl;
-			cout<< endl;
 			break;
 		}
 	}

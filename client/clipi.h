@@ -29,7 +29,7 @@ public:
 	void cmdGET(string srvpath, string clipath);
 	void cmdRGET(std::vector<string> & cmdVector);
 	void cmdPUT(std::vector<string> & cmdVector);
-	void flashPUT(vector<string> & paramVector);
+	//void flashPUT(vector<string> & paramVector);
 	void cmdLS(std::vector<string> & cmdVector);
 	void cmdLLS(std::vector<string> & cmdVector);
 	void cmdCD(std::vector<string> & cmdVector);

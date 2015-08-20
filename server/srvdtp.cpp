@@ -1,9 +1,79 @@
 #include    "srvdtp.h"
 
+void * md5sumThreadFunc(void * arg)
+{
+	ThreadArg * ptarg = (ThreadArg *)arg;
+	const char * pathname = ptarg->buf;
+	Database db = *(ptarg->pdb);
+	printf("************md5sumThreadFunc: %s\n", pathname);   
+	string md5str = md5sum(pathname);
+	string sizestr = getFilesize(string(pathname));
+	cout << "md5sumThreadFunc # filepath: " << pathname << "md5str: " << md5str << "sizestr: " << sizestr << endl;
+	
+	if (!md5str.empty() && !sizestr.empty())
+	{
+		std::map<string, string> insertParamMap = {    {"MD5SUM", md5str},
+	                                                   {"MD5RAND", "NULL"},
+	                                                   {"ABSPATH", pathname},
+	                                                   {"SIZE", sizestr} };
+		if (db.insert("file", insertParamMap))
+        {
+			Error::msg("Success: insert new file MD5SUM");
+        } else {
+           Error::msg("\033[31mDatabase insert error\033[0m");
+        }   
+	}   
+    return(NULL);
+}
+
 SrvDTP::SrvDTP(Packet * ppacket, SrvPI * psrvPI)
 { 
 	this->ppacket = ppacket;
 	this->psrvPI = psrvPI;
+}
+
+void SrvDTP::insertNewFileMD5SUM(const char * pathname, Database *pdb)
+{ 
+	string md5str = md5sum(pathname);
+	string sizestr = getFilesize(string(pathname));
+	cout << "md5sumThreadFunc # filepath: " << pathname << "md5str: " << md5str << "sizestr: " << sizestr << endl;
+	
+	if (!md5str.empty() && !sizestr.empty())
+	{
+		std::map<string, string> selectParamMap = {  {"MD5SUM", md5str} };
+		if (pdb->select("file", selectParamMap))
+		{
+			vector< map<string ,string> > resultMapVector = pdb->getResult();
+			if (resultMapVector.empty())
+			{
+				std::map<string, string> insertParamMap = {    {"MD5SUM", md5str},
+	                                                   {"MD5RAND", "NULL"},
+	                                                   {"ABSPATH", pathname},
+	                                                   {"SIZE", sizestr} };
+				if (pdb->insert("file", insertParamMap))
+		        {
+					Error::msg("Success: insert new file MD5SUM");
+		        } else {
+		           Error::msg("\033[31mDatabase insert error\033[0m");
+		        }   
+			} else {
+				std::map<string, string> whereParamMap = { {"MD5SUM", md5sum(pathname)} };
+	    		std::map<string, string> updateParamMap = { {"VALID", "1"} };
+
+				if (pdb->update("file", whereParamMap, updateParamMap))
+		        {
+					printf("Success: update VALID=1\n");
+		        } else {
+		           Error::msg("\033[31mDatabase update error\033[0m");
+		        }
+			}
+		} else {
+			 Error::msg("\033[31mDatabase select error\033[0m");
+		}
+
+
+		
+	}   
 }
 void SrvDTP::sendFile(const char *pathname)
 {
@@ -79,6 +149,8 @@ void SrvDTP::sendFile(const char *pathname)
 	packet.sendSTAT_EOF();
 }
 
+ThreadArg threadArg;
+pthread_t tid;
 void SrvDTP::recvFile(const char *pathname)
 {
 	Packet & packet = *(this->ppacket);
@@ -112,7 +184,13 @@ void SrvDTP::recvFile(const char *pathname)
 			if (packet.getStatid() == STAT_EOF)
 			{
 				Fclose(&psrvPI->getFp());
-				std::cout << packet.getSBody() << std::endl;
+				std::cout << "11111: " << packet.getSBody() << std::endl;
+				
+				// threadArg.pdb = psrvPI->getPDB();
+				// snprintf(threadArg.buf, MAXLINE, "%s", pathname);
+				// Pthread_create(&tid, NULL, &md5sumThreadFunc, &threadArg);
+
+				insertNewFileMD5SUM(pathname, psrvPI->getPDB());
 				continue;
 			} else if (packet.getStatid() == STAT_EOT){
 				std::cout << packet.getSBody() << std::endl;
@@ -173,6 +251,12 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 			{
 				Fclose(&psrvPI->getFp());
 				std::cout << packet.getSBody() << std::endl;
+
+				// threadArg.pdb = psrvPI->getPDB();
+				// snprintf(threadArg.buf, MAXLINE, "%s", pathname);
+				// Pthread_create(&tid, NULL, &md5sumThreadFunc, &threadArg);
+				insertNewFileMD5SUM(pathname, psrvPI->getPDB());
+
 				continue;
 			} else if (packet.getStatid() == STAT_EOT){
 				std::cout << packet.getSBody() << std::endl;
