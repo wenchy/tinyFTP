@@ -48,7 +48,10 @@ using namespace std;
 #define ROOTDIR			"/home/tinyFTP/"
 #define ROOTDIR_LEN		strlen(ROOTDIR)
 
-#define DELIMITER		"\x1F" // UD(unit separator)
+#define PASSSALT0		"&5@f#fe)"	// password salt
+#define PASSSALT1		"@tinyFTP"	// password salt	
+
+#define DELIMITER		"\x1F" 			// UD(unit separator)
 
 // MACRO constants
 #define	LISTENQ		1024		// 2nd argument(backlog) to listen()
@@ -245,4 +248,5 @@ string md5sum(const char * pathname);
 string md5sum(const char * str, int len);
 unsigned long getFilesize(const char * pathname);
 string getFilesize(string pathname);
+string encryptPassword(string password);
 #endif	/* __TINYFTP_COMMON_H__ */

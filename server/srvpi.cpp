@@ -289,7 +289,24 @@ void SrvPI::cmdUSERADD()
    	std::map<string, string> insertParamMap = {  {"username", paramVector[0]}, {"password", paramVector[1]} };
    	if (db.insert("user", insertParamMap))
    	{
-   		packet.sendSTAT_OK("New tinyFTP user '" + paramVector[0] + "' created");
+   		string path = ROOTDIR + paramVector[0];
+   		if(mkdir(path.c_str(), 0777) == -1){
+   			// rollback
+   			std::map<string, string> removeParamMap = {  {"username", paramVector[0]} };
+   			if (db.remove("user", removeParamMap))
+   			{
+   				cout << "Success: DB#user rollback" << endl;
+   			} else {
+				cout << "Error: DB#user rollback" << endl;
+		   	}
+   			// send STAT_ERR Response
+   			char buf[MAXLINE];
+			packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+   		}else {
+			packet.sendSTAT_OK("New tinyFTP user '" + paramVector[0] + "' created");
+		}
+   		
+
    	} else {
 		packet.sendSTAT_ERR("Database insert error");
    	}
@@ -318,11 +335,18 @@ void SrvPI::cmdUSERDEL()
    		} else {
    			if (db.remove("user", resultMapVector[0]["ID"]))
    			{
-   				packet.sendSTAT_OK("User '" + paramVector[0] + "' deleted");
+   				string path = ROOTDIR + paramVector[0];
+   				string shellCMD = "rm -rf " + path;
+				if (system(shellCMD.c_str()) == -1) {
+					char buf[MAXLINE];
+					packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+				} else {
+					// send STAT_OK
+					packet.sendSTAT_OK("User '" + paramVector[0] + "' deleted");
+				}	
    			} else {
 				packet.sendSTAT_ERR("Database remove error");
 		   	}
- 
    		}
    	}else {
 		packet.sendSTAT_ERR("Database select error");

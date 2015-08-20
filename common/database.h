@@ -21,6 +21,7 @@ public:
 	bool select(string tblname, map<string, string> & paramMap);
 	bool update(string tblname, string id, map<string, string> & paramMap);
 	bool remove(string tblname, string id);
+	bool remove(string tblname, map<string, string> & kvMap);
 	vector< map<string ,string> > & getResult();
 	void getResult(vector< map<string ,string> > & resultMapVector_o);
 	//Database & select(string tblname, map<string, string> & paramMap);

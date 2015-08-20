@@ -144,14 +144,18 @@ void Database::traverseFiles(string dirpath)
 
 void Database::init()
 {
-   std::map<string, string> insertParamMap0 = { {"username", "admin"},
-                                                {"password", "admin"} };
-   std::map<string, string> insertParamMap1 = { {"username", "anonymous"},
-                                                {"password", "anonymous"} };
-   std::map<string, string> insertParamMap2 = { {"username", "charles"},
-                                                {"password", "charles"} };
-   std::map<string, string> insertParamMap3 = { {"username", "davey"},
-                                                {"password", "davey"} };
+   std::map<string, string> insertParamMap0 = { {"id", "1"}, 
+                                                {"username", "admin"},
+                                                {"password", encryptPassword("admin")} };
+   std::map<string, string> insertParamMap1 = { {"id", "2"}, 
+                                                {"username", "anonymous"},
+                                                {"password", encryptPassword("anonymous")} };
+   std::map<string, string> insertParamMap2 = { {"id", "3"}, 
+                                                {"username", "charles"},
+                                                {"password", encryptPassword("charles")} };
+   std::map<string, string> insertParamMap3 = { {"id", "4"}, 
+                                                {"username", "davey"},
+                                                {"password", encryptPassword("davey")} };
 
    std::map<string, string> selectParamMap = {  {"id", "1"}, {"username", "Paul"} };
    std::map<string, string> updateParamMap = {  {"username", "davey"}, {"password", "dddd"} };
@@ -350,6 +354,25 @@ bool Database::remove(string tblname, string id)
    sqlSring += tblname;
    sqlSring += " WHERE id='" + id + "'";
 
+   /* Execute SQL statement */
+   return execute(sqlSring.c_str(), this);
+}
+
+bool Database::remove(string tblname, map<string, string> & kvMap)
+{
+   /* Create merged SQL statement */
+   sqlSring.clear();
+   sqlSring += "DELETE FROM "; //SET column1 = value1, column2 = value2...., columnN = valueN
+   sqlSring += tblname;
+   sqlSring += " WHERE ";
+
+   map<string ,string>::iterator it=kvMap.begin();
+   sqlSring += it->first + "='" + it->second + "'";
+   for (++it; it!=kvMap.end(); ++it)
+   {
+      sqlSring += " and " + it->first + "='" + it->second + "'";
+   }
+   std::cout << "remove: " << sqlSring << std::endl;
    /* Execute SQL statement */
    return execute(sqlSring.c_str(), this);
 }

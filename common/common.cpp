@@ -291,7 +291,6 @@ string md5sum(const char * str, int len)
 
 	MD5_Init(&ctx);
 	MD5_Update(&ctx, str, len);
-
     MD5_Final(out, &ctx);
 
     for(n = 0; n< MD5_DIGEST_LENGTH; n++)
@@ -332,5 +331,15 @@ string getFilesize(string pathname)
 		return sizestr;
 	}
 }
+
+string encryptPassword(string password)
+{
+	string saltedPass = PASSSALT0 + password + PASSSALT1;
+	//cout << "***********saltedPass: " << saltedPass << endl;
+	saltedPass = md5sum(saltedPass.c_str(), saltedPass.size());
+	//cout << "***********saltedPass: " << saltedPass << endl;
+    return saltedPass;     
+}
+
 
 

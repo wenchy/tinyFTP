@@ -273,6 +273,7 @@ bool CliPI::cmdPASS(std::vector<string> & paramVector)
 		return false;
 	}
 
+	paramVector[1] = encryptPassword(paramVector[1]);
 	packet.sendCMD(PASS, getEncodedParams(paramVector));
 
 	// first receive response
@@ -306,6 +307,8 @@ void CliPI::cmdUSERADD(std::vector<string> & paramVector)
 	{
 		paramVector.erase(paramVector.begin());
 		paramVector.erase(paramVector.begin()+1);
+
+		paramVector[1] = encryptPassword(paramVector[1]);
 
 		packet.sendCMD(USERADD, getEncodedParams(paramVector));
 
