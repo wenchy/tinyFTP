@@ -781,7 +781,7 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 						split(packet.getSBody(), DELIMITER, paramVector);
 						uint32_t tmp_sindex = std::stoul(paramVector[1]);
 
-						string md5str = md5sumNsclice(pathname, tmp_sindex);
+						string md5str = visualmd5sumNslice(pathname, tmp_sindex);
 						if (md5str.empty())
 						{
 							printf("md5sum error\n");

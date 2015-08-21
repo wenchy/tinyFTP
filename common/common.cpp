@@ -377,7 +377,7 @@ string visualmd5sum(const char * pathname)
 	while( (n = fread(buf, sizeof(char), SLICECAP, fp)) >0 )
 	{
 		MD5_Update(&ctx, buf, n);
-		if (nslice > (1024 * 1024))
+		if (nslice > (1024 * 512))
 		{
 			newProgress = (++sindex*1.0)/nslice*100;
 			if (newProgress > oldProgress)
@@ -388,7 +388,7 @@ string visualmd5sum(const char * pathname)
 			oldProgress = newProgress;
 		}	
 	}
-	if (nslice > (1024 * 1024))
+	if (nslice > (1024 * 512))
 		printf("\n");
 
     MD5_Final(out, &ctx);
@@ -436,7 +436,72 @@ string md5sum(const char * pathname)
     return md5str;        
 }
 
-string md5sumNsclice(const char * pathname, uint32_t nslice)
+string visualmd5sumNslice(const char * pathname, uint32_t nslice)
+{
+    int n;
+    char buf[SLICECAP];
+    unsigned char out[MD5_DIGEST_LENGTH];
+    string md5str;
+    int oldProgress = 0, newProgress = 0;
+    MD5_CTX ctx;
+
+    uint32_t fileslice =0, sindex = 0;
+    if ( (n = getFileNslice(pathname, &fileslice)) < 0) {
+		Error::msg("getFileNslice error");
+		return md5str;
+	}
+    int percent = (nslice*1.0)/fileslice*100;
+	snprintf(buf, SLICECAP, "%u/%u  %3d%%",  nslice, fileslice, percent);
+	string 	tipstr;
+    		tipstr += "\033[32mMD5SUM\033[0m(";
+    		tipstr += pathname;
+    		tipstr += "  ";
+    		tipstr += buf;
+    		tipstr += ")";	
+    string hfilesize = getFileSizeString(pathname);
+     
+   
+	FILE *fp;
+    if ( (fp = fopen(pathname, "rb")) == NULL)
+	{
+		Error::ret("md5sum#fopen");
+		return md5str;
+	}
+
+	MD5_Init(&ctx);
+	while( (n = fread(buf, sizeof(char), SLICECAP, fp)) >0 )
+	{
+		MD5_Update(&ctx, buf, n);
+		if ((++sindex) == nslice)
+		{
+			break;
+		}
+		if (nslice > (1024 * 512))
+		{
+			newProgress = (sindex*1.0)/nslice*100;
+			if (newProgress > oldProgress)
+			{
+				fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t%3d%%", tipstr.c_str(), hfilesize.c_str(), newProgress);
+			}
+			oldProgress = newProgress;
+		}
+		
+	}
+	if (nslice > (1024 * 512))
+		printf("\n");
+
+    MD5_Final(out, &ctx);
+
+    for(n = 0; n< MD5_DIGEST_LENGTH; n++)
+	{
+		snprintf(buf, SLICECAP, "%02x", out[n]);
+		md5str += buf;
+	}
+
+    return md5str;        
+}
+
+string md5sumNslice(const char * pathname, uint32_t nslice)
 {
     int n;
     char buf[SLICECAP];

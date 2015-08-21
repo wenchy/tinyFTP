@@ -184,7 +184,7 @@ void SrvDTP::recvFile(const char *pathname)
 			if (packet.getStatid() == STAT_EOF)
 			{
 				Fclose(&psrvPI->getFp());
-				std::cout << "11111: " << packet.getSBody() << std::endl;
+				std::cout << packet.getSBody() << std::endl;
 				
 				// threadArg.pdb = psrvPI->getPDB();
 				// snprintf(threadArg.buf, MAXLINE, "%s", pathname);
@@ -227,13 +227,12 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 			packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 			return;
 		} else {
-			printf("Send file [%s %u/%u] now\n", pathname, sindex, nslice);
+			printf("Recv file [%s %u/%u] now\n", pathname, sindex, nslice);
 			// send STAT_OK
 			packet.sendSTAT_OK();
 		}
 	}
 	
-	printf("Recv file [%s %u/%u] now\n", pathname, sindex, nslice);
 	int m;
 
 	while (psrvPI->recvOnePacket())

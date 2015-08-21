@@ -622,7 +622,7 @@ bool SrvPI::checkBreakpoint()
 {
 	std::map<string, string> selectParamMap = { {"USERID", this->userID}, {"SIZE", this->filesize}, {"ABSPATH", this->abspath}, {"VALID", "1"} };
 	std::map<string, string> updateParamMap = { {"VALID", "0"} };
-   	if (db.select("ifile", selectParamMap))
+   	if (db.selectNewest("ifile", selectParamMap))
    	{
    		vector< map<string, string> > resultMapVector = db.getResult();
    		if (!resultMapVector.empty())
@@ -641,8 +641,8 @@ bool SrvPI::checkBreakpoint()
 					srvDTP.recvFile(this->abspath.c_str(), std::stoul(resultMapVector[0]["NSLICE"]), std::stoul(resultMapVector[0]["SINDEX"]));
 					return true;
 		   		} else {
-		   			packet.sendSTAT_FAIL("MD5SUM not match");
-		   			Error::msg("MD5SUM not match:\ncli: %s\nsrv: %s\n", md5str.c_str(), resultMapVector[0]["MD5SUM"].c_str());
+		   			packet.sendSTAT_FAIL("Breakpoint MD5SUM not match");
+		   			Error::msg("Breakpoint MD5SUM not match:\ncli: %s\nsrv: %s\n", md5str.c_str(), resultMapVector[0]["MD5SUM"].c_str());
 					return false;
 		   		}
    			} else {
@@ -656,7 +656,7 @@ bool SrvPI::checkBreakpoint()
    		}
 
    	}else {
-		Error::msg("checkBreakpoint: Database select error\n");
+		Error::msg("checkBreakpoint: Database selectNewest error\n");
 		return false;
    	}
 }
@@ -1756,7 +1756,7 @@ void SrvPI::saveUserState()
 														{"ABSPATH", this->abspath},
 		 												{"FILENAME", this->filename},
 		 												{"SIZE", this->filesize},
-		 												{"MD5SUM", md5sumNsclice(this->abspath.c_str(), packet.getPreSindex())},
+		 												{"MD5SUM", md5sumNslice(this->abspath.c_str(), packet.getPreSindex())},
 		 												{"NSLICE", packet.getPreSNslice()},
 		 												{"SINDEX", packet.getPreSSindex()},
                                                 		{"SLICECAP", SSLICECAP} 

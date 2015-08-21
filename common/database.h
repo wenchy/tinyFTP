@@ -18,6 +18,7 @@ public:
 	void traverseFiles(string dirpath);
 	bool execute(const char *sql, Database * pDatabase);
 	bool insert(string tblname, map<string, string> & paramMap);
+	bool selectNewest(string tblname, map<string, string> & kvMap);
 	bool select(string tblname, map<string, string> & paramMap);
 	bool update(string tblname, string id, map<string, string> & paramMap);
 	bool update(string tblname, map<string, string> & whereMap, map<string, string> & kvMap);

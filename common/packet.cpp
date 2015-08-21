@@ -392,7 +392,9 @@ void Packet::sendSTAT_MD5(string body)
 void Packet::sendSTAT_FAIL(string body)
 {
 	this->reset(HPACKET);
-	this->fillStat(STAT_FAIL, body.size(), body.c_str());
+	char buf[MAXLINE];
+	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", body.c_str());
+	this->fillStat(STAT_FAIL, strlen(buf), buf);
 	this->htonp();
 	ppi->sendOnePacket(this->ps, PACKSIZE);
 }
