@@ -52,7 +52,7 @@ public:
 	void sendDATA_TEXT(string msg);
 
 	void sendSTAT(uint16_t statid, string body);
-	
+
 	void sendSTAT_OK();
 	void sendSTAT_OK(const char *msg);
 	void sendSTAT_OK(string msg);
@@ -60,6 +60,8 @@ public:
 	void sendSTAT_BPR(string body);
 
 	void sendSTAT_MD5(string body);
+
+	void sendSTAT_PGS(string body);
 
 	void sendSTAT_FAIL(string body);
 
@@ -101,11 +103,12 @@ public:
 	string getPreSSindex();
 	uint16_t getPreBsize();
 
-	PacketStruct *prePs; // previous PacketStruct
+	
 
 private:
 	PacketStruct *ps;
-	
+
+	PacketStruct *prePs; // previous PacketStruct
 	PacketStoreType pstype;
 	PI * ppi;
 

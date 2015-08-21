@@ -589,6 +589,135 @@ string getFilesize(string pathname)
 	}
 }
 
+string size2str(unsigned long filesize)  
+{  
+    unsigned long n = 0;
+    string hsize_o;
+    char buf[MAXLINE];
+    unsigned long kbase = 1024;
+    unsigned long mbase = 1024 * 1024;
+    unsigned long gbase = 1024 * 1024 * 1024;
+
+
+ 	if (filesize == 0)
+	{
+		hsize_o = "0B"; // file is empty.
+	} 
+	else 
+	{
+		if (filesize / kbase == 0)
+		{ 
+			snprintf(buf, MAXLINE, "%lu", filesize);
+			hsize_o += buf;
+			hsize_o +="B";
+		} else if ( filesize / mbase == 0 ){
+			snprintf(buf, MAXLINE, "%lu", filesize / kbase);
+			hsize_o += buf;
+			n = (filesize % kbase)* 100 / kbase;
+			if (n != 0)
+			{
+				hsize_o += ".";
+				snprintf(buf, MAXLINE, "%02lu", n);
+				hsize_o += buf;
+			}
+			hsize_o +="K";
+		} else if ( filesize / gbase == 0 ){
+			snprintf(buf, MAXLINE, "%2lu", filesize / mbase);
+			hsize_o += buf;
+			n = (filesize % mbase)* 100 / mbase;
+			if (n != 0)
+			{
+				hsize_o += ".";
+				snprintf(buf, MAXLINE, "%02lu", n);
+				hsize_o += buf;
+			}
+			hsize_o +="M";
+		} else {
+			snprintf(buf, MAXLINE, "%lu", filesize / gbase);
+			hsize_o += buf;
+			n = (filesize % gbase) * 100 / gbase ;
+			//printf("filesize n: %lu\n", n);
+			if (n != 0)
+			{
+				hsize_o += ".";
+				snprintf(buf, MAXLINE, "%02lu", n);
+				hsize_o += buf;
+			}
+			hsize_o +="G";
+		}
+	}   
+	return hsize_o;
+}
+
+// string getFileSizeString(const char *pathname)  
+// {  
+ 
+//     unsigned long filesize = 0;
+//     unsigned long n = 0;
+//     string hsize_o;
+//     char buf[MAXLINE];
+//     unsigned long kbase = 1024;
+//     unsigned long mbase = 1024 * 1024;
+//     unsigned long gbase = 1024 * 1024 * 1024;
+
+
+//     struct stat statbuff;  
+//     if(stat(pathname, &statbuff) < 0){
+//     	hsize_o = "error"; 
+//         return hsize_o;  // error
+//     } else {  
+//         if (statbuff.st_size == 0)
+// 		{
+// 			hsize_o = "0B"; // file is empty.
+// 		} else {
+// 			filesize = statbuff.st_size;
+// 			if (filesize / kbase == 0)
+// 			{ 
+// 				snprintf(buf, MAXLINE, "%lu", filesize);
+// 				hsize_o += buf;
+// 				hsize_o +="B";
+// 			} else if ( filesize / mbase == 0 ){
+// 				snprintf(buf, MAXLINE, "%lu", filesize / kbase);
+// 				hsize_o += buf;
+// 				n = (filesize % kbase)* 100 / kbase;
+// 				if (n != 0)
+// 				{
+// 					hsize_o += ".";
+// 					snprintf(buf, MAXLINE, "%02lu", n);
+// 					hsize_o += buf;
+// 				}
+// 				hsize_o +="K";
+// 			} else if ( filesize / gbase == 0 ){
+// 				snprintf(buf, MAXLINE, "%2lu", filesize / mbase);
+// 				hsize_o += buf;
+// 				n = (filesize % mbase)* 100 / mbase;
+// 				if (n != 0)
+// 				{
+// 					hsize_o += ".";
+// 					snprintf(buf, MAXLINE, "%02lu", n);
+// 					hsize_o += buf;
+// 				}
+// 				hsize_o +="M";
+// 			} else {
+// 				snprintf(buf, MAXLINE, "%lu", filesize / gbase);
+// 				hsize_o += buf;
+// 				n = (filesize % gbase) * 100 / gbase ;
+// 				//printf("filesize n: %lu\n", n);
+// 				if (n != 0)
+// 				{
+// 					hsize_o += ".";
+// 					snprintf(buf, MAXLINE, "%02lu", n);
+// 					hsize_o += buf;
+// 				}
+// 				hsize_o +="G";
+// 			}
+// 		}  
+//     }  
+// 	return hsize_o;
+// }
+
+
+
 string encryptPassword(string password)
 {
 	string saltedPass = PASSSALT0 + password + PASSSALT1;

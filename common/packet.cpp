@@ -179,7 +179,11 @@ void Packet::print()
 	printf("\t\tnslice = %u\n", ps->nslice);
 	printf("\t\tsindex = %u\n", ps->sindex);
 	printf("\t\tbsize = %d\n", ps->bsize);
-	printf("\t\tbody = %s\n",  this->getSBody().c_str());
+	if (pstype == HPACKET)
+	{
+		printf("\t\tbody = %s\n",  this->getSBody().c_str());
+	}
+	
 	
 	fflush(stdout);
 }
@@ -386,6 +390,13 @@ void Packet::sendSTAT_MD5(string body)
 	this->fillStat(STAT_MD5, body.size(), body.c_str());
 	this->htonp();
 	ppi->sendOnePacket(this->ps, PACKSIZE);
+}
+void Packet::sendSTAT_PGS(string body)
+{
+	this->reset(HPACKET);
+	this->fillStat(STAT_PGS, body.size(), body.c_str());
+	this->htonp();
+	ppi->sendOnePacketBlocked(this->ps, PACKSIZE);
 }
 
 

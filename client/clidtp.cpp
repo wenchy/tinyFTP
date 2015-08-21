@@ -6,37 +6,37 @@ CliDTP::CliDTP(Packet * ppacket, CliPI * pcliPI)
 	this->pcliPI = pcliPI;
 }
 
-void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
-{
-	Packet & packet = *(this->ppacket);
-	int n;
-	uint32_t sindex = 0;
+// void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
+// {
+// 	Packet & packet = *(this->ppacket);
+// 	int n;
+// 	uint32_t sindex = 0;
 
-	char body[PBODYCAP];
-	int oldProgress = 0, newProgress = 0;
-	string hfilesize =  getFileSizeString(pathname);
-	if(nslice == 0)
-	{
-		fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t100%%", pathname, hfilesize.c_str());
-	} else {
-		while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
-		{
-			packet.sendDATA_FILE(nslice, ++sindex, n, body);
-			newProgress = (sindex*1.0)/nslice*100;
-			if (newProgress > oldProgress)
-			{
-				//printf("\033[2K\r\033[0m");
-				fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
-			}
-			oldProgress = newProgress;
-		}
-	}
-	// send EOF
-	fclose(fp);
-	cout << endl;
-	//printf("\nEOF [%s]\n", pathname);
-	packet.sendSTAT_EOF();
-}
+// 	char body[PBODYCAP];
+// 	int oldProgress = 0, newProgress = 0;
+// 	string hfilesize =  getFileSizeString(pathname);
+// 	if(nslice == 0)
+// 	{
+// 		fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t100%%", pathname, hfilesize.c_str());
+// 	} else {
+// 		while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
+// 		{
+// 			packet.sendDATA_FILE(nslice, ++sindex, n, body);
+// 			newProgress = (sindex*1.0)/nslice*100;
+// 			if (newProgress > oldProgress)
+// 			{
+// 				//printf("\033[2K\r\033[0m");
+// 				fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
+// 			}
+// 			oldProgress = newProgress;
+// 		}
+// 	}
+// 	// send EOF
+// 	fclose(fp);
+// 	cout << endl;
+// 	//printf("\nEOF [%s]\n", pathname);
+// 	packet.sendSTAT_EOF();
+// }
 
 void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t sindex, uint16_t slicecap)
 {
@@ -51,7 +51,7 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t 
 
 	int n;
 	char body[PBODYCAP];
-	int oldProgress = 0, newProgress = 0;
+	//int oldProgress = 0, newProgress = 0;
 	string hfilesize =  getFileSizeString(pathname);
 	if(nslice == 0)
 	{
@@ -60,20 +60,33 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t 
 		while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
 		{
 			packet.sendDATA_FILE(nslice, ++sindex, n, body);
-			newProgress = (sindex*1.0)/nslice*100;
-			if (newProgress > oldProgress)
-			{
-				//printf("\033[2K\r\033[0m");
-				fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
-			}
-			oldProgress = newProgress;
+
+			// newProgress = (sindex*1.0)/nslice*100;
+			// if (newProgress > oldProgress)
+			// {
+			// 	fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
+			// }
+			// oldProgress = newProgress;
 		}
+
 	}
 	// send EOF
 	fclose(fp);
-	cout << endl;
-	//printf("\nEOF [%s]\n", pathname);
+	//printf("EOF [%s]\n", pathname);
 	packet.sendSTAT_EOF();
+
+	// continue reading progress tip sended by server
+	while (pcliPI->recvOnePacket())
+	{
+		if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_PGS) 
+		{
+			cerr << packet.getSBody();
+		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT){
+			//cout << endl << packet.getSBody() << endl;
+			cout << endl;
+			break;
+		} 
+	}
 }
 
 void CliDTP::removeFile(const char *pathname)

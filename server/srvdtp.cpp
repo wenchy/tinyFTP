@@ -70,8 +70,6 @@ void SrvDTP::insertNewFileMD5SUM(const char * pathname, Database *pdb)
 		} else {
 			 Error::msg("\033[31mDatabase select error\033[0m");
 		}
-
-
 		
 	}   
 }
@@ -149,63 +147,81 @@ void SrvDTP::sendFile(const char *pathname)
 	packet.sendSTAT_EOF();
 }
 
-ThreadArg threadArg;
-pthread_t tid;
-void SrvDTP::recvFile(const char *pathname)
-{
-	Packet & packet = *(this->ppacket);
-	char buf[MAXLINE];
+// void SrvDTP::recvFile(const char *pathname)
+// {
+// 	Packet & packet = *(this->ppacket);
+// 	char buf[MAXLINE];
 
-	if ( psrvPI->setFp(fopen(pathname, "wb")) == NULL)
-	{
-		// send STAT_ERR Response
-		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
-		return;
-	} else {
-		// send STAT_OK
-		packet.sendSTAT_OK();
-	}
+// 	if ( psrvPI->setFp(fopen(pathname, "wb")) == NULL)
+// 	{
+// 		// send STAT_ERR Response
+// 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+// 		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+// 		return;
+// 	} else {
+// 		// send STAT_OK
+// 		packet.sendSTAT_OK();
+// 	}
 	
-	printf("Recv file [%s] now\n", pathname);
-	int m;
+// 	printf("Recv file [%s] now\n", pathname);
 
-	while (psrvPI->recvOnePacket())
-	{
-		if(packet.getTagid() == TAG_DATA && packet.getDataid() == DATA_FILE){
-			m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), psrvPI->getFp());
-			if (m != packet.getBsize())
-			{
-				Error::msg("Recieved slice %d/%d: %d vs %d Bytes\n", packet.getSindex(), packet.getNslice(), packet.getBsize(), m);
-				return;
-			}
-			//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.ps->bsize, m);
-		} else if(packet.getTagid() == TAG_STAT) {
-			if (packet.getStatid() == STAT_EOF)
-			{
-				Fclose(&psrvPI->getFp());
-				std::cout << packet.getSBody() << std::endl;
+// 	int m;
+
+// 	int oldProgress = 0, newProgress = 0;
+// 	string hfilesize = size2str(psrvPI->getFilesize());
+
+// 	while (psrvPI->recvOnePacket())
+// 	{
+// 		if(packet.getTagid() == TAG_DATA && packet.getDataid() == DATA_FILE){
+// 			m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), psrvPI->getFp());
+// 			if (m != packet.getBsize())
+// 			{
+// 				Error::msg("Recieved slice %d/%d: %d vs %d Bytes\n", packet.getSindex(), packet.getNslice(), packet.getBsize(), m);
+// 				return;
+// 			}
+// 			printf("getSindex: %u", packet.getSindex());
+// 			newProgress = (packet.getSindex()*1.0)/packet.getNslice()*100;
+// 			if (newProgress > oldProgress)
+// 			{
+// 				printf("11111~\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
+// 				snprintf(buf, MAXLINE, "\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
+// 				packet.sendSTAT_PGS(buf);
 				
-				// threadArg.pdb = psrvPI->getPDB();
-				// snprintf(threadArg.buf, MAXLINE, "%s", pathname);
-				// Pthread_create(&tid, NULL, &md5sumThreadFunc, &threadArg);
+// 			}
+// 			oldProgress = newProgress;
 
-				insertNewFileMD5SUM(pathname, psrvPI->getPDB());
-				continue;
-			} else if (packet.getStatid() == STAT_EOT){
-				std::cout << packet.getSBody() << std::endl;
-				return;
-			} else {
-				Error::msg("SrvDTP::recvFile TAG_STAT: unknown statid %d", packet.getStatid());
-				return;
-			}
+// 			//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.ps->bsize, m);
+// 		} else if(packet.getTagid() == TAG_STAT) {
+// 			if (packet.getStatid() == STAT_EOF)
+// 			{
+// 				Fclose(&psrvPI->getFp());
+// 				std::cout << packet.getSBody() << std::endl;
+				
+// 				// ThreadArg threadArg;
+// 				// pthread_t tid;
+// 				// threadArg.pdb = psrvPI->getPDB();
+// 				// snprintf(threadArg.buf, MAXLINE, "%s", pathname);
+// 				// Pthread_create(&tid, NULL, &md5sumThreadFunc, &threadArg);
+
+// 				insertNewFileMD5SUM(pathname, psrvPI->getPDB());
+// 				printf("EOF [%s]\n", pathname);
+//    				packet.sendSTAT_EOF();
+// 				return;
+// 				//continue;
+// 			} else if (packet.getStatid() == STAT_EOT){
+// 				std::cout << packet.getSBody() << std::endl;
+// 				return;
+// 			} else {
+// 				Error::msg("SrvDTP::recvFile TAG_STAT: unknown statid %d", packet.getStatid());
+// 				return;
+// 			}
 			
-		} else {
-			Error::msg("SrvDTP::recvFile: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
-			return;
-		}
-	}
-}
+// 		} else {
+// 			Error::msg("SrvDTP::recvFile: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
+// 			return;
+// 		}
+// 	}
+// }
 
 void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, uint16_t slicecap)
 {
@@ -227,7 +243,7 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 			packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 			return;
 		} else {
-			printf("Recv file [%s %u/%u] now\n", pathname, sindex, nslice);
+			printf("ssssRecv file [%s %u/%u] now\n", pathname, sindex, nslice);
 			// send STAT_OK
 			packet.sendSTAT_OK();
 		}
@@ -235,8 +251,12 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 	
 	int m;
 
+	int oldProgress = 0, newProgress = 0;
+	string hfilesize = size2str(psrvPI->getFilesize());
+	int x = 0;
 	while (psrvPI->recvOnePacket())
 	{
+		x++;
 		if(packet.getTagid() == TAG_DATA && packet.getDataid() == DATA_FILE){
 			m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), psrvPI->getFp());
 			if (m != packet.getBsize())
@@ -244,6 +264,18 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 				Error::msg("Recieved slice %d/%d: %d vs %d Bytes\n", packet.getSindex(), packet.getNslice(), packet.getBsize(), m);
 				return;
 			}
+
+			newProgress = (packet.getSindex()*1.0)/packet.getNslice()*100;
+			if (newProgress > oldProgress)
+			{
+				//printf("\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
+				snprintf(buf, MAXLINE, "\033[2K\r\033[0m%-40s%10s\t%3d%%", psrvPI->getClipath().c_str(), hfilesize.c_str(), newProgress);
+				packet.sendSTAT_PGS(buf);
+				//packet.print();
+				
+			}
+			oldProgress = newProgress;
+
 			//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.ps->bsize, m);
 		} else if(packet.getTagid() == TAG_STAT) {
 			if (packet.getStatid() == STAT_EOF)
@@ -256,7 +288,10 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 				// Pthread_create(&tid, NULL, &md5sumThreadFunc, &threadArg);
 				insertNewFileMD5SUM(pathname, psrvPI->getPDB());
 
-				continue;
+				printf("EOT [%s]\n", pathname);
+   				packet.sendSTAT_EOT();
+				return;
+				//continue;
 			} else if (packet.getStatid() == STAT_EOT){
 				std::cout << packet.getSBody() << std::endl;
 				return;
@@ -266,10 +301,17 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 			}
 			
 		} else {
+
+			
 			Error::msg("SrvDTP::recvFile: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
-			return;
+			//packet.print();
+			//return;
+			printf("xxxxxxx: %d\n", x);
+			packet.print();
 		}
+
 	}
+	Error::quit_pthread("******************************************exception");
 }
 
 int SrvDTP::getFileNslice(const char *pathname,uint32_t *pnslice_o)  

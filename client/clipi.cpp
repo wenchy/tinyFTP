@@ -32,7 +32,7 @@ std::map<string, string> CliPI::helpMap = {	//{"USER",    "user 	username"},
                                             //{"ASCII",   "ascii"}  	
                                         								};
 
-CliPI::CliPI(const char *host): packet(this)
+CliPI::CliPI(const char *host): packet(this), readpacket(this)
 {
     Socket cliSocket(CLI_SOCKET, host, CTRPORT);
     connfd = cliSocket.init();
@@ -58,6 +58,21 @@ bool CliPI::recvOnePacket()
 		//packet.print();
 	}
 	return true;
+}
+
+bool CliPI::sendOnePacketBlocked(PacketStruct * ps, size_t nbytes)
+{
+	int m;
+	if ( (m = connSockStream.writen(ps, nbytes)) < 0 || (size_t)m != nbytes )
+	{
+		this->saveUserState();
+		Socket::tcpClose(connfd);
+		Error::ret("connSockStream.writen()");
+		Error::quit_pthread("socket connection exception");
+		return false;
+	} else {
+		 return true;
+	}
 }
 
 bool CliPI::sendOnePacket(PacketStruct * ps, size_t nbytes)
@@ -86,8 +101,8 @@ bool CliPI::sendOnePacket(PacketStruct * ps, size_t nbytes)
 
 		if (FD_ISSET(connfd, &rset)) /* socket is readable */
 		{	
-			packet.reset(NPACKET);
-			if ( (n = connSockStream.readn(packet.getPs(), PACKSIZE)) == 0)
+			readpacket.reset(NPACKET);
+			if ( (n = connSockStream.readn(readpacket.getPs(), PACKSIZE)) == 0)
 			{
 				this->saveUserState();
 				Socket::tcpClose(connfd);
@@ -98,12 +113,22 @@ bool CliPI::sendOnePacket(PacketStruct * ps, size_t nbytes)
 				Error::ret("connSockStream.readn() error");
 				Error::quit_pthread("socket connection exception");
 			} else {
-				printf("sendOnePacket method recive one packet: %s\n", packet.getSBody().c_str());
-				packet.ntohp();
-				//packet.print();
+				if (n == PACKSIZE)
+				{
+					//readpacket.print();
+					readpacket.ntohp();
+					if (readpacket.getTagid() == TAG_STAT && readpacket.getStatid() == STAT_PGS) 
+					{
+						cerr << readpacket.getSBody();
+					} 
+					//printf("sendOnePacket method recive one packet: %s\n", readpacket.getSBody().c_str());
+					//readpacket.print();
+				} else {
+					printf("ERROR: sendOnePacket method recive one packet: n != PACKSIZE");
+				}
+				
 			}
 		}
-
 		if (FD_ISSET(connfd, &wset)) /* socket is writable */
 		{  
 			if ( (m = connSockStream.writen(ps, nbytes)) < 0 || (size_t)m != nbytes )
@@ -771,7 +796,6 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 					{
 						CliDTP cliDTP(&(this->packet), this);
 						cliDTP.sendFile(pathname, fp, nslice, sindex);
-						packet.sendSTAT_EOT();
 						return;
 					}
 					case STAT_BPR:
@@ -873,6 +897,8 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 			}
 		}
 	}
+	// printf("EOF [%s]\n", pathname);
+	// packet.sendSTAT_EOF();
 	
 }
 
@@ -1055,15 +1081,17 @@ void CliPI::cmdLS(std::vector<string> & paramVector)
 		return;
 	}
 
-	while(1) 
+	while(recvOnePacket()) 
 	{
-		recvOnePacket();
-		if (packet.getTagid() == TAG_DATA) {
+		if (packet.getTagid() == TAG_DATA && packet.getDataid() == DATA_LIST) {
 			cout<< packet.getSBody() << endl;
 			
 		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT){
-			//cout<< packet.getSBody() << endl;
+			cout<< packet.getSBody() << endl;
 			break;
+		} else {
+			Error::msg("unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
+			return;
 		}
 	}
 }
@@ -1176,7 +1204,7 @@ void CliPI::cmdLRM(std::vector<string> & paramVector)
 
 void CliPI::cmdPWD(std::vector<string> & paramVector)
 {
-	if(paramVector.empty() || paramVector.size() > 1)
+	if(paramVector.size() > 1)
 	{
 		std::cout << "Usage: " << helpMap["PWD"] << std::endl;
 		return;

@@ -2,14 +2,15 @@
 #include    "../common/database.h"
 void * clientConnect(void * arg)
 {
-    ThreadArg * ptarg = (ThreadArg *)arg;
-    SrvPI srvPI(DBFILENAME, ptarg->fd);
+    ThreadArg * pthreadArg = (ThreadArg *)arg;
+    SrvPI srvPI(DBFILENAME, pthreadArg->fd);
 
     while (1)
     {
         srvPI.run();
     }
 
+    delete pthreadArg;
     return(NULL);
 }
 
@@ -33,16 +34,16 @@ int main(int argc, char **argv)
     std::cout << "Listen socket port: " << CTRPORT << std::endl;
 
     pthread_t tid;
-    ThreadArg threadArg;
+    
 
     while (1)
     {  
         srvConnfd = listenSocket.tcpAccept(listenfd, (SA *) &cliaddr, &len);
         printf("connection from %s, port %d\n",
                 inet_ntop(AF_INET, &cliaddr.sin_addr.s_addr, buff, sizeof(buff)), ntohs(cliaddr.sin_port));
-        
-        threadArg.fd = srvConnfd;
-        Pthread_create(&tid, NULL, &clientConnect, &threadArg);
+        ThreadArg * pthreadArg = new ThreadArg;
+        pthreadArg->fd = srvConnfd;
+        Pthread_create(&tid, NULL, &clientConnect, pthreadArg);
     }
     return 0;   
 }

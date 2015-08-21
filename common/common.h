@@ -46,7 +46,7 @@ using namespace std;
 
 #define DEBUG 1
 
-#define DBFILENAME		"tinyFTP.db"
+#define DBFILENAME		"tinyFTPtest.db"
 #define ROOTDIR			"/home/tinyFTP/"
 #define ROOTDIR_LEN		strlen(ROOTDIR)
 #define KERNELDIR		"/home/tinyFTP/.tinyFTP/"
@@ -208,7 +208,8 @@ typedef enum statID
 	STAT_BPR, 	// breakpoint resume
 	STAT_CFM, 	// confirm
 	STAT_MD5, 	// confirm
-	STAT_FAIL, 	// error
+	STAT_PGS, 	// progress
+	STAT_FAIL, 	// fail
 	STAT_ERR, 	// error
 	STAT_TERM,	// terminate
 	//STAT_DONE,	// trasaction done
@@ -261,6 +262,7 @@ void	Pthread_key_create(pthread_key_t *, void (*)(void *));
 void	Pthread_setspecific(pthread_key_t, const void *);
 void	Pthread_once(pthread_once_t *, void (*)(void));
 
+string size2str(unsigned long filesize);
 int getFileNslice(const char *pathname, uint32_t *pnslice_o);
 string getFileSizeString(const char *pathname);
 string visualmd5sum(const char * pathname);

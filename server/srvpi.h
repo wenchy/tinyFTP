@@ -17,6 +17,7 @@ public:
 	SrvPI(string dbFilename, int connfd);
 	bool checkBreakpoint();
 	bool recvOnePacket();
+	bool sendOnePacketBlocked(PacketStruct * ps, size_t nbytes);
 	bool sendOnePacket(PacketStruct * ps, size_t nbytes);
 	void run();
 	void split(std::string src, std::string token, vector<string>& vect);  
@@ -50,6 +51,8 @@ public:
 	FILE* setFp(FILE *fp);
 	FILE* & getFp();
 	Database * getPDB();
+	string getClipath();
+	unsigned long getFilesize();
 	~SrvPI();
 	
 	
@@ -58,6 +61,7 @@ public:
 private:
 	int sessionCommandPacketCount;
 	Packet packet;
+	Packet readpacket;
 	int connfd;
 	SockStream connSockStream;
 	//SrvDTP srvDTP;
@@ -70,6 +74,8 @@ private:
 	string abspath;
 	string filename;
 	string filesize;
+
+	string clipath;
 	
 	FILE* fp;
 	// -1: error, -2: CFM, 0: ok

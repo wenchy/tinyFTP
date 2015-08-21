@@ -1,7 +1,7 @@
 #include    "srvpi.h"
 
 
-SrvPI::SrvPI(string dbFilename, int connfd): packet(this), db(DBFILENAME)
+SrvPI::SrvPI(string dbFilename, int connfd): packet(this), readpacket(this), db(DBFILENAME)
 {
 	this->connfd = connfd;
 	connSockStream.init(connfd);
@@ -35,6 +35,22 @@ bool SrvPI::recvOnePacket()
 	return true;
 }
 
+
+bool SrvPI::sendOnePacketBlocked(PacketStruct * ps, size_t nbytes)
+{
+	int m;
+	if ( (m = connSockStream.writen(ps, nbytes)) < 0 || (size_t)m != nbytes )
+	{
+		this->saveUserState();
+		Socket::tcpClose(connfd);
+		Error::ret("connSockStream.writen()");
+		Error::quit_pthread("socket connection exception");
+		return false;
+	} else {
+		 return true;
+	}
+}
+
 bool SrvPI::sendOnePacket(PacketStruct * ps, size_t nbytes)
 {
 	int n, m;
@@ -59,8 +75,8 @@ bool SrvPI::sendOnePacket(PacketStruct * ps, size_t nbytes)
 
 		if (FD_ISSET(connfd, &rset)) /* socket is readable */
 		{	
-			packet.reset(NPACKET);
-			if ( (n = connSockStream.readn(packet.getPs(), PACKSIZE)) == 0)
+			readpacket.reset(NPACKET);
+			if ( (n = connSockStream.readn(readpacket.getPs(), PACKSIZE)) == 0)
 			{
 				this->saveUserState();
 				Socket::tcpClose(connfd);
@@ -71,9 +87,14 @@ bool SrvPI::sendOnePacket(PacketStruct * ps, size_t nbytes)
 				Error::ret("connSockStream.readn() error");
 				Error::quit_pthread("socket connection exception");
 			} else {
-				printf("sendOnePacket method recive one packet: %s\n", packet.getSBody().c_str());
-				packet.ntohp();
-				//packet.print();
+				if (n == PACKSIZE)
+				{
+					readpacket.ntohp();
+					printf("sendOnePacket method recive one packet: %s\n", readpacket.getSBody().c_str());
+					//readpacket.print();
+				} else {
+					printf("ERROR: sendOnePacket method recive one packet: n != PACKSIZE");
+				}
 			}
 		}
 
@@ -168,6 +189,8 @@ void SrvPI::run()
 		}
     } else {
     	Error::msg("Error: received packet is not a command.\n");
+    	packet.print();
+    	Error::quit_pthread("*********socket connection exception*********");
     }
 	
 }
@@ -683,6 +706,8 @@ void SrvPI::cmdPUT()
 		return;
 	}
 
+	this->clipath = paramVector[0];
+
 	string userinput;
 	if (paramVector.size() == 1){
 		vector<string> pathVector; 
@@ -734,7 +759,8 @@ void SrvPI::cmdPUT()
 					   			packet.sendSTAT_EOT("Flash transfer is done");
 					   			return;
 					   		} else {
-					   			srvDTP.recvFile(this->abspath.c_str());
+					   			//srvDTP.recvFile(this->abspath.c_str());
+					   			srvDTP.recvFile(this->abspath.c_str(), 0, 0);
 								return;
 					   		}
 			   			} else {
@@ -743,7 +769,8 @@ void SrvPI::cmdPUT()
 			   			}
 			   			
 			   		} else {
-			   			srvDTP.recvFile(this->abspath.c_str());
+			   			//srvDTP.recvFile(this->abspath.c_str());
+			   			srvDTP.recvFile(this->abspath.c_str(), 0, 0);
 						return;
 			   		}
 
@@ -774,7 +801,8 @@ void SrvPI::cmdPUT()
 		   			packet.sendSTAT_EOT("Flash transfer is done");
 		   			return;
 		   		} else {
-		   			srvDTP.recvFile(this->abspath.c_str());
+		   			//srvDTP.recvFile(this->abspath.c_str());
+		   			srvDTP.recvFile(this->abspath.c_str(), 0, 0);
 					return;
 		   		}
    			} else {
@@ -783,11 +811,14 @@ void SrvPI::cmdPUT()
    			}
    			
    		} else {
-   			srvDTP.recvFile(this->abspath.c_str());
+   			//srvDTP.recvFile(this->abspath.c_str());
+   			srvDTP.recvFile(this->abspath.c_str(), 0, 0);
 			return;
    		}
 
    	}
+
+   	
 
    	this->abspath.clear();
    	this->filename.clear();
@@ -1731,7 +1762,15 @@ Database * SrvPI::getPDB()
 {
 	return &(this->db);
 }
+string SrvPI::getClipath()
+{
+	return this->clipath;
+}
 
+unsigned long SrvPI::getFilesize()
+{
+	return std::stoul(this->filesize);
+}
 SrvPI::~SrvPI()
 {
 

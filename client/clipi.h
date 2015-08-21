@@ -16,6 +16,7 @@ public:
 	CliPI(const char *host);
 	bool recvOnePacket();
 	bool sendOnePacket(PacketStruct * ps, size_t nbytes);
+	bool sendOnePacketBlocked(PacketStruct * ps, size_t nbytes);
 	void run(uint16_t cmdid, std::vector<string> & cmdVector);
 	void split(std::string src, std::string token, vector<string>& vect);
 	string getEncodedParams(std::vector<string> & paramVector);
@@ -66,6 +67,7 @@ private:
 
 private:
 	Packet packet;
+	Packet readpacket;
 	SockStream connSockStream;
 	string userID; // for simple, userID is equal to session ID
 	int connfd;

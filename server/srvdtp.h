@@ -17,7 +17,7 @@ public:
 	//void init(SockStream & connSockStream, Packet & packet);
 	void insertNewFileMD5SUM(const char * pathname, Database *pdb);
 	void sendFile(const char *filename);
-	void recvFile(const char *pathname);
+	//void recvFile(const char *pathname);
 	void recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, uint16_t slicecap = SLICECAP);
 	int getFileNslice(const char *pathname, uint32_t *pnslice_o );
 	string getFileSizeString(const char *pathname);  

@@ -15,7 +15,7 @@ class CliDTP
 public:
 	CliDTP(Packet * ppacket, CliPI * pcliPI);
 	void recvOnePacket();
-	void sendFile(const char *pathname, FILE *fp, uint32_t nslice);
+	//void sendFile(const char *pathname, FILE *fp, uint32_t nslice);
 	void sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t sindex, uint16_t slicecap = SLICECAP);
 	void recvFile(const char *filename, FILE *fp);
 	//int getFileNslice(const char *pathname, uint32_t *pnslice_o );
