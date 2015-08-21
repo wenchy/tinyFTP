@@ -34,6 +34,9 @@ public:
 	void cmdPUT();
 	bool sizecheck(string & sizestr);
 	bool md5check(string & md5str, string newpath);
+	void cmdPUT(string clipath, string srvpath);
+	void cmdRPUT();
+	bool cmdLMKDIR(string path);
 	void cmdLS();
 	void cmdCD();
 	void cmdRM();

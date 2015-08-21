@@ -145,6 +145,9 @@ void CliPI::run(uint16_t cmdid, std::vector<string> & paramVector)
 		case PUT:
 			cmdPUT(paramVector);
 			break;
+		case RPUT:
+			cmdRPUT(paramVector);
+			break;
 		case LS:
 			cmdLS(paramVector);
 			break;
@@ -234,7 +237,7 @@ string CliPI::getEncodedParams(std::vector<string> & paramVector)
 
 bool CliPI::cmdUSER(std::vector<string> & paramVector)
 {
-	if(paramVector.size() != 1)
+	if(paramVector.empty() || paramVector.size() != 1)
 	{
 		Error::msg("Usage: [username]");
 		return false;
@@ -263,7 +266,7 @@ bool CliPI::cmdUSER(std::vector<string> & paramVector)
 
 bool CliPI::cmdPASS(std::vector<string> & paramVector)
 {
-	if(paramVector.size() != 2)
+	if(paramVector.empty() || paramVector.size() != 2)
 	{
 		Error::msg("Usage: [password]");
 		for (vector<string>::iterator iter=paramVector.begin(); iter!=paramVector.end(); ++iter)
@@ -369,7 +372,7 @@ void CliPI::cmdUSERDEL(std::vector<string> & paramVector)
 
 void CliPI::cmdGET(std::vector<string> & paramVector)
 {
-	if(paramVector.size() > 2)
+	if(paramVector.empty() || paramVector.size() > 2)
 	{
 		std::cout << "Usage: " << helpMap["GET"] << std::endl;
 		return;
@@ -544,7 +547,7 @@ void CliPI::removeDir(const char *path_raw, bool removeSelf)
 
 void CliPI::cmdRGET(std::vector<string> & paramVector)
 {
-	if(paramVector.size() > 2)
+	if(paramVector.empty() || paramVector.size() > 2)
 	{
 		std::cout << "Usage: " << helpMap["RGET"] << std::endl;
 		return;
@@ -679,164 +682,9 @@ void CliPI::cmdRGET(std::vector<string> & paramVector)
 	}
 }
 
-// void CliPI::cmdPUT(std::vector<string> & paramVector)
-// {
-// 	if(paramVector.size() > 2)
-// 	{
-// 		std::cout << "Usage: " << helpMap["PUT"] << std::endl;
-// 		return;
-// 	}
-
-// 	char pathname[MAXLINE];
-// 	char buf[MAXLINE];
-// 	uint32_t nslice = 0;
-// 	uint32_t sindex = 0;
-
-// 	strcpy(pathname,paramVector[0].c_str()); 
-// 	struct stat statBuf;
-//     int n = stat(paramVector[0].c_str(), &statBuf);
-//     if(!n) // stat call success
-// 	{	
-// 		if (S_ISREG(statBuf.st_mode)){
-// 			;
-// 	    } else if (S_ISDIR(statBuf.st_mode)){
-// 			cout << "put: cannot upload [" << paramVector[0] << "]: Is a directory" << endl;
-// 			return;
-// 	    } else {
-// 	    	cout << "put: [" << paramVector[0] << "] not a regular file or directory" << endl;
-// 			return;
-// 	    }
-		
-// 	} else { // stat error
-// 		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
-// 		return;
-// 	}
-
-	
-// 	FILE *fp;
-// 	if ( (fp = fopen(pathname, "rb")) == NULL)
-// 	{
-// 		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
-// 		return;
-// 	} else if ( (n = getFileNslice(pathname, &nslice)) < 0)  {
-// 		if ( n == -2) {
-// 			Error::msg("Too large file size.", buf);
-// 		} else {
-// 			Error::msg("File stat error.");
-// 		}
-// 		return;
-// 	} else {
-// 		//printf("Prepare for flash transmission\n");
-// 		packet.sendCMD(PUT, getEncodedParams(paramVector));
-// 	}
-
-// 	while(recvOnePacket())
-// 	{
-// 		switch(packet.getTagid())
-// 		{
-// 			case TAG_CMD:
-// 			{
-// 				switch(packet.getCmdid())
-// 				{
-// 					case GET:
-// 					{
-// 						break;
-// 					}
-// 					case LMKDIR:
-// 					{
-// 						break;
-// 					}
-// 					default:
-// 					{
-// 						Error::msg("unknown cmdid: %d", packet.getCmdid());
-// 						break;
-// 					}
-// 				}
-// 				break;
-// 			}
-// 			case TAG_STAT:
-// 			{
-// 				switch(packet.getStatid())
-// 				{
-// 					case STAT_OK:
-// 					{
-// 						CliDTP cliDTP(&(this->packet), this);
-// 						cliDTP.sendFile(pathname, fp, nslice, sindex);
-// 						packet.sendSTAT_EOT();
-// 						return;
-// 					}
-// 					case STAT_BPR:
-// 					{
-// 						//cout << packet.getSBody() <<endl;
-// 						vector<string> paramVector; 
-// 						split(packet.getSBody(), DELIMITER, paramVector);
-// 						sindex = std::stoul(paramVector[1]);
-// 						break;
-// 					}
-// 					case STAT_CFM:
-// 					{
-// 						if(confirmYN(packet.getSBody().c_str()))
-// 						{
-// 							packet.sendSTAT_CFM("y");
-// 						} else {
-// 							packet.sendSTAT_CFM("n");
-// 							return;
-// 						}
-// 						break;
-// 					}
-// 					case STAT_ERR:
-// 					{
-// 						cerr << packet.getSBody() <<endl;
-// 						return;
-// 					}
-// 					case STAT_EOF:
-// 					{
-// 						cout << packet.getSBody() <<endl;
-// 						break;
-// 					}
-// 					case STAT_EOT:
-// 					{
-// 						cout << packet.getSBody() <<endl;
-// 						return;
-// 					}
-// 					default:
-// 					{
-// 						Error::msg("unknown statid: %d", packet.getStatid());
-// 						break;
-// 					}
-// 				}
-// 				break;
-// 			}
-// 			case TAG_DATA:
-// 			{
-// 				switch(packet.getDataid())
-// 				{
-// 					case DATA_FILE:
-// 					{
-// 						cout << "DATA_FILE" << packet.getSBody() <<endl;
-// 						break;
-// 					}
-// 					default:
-// 					{
-// 						Error::msg("unknown statid: %d", packet.getStatid());
-// 						break;
-// 					}
-// 				}
-// 				break;
-// 			}
-// 			default:
-// 			{
-// 				Error::msg("unknown tagid: %d", packet.getTagid());
-// 				break;
-// 			}
-// 		}
-// 	}
-	
-// }
-
 void CliPI::cmdPUT(std::vector<string> & paramVector)
 {
-	if(paramVector.size() > 2)
+	if(paramVector.empty() || paramVector.size() > 2)
 	{
 		std::cout << "Usage: " << helpMap["PUT"] << std::endl;
 		return;
@@ -1007,6 +855,157 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 	
 }
 
+void CliPI::cmdRPUT(std::vector<string> & paramVector)
+{
+	printf("RPUT request\n");
+
+	if(paramVector.empty() || paramVector.size() > 2)
+	{
+		std::cout << "Usage: " << helpMap["RPUT"] << std::endl;
+		return;
+	}
+
+	string clipath = paramVector[0];
+	string srvpath;
+   	vector<string> pathVector; 
+   	if (paramVector.size() == 1)
+   	{
+   		split(paramVector[0], "/", pathVector);
+   		srvpath = pathVector.back();
+   	} else {
+   		srvpath = paramVector[1];
+   	}
+	
+	packet.sendCMD(RPUT, getEncodedParams(paramVector));
+	while(recvOnePacket())
+	{
+		if (packet.getTagid() == TAG_STAT)
+		{
+			if (packet.getStatid() == STAT_OK)
+			{
+				cout << packet.getSBody() <<endl;
+				RPUT_iterate(srvpath, clipath);
+				break;
+			} else if (packet.getStatid() == STAT_CFM)
+			{
+				if(confirmYN(packet.getSBody().c_str()))
+				{
+					packet.sendSTAT_CFM("y");
+					continue;
+				} else {
+					packet.sendSTAT_CFM("n");
+					return;
+				}
+			} else if (packet.getStatid() == STAT_ERR)
+			{
+				cout << packet.getSBody() <<endl;
+				return;
+			} else {
+				Error::msg("unknown statid: %d", packet.getStatid());
+				return;
+			}
+			 
+		} else {
+			Error::msg("unknown tagid: %d", packet.getTagid());
+			return;
+		}
+	}
+	printf("\033[32mOK to transfer\033[0m\n");
+	packet.sendSTAT_EOT();	
+   
+}
+void CliPI::RPUT_iterate(string srvrootpath, string clirootpath)
+{
+	std::queue< pair<string, string > > dirQueue;
+	dirQueue.push(pair<string , string >(srvrootpath, clirootpath));
+
+	while(!dirQueue.empty())
+	 {
+		pair<string , string > dirPair = dirQueue.front();
+		string srvpath = dirPair.first;
+		string clipath = dirPair.second;
+
+		// first create dir on server host
+		// packet.sendCMD_MKDIR(srvpath);
+		// recvOnePacket();
+		// if (packet.getTagid() == TAG_STAT)
+		// {
+		// 	if (packet.getStatid() == STAT_OK)
+		// 	{
+		// 		dirQueue.pop(); // server create dir successfully
+		// 	} else if (packet.getStatid() == STAT_ERR)
+		// 	{
+		// 		cout << packet.getSBody() <<endl;
+		// 		return;
+		// 	} else {
+		// 		Error::msg("unknown statid: %d", packet.getStatid());
+		// 		return;
+		// 	}
+			 
+		// } else {
+		// 	Error::msg("unknown tagid: %d", packet.getTagid());
+		// 	return;
+		// }
+
+		std::vector<string> paramVector = {srvpath};
+		if (cmdMKDIR(paramVector))
+		{
+			dirQueue.pop(); // server create dir successfully
+		} else {
+			return;
+		}
+
+
+		// then iterate this client dir
+		DIR * dir= opendir(clipath.c_str());
+		char buf[MAXLINE];
+		if(!dir)
+		{
+			// send STAT_ERR Response
+			// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
+			packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+			return;
+		} else {
+			// send STAT_OK
+			packet.sendSTAT_OK();
+		}
+
+		struct dirent* e;
+		if (srvpath.back() != '/')
+		{
+			srvpath += "/";
+		}
+		if (clipath.back() != '/')
+		{
+			clipath += "/";
+		}
+
+		while( (e = readdir(dir)) )
+		{
+			if(e->d_type == 4 && strcmp(e->d_name, ".") && strcmp(e->d_name, ".."))
+			{
+				dirQueue.push(pair<string , string >(srvpath + e->d_name, clipath + e->d_name));
+			}
+			else if(e->d_type == 8)
+			{
+				std::vector<string> paramVector = {clipath + e->d_name, srvpath + e->d_name};
+				cmdPUT(paramVector);
+				// packet.sendCMD(PUT, getEncodedParams(paramVector));
+				// recvOnePacket();
+				// if (packet.getTagid() == TAG_CMD && packet.getCmdid() == PUT)
+				// {
+				// 	cmdPUT(paramVector);
+				// } else {
+				// 	Error::msg("Error: cmdGET unknown tagid with statid");
+				// 	packet.print();
+				// 	return;
+				// }
+			}
+		}
+		closedir(dir);
+		
+	}
+}
 void CliPI::cmdLS(std::vector<string> & paramVector)
 {
 	if(paramVector.size() > 1)
@@ -1063,7 +1062,7 @@ void CliPI::cmdLLS(std::vector<string> & paramVector)
 
 void CliPI::cmdCD(std::vector<string> & paramVector)
 {
-	if(paramVector.size() != 1)
+	if(paramVector.empty() || paramVector.size() != 1)
 	{
 		std::cout << "Usage: " << helpMap["CD"] << std::endl;
 		return;
@@ -1094,7 +1093,7 @@ void CliPI::cmdCD(std::vector<string> & paramVector)
 
 void CliPI::cmdLCD(std::vector<string> & paramVector)
 {
-	if(paramVector.size() != 1)
+	if(paramVector.empty() || paramVector.size() != 1)
 	{
 		std::cout << "Usage: " << helpMap["LCD"] << std::endl;
 		return;
@@ -1112,7 +1111,7 @@ void CliPI::cmdLCD(std::vector<string> & paramVector)
 
 void CliPI::cmdRM(std::vector<string> & paramVector)
 {
-	if(paramVector.size() != 1)
+	if(paramVector.empty() || paramVector.size() != 1)
 	{
 		std::cout << "Usage: " << helpMap["RM"] << std::endl;
 		return;
@@ -1156,7 +1155,7 @@ void CliPI::cmdLRM(std::vector<string> & paramVector)
 
 void CliPI::cmdPWD(std::vector<string> & paramVector)
 {
-	if(paramVector.size() > 1)
+	if(paramVector.empty() || paramVector.size() > 1)
 	{
 		std::cout << "Usage: " << helpMap["PWD"] << std::endl;
 		return;
@@ -1201,12 +1200,12 @@ void CliPI::cmdLPWD(std::vector<string> & paramVector)
 	}
 }
 
-void CliPI::cmdMKDIR(std::vector<string> & paramVector)
+bool CliPI::cmdMKDIR(std::vector<string> & paramVector)
 {
-	if(paramVector.size() != 1)
+	if(paramVector.empty() || paramVector.size() != 1)
 	{
 		std::cout << "Usage: " << helpMap["MKDIR"] << std::endl;
-		return;
+		return false;
 	}
 
 	packet.sendCMD(MKDIR, getEncodedParams(paramVector));
@@ -1216,18 +1215,18 @@ void CliPI::cmdMKDIR(std::vector<string> & paramVector)
 	if (packet.getTagid() == TAG_STAT) {
 		if (packet.getStatid() == STAT_OK) {
 			cout << packet.getSBody() <<endl;
-			return;
+			return true;
 		} else if (packet.getStatid() == STAT_ERR){
 			cerr << packet.getSBody() <<endl;
-			return;
+			return false;
 		} else {
 			Error::msg("unknown statid %d", packet.getStatid());
-			return;
+			return false;
 		}
 		
 	} else {
 		Error::msg("unknown tagid %d", packet.getTagid());
-		return;
+		return false;
 	}
 }
 
@@ -1262,7 +1261,7 @@ void CliPI::cmdLMKDIR(std::vector<string> & paramVector)
 
 void CliPI::cmdRMDIR(std::vector<string> & paramVector)
 {
-	if(paramVector.size() != 1)
+	if(paramVector.empty() || paramVector.size() != 1)
 	{
 		std::cout << "Usage: " << helpMap["RMDIR"] << std::endl;
 		return;
@@ -1305,7 +1304,7 @@ void CliPI::cmdLSHELL(std::vector<string> & paramVector)
 
 void CliPI::cmdSHELL(std::vector<string> & paramVector)
 {
-	if(paramVector.size() == 0)
+	if(paramVector.empty() || paramVector.size() == 0)
 	{
 		std::cout << "Usage: " << helpMap["SHELL"] << std::endl;
 		return;

@@ -138,6 +138,9 @@ void SrvPI::run()
 			case PUT:
 				cmdPUT();
 				break;
+			case RPUT:
+				cmdRPUT();
+				break;
 			case LS:
 				cmdLS();
 				break;
@@ -906,6 +909,181 @@ bool SrvPI::md5check(string & md5str, string newpath)
        return false;
     }   
 }
+
+
+void SrvPI::cmdRPUT()
+{
+	printf("RPUT request\n");
+	vector<string> paramVector; 
+	split(packet.getSBody(), DELIMITER, paramVector);
+
+	string srvpath;
+	if (paramVector.size() == 1)
+	{
+		vector<string> pathVector; 
+		split(paramVector[0], "/", pathVector);
+		srvpath = pathVector.back();
+	} else if (paramVector.size() == 2)
+	{
+		srvpath = paramVector[1];
+	} else {
+		packet.sendSTAT_ERR("RPUT params error");
+		return;
+	}
+
+	string msg_o;
+	int m;
+	char buf[MAXLINE];
+	if ( (m = combineAndValidatePath(RPUT, srvpath, msg_o, this->abspath)) < 0)
+   	{
+   		if (m == -2)
+   		{
+	   		packet.sendSTAT_CFM(msg_o.c_str());
+	   		recvOnePacket();
+	   		if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CFM) {
+	   			packet.print();
+				if (packet.getSBody() == "y")
+				{
+					// yes to overwite
+					//removeDir(paramVector[0].c_str(), false);
+			   		string shellCMD = "rm -rf " + this->abspath;
+					if (system(shellCMD.c_str()) == -1) {
+						packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+						return;
+					} else {
+						// OK
+						packet.sendSTAT_OK("Dir " + this->abspath + "emptied and removed");
+					}
+				} else {
+					return;
+				}
+			} else {
+				Error::msg("STAT_CFM: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
+				return;
+			}
+   		} else {
+   			packet.sendSTAT_ERR(msg_o.c_str());
+   			return;
+   		}
+   		
+   	} else {
+   		packet.sendSTAT_OK();
+   	}
+
+	while(recvOnePacket())
+	{
+		switch(packet.getTagid())
+		{
+			case TAG_CMD:
+			{
+				switch(packet.getCmdid())
+				{
+					case PUT:
+					{
+						// vector<string> paramVector; 
+						// split(packet.getSBody(), DELIMITER, paramVector);
+						// cmdPUT(paramVector);
+						cmdPUT();
+						break;
+					}
+					case MKDIR:
+					{
+						// if (cmdLMKDIR(packet.getSBody()))
+						// {
+						// 	packet.sendSTAT_OK();
+						// } else {
+						// 	packet.sendSTAT_ERR();
+						// 	return;
+						// }
+						cmdMKDIR();
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown cmdid: %d", packet.getCmdid());
+						break;
+					}
+				}
+				break;
+			}
+			case TAG_STAT:
+			{
+				switch(packet.getStatid())
+				{
+					case STAT_OK:
+					{
+						cout << packet.getSBody() <<endl;
+						break;
+					}
+					case STAT_ERR:
+					{
+						cerr << packet.getSBody() <<endl;
+						return;
+					}
+					// case STAT_EOF:
+					// {
+					// 	cout << packet.getSBody() <<endl;
+					// 	break;
+					// }
+					case STAT_EOT:
+					{
+						cout << packet.getSBody() <<endl;
+						return;
+					}
+					default:
+					{
+						Error::msg("unknown statid: %d", packet.getStatid());
+						break;
+					}
+				}
+				break;
+			}
+			case TAG_DATA:
+			{
+				switch(packet.getDataid())
+				{
+					// case DATA_FILE:
+					// {
+					// 	cout << "DATA_FILE" << packet.getSBody() <<endl;
+					// 	break;
+					// }
+					case DATA_NAME:
+					{
+						cout << "DATA_NAME" << packet.getSBody() <<endl;
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown statid: %d", packet.getStatid());
+						break;
+					}
+				}
+				break;
+			}
+			default:
+			{
+				Error::msg("unknown tagid: %d", packet.getTagid());
+				break;
+			}
+		}
+	}
+}
+
+// bool SrvPI::cmdLMKDIR(string path)
+// {
+// 	//printf("LMKDIR(string path) request\n");
+
+// 	char buf[MAXLINE]; 
+// 	if(mkdir(path.c_str(), S_IRWXU | S_IRWXG | S_IROTH | S_IXOTH) == -1){
+// 		printf("\033[31mmkdir [%s] failed: %s\033[0m\n", path.c_str(), strerror_r(errno, buf, MAXLINE));
+// 		return false;
+// 	}else {
+// 		printf("\033[35mDir [%s] created: \033[0m\n", path.c_str());
+// 		return true;
+// 	}
+
+// }
+
 void SrvPI::cmdLS()
 {
 	printf("LS request\n");
@@ -1442,6 +1620,16 @@ int SrvPI::cmdPathProcess(uint16_t cmdid, string newAbsPath, string & msg_o)
 				return 0;
 			}
 			break;
+		}
+		case RPUT:
+		{
+			if ((access(newAbsPath.c_str(), F_OK)) == 0) {
+				msg_o = "File '~" + rpath + "' already exists, overwrite ? (y/n) ";
+				return -2;
+			} else {
+				return 0;
+			}
+			break;	
 		}
 		case LS:
 		{

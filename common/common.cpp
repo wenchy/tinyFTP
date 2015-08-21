@@ -388,7 +388,8 @@ string visualmd5sum(const char * pathname)
 			oldProgress = newProgress;
 		}	
 	}
-	printf("\n");
+	if (nslice > (1024 * 1024))
+		printf("\n");
 
     MD5_Final(out, &ctx);
 

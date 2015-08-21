@@ -29,6 +29,8 @@ public:
 	void cmdGET(string srvpath, string clipath);
 	void cmdRGET(std::vector<string> & cmdVector);
 	void cmdPUT(std::vector<string> & cmdVector);
+	void cmdRPUT(std::vector<string> & cmdVector);
+	void RPUT_iterate(string srvrootpath, string clirootpath);
 	//void flashPUT(vector<string> & paramVector);
 	void cmdLS(std::vector<string> & cmdVector);
 	void cmdLLS(std::vector<string> & cmdVector);
@@ -38,7 +40,7 @@ public:
 	void cmdLRM(std::vector<string> & cmdVector);
 	void cmdPWD(std::vector<string> & cmdVector);
 	void cmdLPWD(std::vector<string> & cmdVector);
-	void cmdMKDIR(std::vector<string> & cmdVector);
+	bool cmdMKDIR(std::vector<string> & cmdVector);
 	void cmdLMKDIR(std::vector<string> & cmdVector);
 	bool cmdLMKDIR(string path);
 	void cmdRMDIR(std::vector<string> & cmdVector);
