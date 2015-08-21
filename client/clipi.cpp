@@ -904,11 +904,31 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 
 void CliPI::cmdRPUT(std::vector<string> & paramVector)
 {
-	printf("RPUT request\n");
+	//printf("RPUT request\n");
 
 	if(paramVector.empty() || paramVector.size() > 2)
 	{
 		std::cout << "Usage: " << helpMap["RPUT"] << std::endl;
+		return;
+	}
+
+	char buf[MAXLINE];
+	struct stat statBuf;
+    int n = stat(paramVector[0].c_str(), &statBuf);
+    if(!n) // stat call success
+	{	
+		if (S_ISREG(statBuf.st_mode)){
+			cout << "rput: [" << paramVector[0] << "] not a directory" << endl;
+			return;
+	    } else if (S_ISDIR(statBuf.st_mode)){
+			;
+	    } else {
+	    	cout << "rput: [" << paramVector[0] << "] not a regular file or directory" << endl;
+			return;
+	    }
+		
+	} else { // stat error
+		Error::msg("stat: %s", strerror_r(errno, buf, MAXLINE));
 		return;
 	}
 

@@ -52,6 +52,7 @@ public:
 	FILE* & getFp();
 	Database * getPDB();
 	string getClipath();
+	string getFilename();
 	unsigned long getFilesize();
 	~SrvPI();
 	

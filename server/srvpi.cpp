@@ -738,7 +738,7 @@ void SrvPI::cmdPUT()
 	   		packet.sendSTAT_CFM(msg_o.c_str());
 	   		recvOnePacket();
 	   		if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CFM) {
-	   			packet.print();
+	   			//packet.print();
 				if (packet.getSBody() == "y")
 				{
 					if( remove(this->abspath.c_str()) !=0 )
@@ -749,7 +749,7 @@ void SrvPI::cmdPUT()
 
 					if (sizecheck(this->filesize))
 			   		{
-			   			packet.sendSTAT_MD5("Filesize match, preparing for flash transmission ...");
+			   			packet.sendSTAT_MD5(this->clipath + " \033[33mpreparing for flash transmission...\033[0m");
 			   			recvOnePacket();
 			   			if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_MD5) 
 			   			{
@@ -791,7 +791,7 @@ void SrvPI::cmdPUT()
    		std::cout << "**************cmdPUT path[" << this->abspath << "]" << '\n';
    		if (sizecheck(this->filesize))
    		{
-   			packet.sendSTAT_MD5("Filesize match, preparing for flash transmission ...");
+   			packet.sendSTAT_MD5(this->clipath + " \033[33mpreparing for flash transmission...\033[0m");
    			recvOnePacket();
    			if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_MD5) 
    			{
@@ -1201,9 +1201,10 @@ void SrvPI::cmdRM()
    		packet.sendSTAT_ERR(msg_o.c_str());
 		return;
    	} else {
-   		char buf[MAXLINE]; 
-   		string path = this->abspath;//userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
-   		struct stat statBuf; 
+   		char buf[MAXLINE];
+   		string path = this->abspath;
+   		
+   		/*struct stat statBuf; 
 	    if (stat(path.c_str(), &statBuf) < 0)
 	    {
 	    	packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
@@ -1216,13 +1217,20 @@ void SrvPI::cmdRM()
 
 				if (db.update("file", whereParamMap, updateParamMap))
 		        {
-					printf("Success: update VALID=0\n");
+		        	vector< map<string ,string> > resultMapVector = db.getResult();
+					if (!resultMapVector.empty())
+					{
+						printf("Success: update VALID=0\n");
+					} else {
+						printf("update: not find record\n");
+					}
+					
 		        } else {
 		           Error::msg("\033[31mDatabase update error\033[0m");
 		        }   
 	    	}
 	    	
-	    }
+	    }*/
 	
    		if( remove(path.c_str()) !=0 )
 		{
@@ -1765,6 +1773,11 @@ Database * SrvPI::getPDB()
 string SrvPI::getClipath()
 {
 	return this->clipath;
+}
+
+string SrvPI::getFilename()
+{
+	return this->filename;
 }
 
 unsigned long SrvPI::getFilesize()

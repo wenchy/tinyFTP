@@ -471,11 +471,9 @@ string visualmd5sumNslice(const char * pathname, uint32_t nslice)
 	MD5_Init(&ctx);
 	while( (n = fread(buf, sizeof(char), SLICECAP, fp)) >0 )
 	{
+		++sindex;
 		MD5_Update(&ctx, buf, n);
-		if ((++sindex) == nslice)
-		{
-			break;
-		}
+		
 		if (nslice > (1024 * 512))
 		{
 			newProgress = (sindex*1.0)/nslice*100;
@@ -486,6 +484,10 @@ string visualmd5sumNslice(const char * pathname, uint32_t nslice)
 			oldProgress = newProgress;
 		}
 		
+		if ( sindex == nslice)
+		{
+			break;
+		}
 	}
 	if (nslice > (1024 * 512))
 		printf("\n");
@@ -725,6 +727,17 @@ string encryptPassword(string password)
 	saltedPass = md5sum(saltedPass.c_str(), saltedPass.size());
 	//cout << "***********saltedPass: " << saltedPass << endl;
     return saltedPass;     
+}
+
+string getCurrentTime()
+{
+	char buf[MAXLINE];
+	time_t ticks;
+	struct tm *p;
+	time(&ticks);
+	p=localtime(&ticks); 
+	snprintf(buf, MAXLINE, "%04d%02d%02d%02d%02d%02d", (1900 + p->tm_year), (1+p->tm_mon), p->tm_mday, p->tm_hour, p->tm_min, p->tm_sec);
+	return string(buf);
 }
 
 

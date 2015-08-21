@@ -285,11 +285,11 @@ bool Database::execute(const char *sql, Database * pDatabase)
    /* Execute SQL statement */
    rc = sqlite3_exec(pDb, sql, callback, pDatabase, &zErrMsg);
    if ( rc != SQLITE_OK ){
-      fprintf(stderr, "execute: error, %s\n", zErrMsg);
+      fprintf(stderr, "\033[31mDatabase execute error: %s\033[0m\n", zErrMsg);
       sqlite3_free(zErrMsg);
       return false;
    } else {
-      //fprintf(stdout, "execute successfully\n");
+      fprintf(stdout, "\033[32mDatabase execute successfully\033[0m\n");
       printResult();
       return true;
    }

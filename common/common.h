@@ -273,4 +273,6 @@ string md5sum(const char * str, int len);
 unsigned long long getFilesize(const char * pathname);
 string getFilesize(string pathname);
 string encryptPassword(string password);
+string getCurrentTime();
+
 #endif	/* __TINYFTP_COMMON_H__ */
