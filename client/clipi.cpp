@@ -776,10 +776,31 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 					}
 					case STAT_BPR:
 					{
-						cout << packet.getSBody() <<endl;
+						cout << "File size match: " <<packet.getSBody() <<endl;
 						vector<string> paramVector; 
 						split(packet.getSBody(), DELIMITER, paramVector);
-						sindex = std::stoul(paramVector[1]);
+						uint32_t tmp_sindex = std::stoul(paramVector[1]);
+
+						string md5str = md5sumNsclice(pathname, tmp_sindex);
+						if (md5str.empty())
+						{
+							printf("md5sum error\n");
+							return;
+						}
+						packet.sendSTAT_MD5(md5str);
+						recvOnePacket();
+						if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_OK) 
+						{
+							sindex = tmp_sindex;
+							//cout << packet.getSBody() <<endl;
+							printf("\033[32mBreakpoint resumed: [%s %u/%u]\033[0m\n", pathname, sindex, nslice);
+						} else if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_FAIL) {
+							cout << packet.getSBody() <<endl;
+						} else {
+							printf("packet error\n");
+							packet.print();
+							return;
+						}
 						break;
 					}
 					case STAT_MD5:

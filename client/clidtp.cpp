@@ -48,10 +48,6 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t 
 		Error::ret("lseek64");
 		return;
 	}
-	if (sindex != 0)
-	{
-		printf("\033[32mBreakpoint resume: [%s %u/%u]\033[0m\n", pathname, sindex, nslice);
-	}
 
 	int n;
 	char body[PBODYCAP];

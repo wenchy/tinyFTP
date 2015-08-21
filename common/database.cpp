@@ -245,6 +245,7 @@ Database & Database::create()
       "ABSPATH       TEXT                                NOT NULL," \
       "FILENAME      TEXT                                NOT NULL," \
       "SIZE          INTEGER                             NOT NULL," \
+      "MD5SUM        TEXT                                NOT NULL," \
       "NSLICE        INTEGER                             NOT NULL," \
       "SINDEX        INTEGER                             NOT NULL," \
       "SLICECAP      INTEGER                             NOT NULL," \

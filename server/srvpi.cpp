@@ -620,7 +620,7 @@ void SrvPI::cmdRGET()
 
 bool SrvPI::checkBreakpoint()
 {
-	std::map<string, string> selectParamMap = { {"USERID", this->userID}, {"ABSPATH", this->abspath}, {"VALID", "1"} };
+	std::map<string, string> selectParamMap = { {"USERID", this->userID}, {"SIZE", this->filesize}, {"ABSPATH", this->abspath}, {"VALID", "1"} };
 	std::map<string, string> updateParamMap = { {"VALID", "0"} };
    	if (db.select("ifile", selectParamMap))
    	{
@@ -629,94 +629,37 @@ bool SrvPI::checkBreakpoint()
    		{
 			string body = resultMapVector[0]["NSLICE"] + DELIMITER + resultMapVector[0]["SINDEX"];
 			packet.sendSTAT_BPR(body);
-			db.update("ifile", resultMapVector[0]["ID"], updateParamMap);
-			SrvDTP srvDTP(&(this->packet), this);
-			srvDTP.recvFile(this->abspath.c_str(), std::stoul(resultMapVector[0]["NSLICE"]), std::stoul(resultMapVector[0]["SINDEX"]));
-			return true;
+			recvOnePacket();
+   			if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_MD5) 
+   			{
+   				string md5str = packet.getSBody();
+   				if (md5str == resultMapVector[0]["MD5SUM"])
+		   		{
+		   			packet.sendSTAT_OK("Bingo! Breakpoint resumed");
+		   			db.update("ifile", resultMapVector[0]["ID"], updateParamMap);
+					SrvDTP srvDTP(&(this->packet), this);
+					srvDTP.recvFile(this->abspath.c_str(), std::stoul(resultMapVector[0]["NSLICE"]), std::stoul(resultMapVector[0]["SINDEX"]));
+					return true;
+		   		} else {
+		   			packet.sendSTAT_FAIL("MD5SUM not match");
+		   			Error::msg("MD5SUM not match:\ncli: %s\nsrv: %s\n", md5str.c_str(), resultMapVector[0]["MD5SUM"].c_str());
+					return false;
+		   		}
+   			} else {
+   				Error::msg("STAT_MD5: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
+				return false;
+   			}
+
+			
    		} else {
-			// packet.sendSTAT_ERR("no such username");r
 			return false;
    		}
 
    	}else {
-		//packet.sendSTAT_ERR("Database select error");
+		Error::msg("checkBreakpoint: Database select error\n");
 		return false;
    	}
 }
-
-// void SrvPI::cmdPUT()
-// {
-// 	printf("PUT request\n");
-	
-// 	vector<string> paramVector; 
-// 	split(packet.getSBody(), DELIMITER, paramVector);
-// 	for (auto it = paramVector.cbegin(); it != paramVector.cend(); ++it)
-//            std::cout << it->size() << "paramVector: " << *it << std::endl;
-
-// 	if (paramVector.size() == 4)
-// 	{
-// 		flashPUT(paramVector);
-// 		return;
-// 	}
-
-// 	string srvpath;
-// 	string userinput;
-// 	if (paramVector.size() == 1){
-// 		vector<string> pathVector; 
-// 		split(paramVector[0], "/", pathVector);
-// 		userinput = pathVector.back();
-// 		this->filename = pathVector.back();
-// 		srvpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + pathVector.back();
-// 	} else if (paramVector.size() == 2){
-// 		userinput = paramVector[1];
-// 		srvpath = userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[1];
-
-// 		vector<string> pathVector; 
-// 		split(paramVector[1], "/", pathVector);
-// 		this->filename = pathVector.back();
-// 	}
-
-// 	string msg_o;
-// 	int m;
-// 	if ( (m = combineAndValidatePath(PUT, userinput, msg_o, this->abspath)) < 0)
-//    	{
-//    		if (m == -2)
-//    		{
-//    			if (checkBreakpoint())
-// 	   		{
-// 	   			return;  // get breakpoint
-// 	   		}
-
-// 	   		packet.sendSTAT_CFM(msg_o.c_str());
-// 	   		recvOnePacket();
-// 	   		if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CFM) {
-// 	   			packet.print();
-// 				if (packet.getSBody() == "y")
-// 				{
-// 					std::cout << "packet.getSBody() == y" << '\n';
-// 					SrvDTP srvDTP(&(this->packet), this);
-// 					srvDTP.recvFile(srvpath.c_str());
-// 					return;
-// 				} else {
-// 					return;
-// 				}
-// 			} else {
-// 				Error::msg("STAT_CFM: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
-// 				return;
-// 			}
-//    		} else
-//    		{
-//    			packet.sendSTAT_ERR(msg_o.c_str());
-//    		}
-   		
-//    	} else {
-//    		std::cout << "**************cmdPUT path[" << srvpath << "]" << '\n';
-// 		SrvDTP srvDTP(&(this->packet), this);
-// 		srvDTP.recvFile(srvpath.c_str());
-//    	}
-//    	this->filename.clear();
-//    	this->abspath.clear();
-// }
 
 void SrvPI::cmdPUT()
 {
@@ -727,14 +670,13 @@ void SrvPI::cmdPUT()
 
 	printf("PUT request\n");
 
-	string sizestr;
 	if (paramVector.size() == 2)
 	{
-		 sizestr = paramVector[1];
+		 this->filesize = paramVector[1];
 		 paramVector.erase(paramVector.begin()+1);
 	} else if (paramVector.size() == 3)
 	{
-		sizestr = paramVector[2];
+		this->filesize = paramVector[2];
 		paramVector.erase(paramVector.begin()+2);
 	} else {
 		packet.sendSTAT_ERR("PUT params error");
@@ -780,7 +722,7 @@ void SrvPI::cmdPUT()
 						return;
 					} 
 
-					if (sizecheck(sizestr))
+					if (sizecheck(this->filesize))
 			   		{
 			   			packet.sendSTAT_MD5("Filesize match, preparing for flash transmission ...");
 			   			recvOnePacket();
@@ -820,7 +762,7 @@ void SrvPI::cmdPUT()
    		
    	} else {
    		std::cout << "**************cmdPUT path[" << this->abspath << "]" << '\n';
-   		if (sizecheck(sizestr))
+   		if (sizecheck(this->filesize))
    		{
    			packet.sendSTAT_MD5("Filesize match, preparing for flash transmission ...");
    			recvOnePacket();
@@ -846,8 +788,11 @@ void SrvPI::cmdPUT()
    		}
 
    	}
-   	this->filename.clear();
+
    	this->abspath.clear();
+   	this->filename.clear();
+   	this->filesize.clear();
+   	
    	
 }
 
@@ -1793,6 +1738,8 @@ SrvPI::~SrvPI()
 }
 void SrvPI::saveUserState()
 {
+	std::cout<< "\n\033[32mStart to save user state:\033[0m" << std::endl;
+
 	if (fp != NULL)
 	{
 		cout << "close fp in saveUserState\n" << endl;
@@ -1805,13 +1752,15 @@ void SrvPI::saveUserState()
 	packet.pprint();
 	if (packet.getPreTagid() == TAG_DATA && packet.getPreDataid() == DATA_FILE)
 	{
-		std::map<string, string> insertParamMap = { 	{"USERID", userID},
-														{"ABSPATH", abspath},
-		 												{"FILENAME", filename},
-		 												{"SIZE", "0"},
+		std::map<string, string> insertParamMap = { 	{"USERID", this->userID},
+														{"ABSPATH", this->abspath},
+		 												{"FILENAME", this->filename},
+		 												{"SIZE", this->filesize},
+		 												{"MD5SUM", md5sumNsclice(this->abspath.c_str(), packet.getPreSindex())},
 		 												{"NSLICE", packet.getPreSNslice()},
 		 												{"SINDEX", packet.getPreSSindex()},
-                                                		{"SLICECAP", SSLICECAP} };
+                                                		{"SLICECAP", SSLICECAP} 
+                                                											};
         db.insert("ifile", insertParamMap);
 	}
 	std::cout<< "\n\033[32msave user state ok\033[0m" << std::endl;

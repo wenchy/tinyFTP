@@ -51,8 +51,9 @@ public:
 	void sendDATA_TEXT(uint16_t bsize, const char *body);
 	void sendDATA_TEXT(string msg);
 
+	void sendSTAT(uint16_t statid, string body);
+	
 	void sendSTAT_OK();
-	//void sendSTAT_OK(char *msg);
 	void sendSTAT_OK(const char *msg);
 	void sendSTAT_OK(string msg);
 
@@ -60,12 +61,13 @@ public:
 
 	void sendSTAT_MD5(string body);
 
-	//void sendSTAT_CFM(char *msg);
+	void sendSTAT_FAIL(string body);
+
+
 	void sendSTAT_CFM(const char *msg);
 	void sendSTAT_CFM(string msg);
 
 	void sendSTAT_ERR();
-	//void sendSTAT_ERR(char *msg);
 	void sendSTAT_ERR(const char *msg);
 	void sendSTAT_ERR(string msg);
 

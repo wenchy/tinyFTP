@@ -208,6 +208,7 @@ typedef enum statID
 	STAT_BPR, 	// breakpoint resume
 	STAT_CFM, 	// confirm
 	STAT_MD5, 	// confirm
+	STAT_FAIL, 	// error
 	STAT_ERR, 	// error
 	STAT_TERM,	// terminate
 	//STAT_DONE,	// trasaction done
@@ -264,6 +265,7 @@ int getFileNslice(const char *pathname, uint32_t *pnslice_o);
 string getFileSizeString(const char *pathname);
 string visualmd5sum(const char * pathname);
 string md5sum(const char * pathname);
+string md5sumNsclice(const char * pathname, uint32_t nslice);
 string md5sum(const char * str, int len);
 unsigned long long getFilesize(const char * pathname);
 string getFilesize(string pathname);

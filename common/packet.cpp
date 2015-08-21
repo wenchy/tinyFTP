@@ -331,16 +331,14 @@ void Packet::sendDATA_TEXT(string body)
 	ppi->sendOnePacket(this->ps, PACKSIZE);
 }
 
-// void Packet::sendDATA(uint32_t nslice, uint32_t sindex, uint16_t bsize, string sbody)
-// {
-// 	//this->print();
-// 	this->reset(HPACKET);
-// 	this->fillData(nslice, sindex, bsize, body);
-// 	printf("sendDATA:\n");
-// 	this->print();
-// 	this->htonp();
-// 	ppi->sendOnePacket(this->ps, PACKSIZE);
-// }
+void Packet::sendSTAT(uint16_t statid ,string body)
+{
+	this->reset(HPACKET);
+	this->fillStat(statid, body.size(), body.c_str());
+	this->htonp();
+	ppi->sendOnePacket(this->ps, PACKSIZE);
+}
+
 void Packet::sendSTAT_OK()
 {
 	// send OK
@@ -389,17 +387,16 @@ void Packet::sendSTAT_MD5(string body)
 	this->htonp();
 	ppi->sendOnePacket(this->ps, PACKSIZE);
 }
-// void Packet::sendSTAT_CFM(char *msg)
-// {
-// 	// send CFM
-// 	this->reset(HPACKET);
-// 	char buf[MAXLINE];
-// 	snprintf(buf, MAXLINE, "%s", msg);
-// 	this->fillStat(STAT_CFM, strlen(buf), buf);
-// 	//this->print();
-// 	this->htonp();
-// 	ppi->sendOnePacket(this->ps, PACKSIZE);
-// }
+
+
+void Packet::sendSTAT_FAIL(string body)
+{
+	this->reset(HPACKET);
+	this->fillStat(STAT_FAIL, body.size(), body.c_str());
+	this->htonp();
+	ppi->sendOnePacket(this->ps, PACKSIZE);
+}
+
 void Packet::sendSTAT_CFM(const char *msg)
 {
 	// send CFM
@@ -432,17 +429,7 @@ void Packet::sendSTAT_ERR()
 	this->htonp();
 	ppi->sendOnePacket(this->ps, PACKSIZE);
 }
-// void Packet::sendSTAT_ERR(char *msg)
-// {
-// 	// send ERR
-// 	this->reset(HPACKET);
-// 	char buf[MAXLINE];
-// 	snprintf(buf, MAXLINE, "\033[31m%s\033[0m", msg);
-// 	this->fillStat(STAT_ERR, strlen(buf), buf);
-// 	//this->print();
-// 	this->htonp();
-// 	ppi->sendOnePacket(this->ps, PACKSIZE);
-// }
+
 void Packet::sendSTAT_ERR(const char *msg)
 {
 	// send ERR

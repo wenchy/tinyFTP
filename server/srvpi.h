@@ -67,8 +67,10 @@ private:
 	std::string userRootDir;
 	std::string userRCWD; // current working directory relative to userRootDir
 
-	string filename;
 	string abspath;
+	string filename;
+	string filesize;
+	
 	FILE* fp;
 	// -1: error, -2: CFM, 0: ok
 	int combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o, string & abspath_o);
