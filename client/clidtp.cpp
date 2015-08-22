@@ -6,38 +6,6 @@ CliDTP::CliDTP(Packet * ppacket, CliPI * pcliPI)
 	this->pcliPI = pcliPI;
 }
 
-// void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice)
-// {
-// 	Packet & packet = *(this->ppacket);
-// 	int n;
-// 	uint32_t sindex = 0;
-
-// 	char body[PBODYCAP];
-// 	int oldProgress = 0, newProgress = 0;
-// 	string hfilesize =  getFileSizeString(pathname);
-// 	if(nslice == 0)
-// 	{
-// 		fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t100%%", pathname, hfilesize.c_str());
-// 	} else {
-// 		while( (n = fread(body, sizeof(char), PBODYCAP, fp)) >0 )
-// 		{
-// 			packet.sendDATA_FILE(nslice, ++sindex, n, body);
-// 			newProgress = (sindex*1.0)/nslice*100;
-// 			if (newProgress > oldProgress)
-// 			{
-// 				//printf("\033[2K\r\033[0m");
-// 				fprintf(stderr, "\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
-// 			}
-// 			oldProgress = newProgress;
-// 		}
-// 	}
-// 	// send EOF
-// 	fclose(fp);
-// 	cout << endl;
-// 	//printf("\nEOF [%s]\n", pathname);
-// 	packet.sendSTAT_EOF();
-// }
-
 void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t sindex, uint16_t slicecap)
 {
 	Packet & packet = *(this->ppacket);
@@ -70,7 +38,7 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t 
 		}
 
 	}
-	// send EOF
+
 	fclose(fp);
 	//printf("EOF [%s]\n", pathname);
 	packet.sendSTAT_EOF();
@@ -81,11 +49,18 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t 
 		if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_PGS) 
 		{
 			cerr << packet.getSBody();
-		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT){
-			//cout << endl << packet.getSBody() << endl;
-			cout << endl;
+		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_WAIT){
+			cerr << endl << packet.getSBody() << endl;
 			break;
-		} 
+		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT){
+			cout << packet.getSBody() << endl;
+			//cout << endl;
+			break;
+		}  else {
+			cout << "unknown packet" << endl;
+			packet.print();
+			break;
+		}
 	}
 }
 
@@ -135,6 +110,19 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 					case STAT_OK:
 					{
 						//cout << packet.getSBody() <<endl;
+						break;
+					}
+					case STAT_SIZE:
+					{
+						//cout << packet.getSBody() <<endl;
+						if (std::stoull(packet.getSBody()) > getDiskAvailable())
+						{
+							packet.sendSTAT_ERR("insufficient disk space");
+							Error::msg("insufficient disk space");
+							return;
+						} else {
+							packet.sendSTAT_ERR("sufficient disk space, ok to tranfer");
+						}
 						break;
 					}
 					case STAT_ERR:

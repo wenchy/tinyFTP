@@ -740,5 +740,24 @@ string getCurrentTime()
 	return string(buf);
 }
 
+unsigned long long getDiskAvailable()
+{
+	struct statfs diskInfo;
+	
+	statfs(ROOTDIR, &diskInfo);
+	unsigned long long blocksize = diskInfo.f_bsize; 
+
+	unsigned long long totalsize = blocksize * diskInfo.f_blocks; 	// Total_size
+	printf("Total_size = %llu B = %llu KB = %llu MB = %llu GB\n", 
+		totalsize, totalsize>>10, totalsize>>20, totalsize>>30);
+	
+	unsigned long long freeDisk = diskInfo.f_bfree * blocksize;	// Disk_free
+	unsigned long long availableDisk = diskInfo.f_bavail * blocksize; 	// Disk_available
+	printf("Disk_free = %llu MB = %llu GB\nDisk_available = %llu MB = %llu GB\n", 
+		freeDisk>>20, freeDisk>>30, availableDisk>>20, availableDisk>>30);
+
+	return availableDisk;
+}
+
 
 

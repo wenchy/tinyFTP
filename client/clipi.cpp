@@ -800,9 +800,10 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 					}
 					case STAT_BPR:
 					{
-						cout << "File size match: " <<packet.getSBody() <<endl;
+						//cout << "File size match: " <<packet.getSBody() <<endl;
 						vector<string> paramVector; 
 						split(packet.getSBody(), DELIMITER, paramVector);
+						cout << "File size match: " << paramVector[1] << "/" << paramVector[0] << endl;
 						uint32_t tmp_sindex = std::stoul(paramVector[1]);
 
 						string md5str = visualmd5sumNslice(pathname, tmp_sindex);

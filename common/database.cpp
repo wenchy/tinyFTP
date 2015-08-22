@@ -108,11 +108,20 @@ void Database::traverseFiles(string dirpath)
       }
       else if(e->d_type == 8)
       {
-         string filepath = dirpath + e->d_name;     
+         string filepath = dirpath + e->d_name;
+
+        
+
          cout << "\n\nmd5sum: " << filepath << " ..." << endl;
          string md5str = md5sum(filepath.c_str());
          string sizestr = getFilesize(filepath);
          cout << "filepath: " << filepath << "md5str: " << md5str << "sizestr: " << sizestr << endl;
+
+         string   ghostfilename;
+                  ghostfilename += getCurrentTime();
+                  ghostfilename += "_" + md5str + "_";
+                  ghostfilename += e->d_name;
+         string   ghostPath = GHOSTDIR + ghostfilename;
 
          if (!md5str.empty() && !sizestr.empty())
          {
@@ -124,9 +133,22 @@ void Database::traverseFiles(string dirpath)
                {
                   std::map<string, string> insertParamMap = {  {"MD5SUM", md5str},
                                                                {"MD5RAND", "NULL"},
-                                                               {"ABSPATH", filepath},
+                                                               {"ABSPATH", ghostPath.c_str()},
+                                                               {"FILENAME", ghostfilename.c_str()},
                                                                {"SIZE", sizestr} };
-                  insert("file", insertParamMap);
+                  if (insert("file", insertParamMap))
+                  {
+                     Error::msg("Success: insert new file MD5SUM");
+
+                     if (link(filepath.c_str(), ghostPath.c_str()) < 0)
+                     {
+                        Error::ret("\033[31mlink\033[0m"); 
+                        cerr << filepath << ":" << ghostPath << endl;
+                     }
+
+                  } else {
+                    Error::msg("\033[31mDatabase insert error\033[0m");
+                  }   
 
                } else {
                   Error::msg("\033[31mMD5SUM already exist\033[0m");
@@ -232,6 +254,7 @@ Database & Database::create()
       "MD5SUM        TEXT UNIQUE                         NOT NULL," \
       "MD5RAND       TEXT                                NOT NULL," \
       "ABSPATH       TEXT                                NOT NULL," \
+      "FILENAME      TEXT                                NOT NULL," \
       "SIZE          INTEGER                             NOT NULL," \
       "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
       "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \

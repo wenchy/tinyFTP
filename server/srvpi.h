@@ -53,7 +53,7 @@ public:
 	Database * getPDB();
 	string getClipath();
 	string getFilename();
-	unsigned long getFilesize();
+	unsigned long long getFilesize();
 	~SrvPI();
 	
 	

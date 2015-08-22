@@ -756,7 +756,7 @@ void SrvPI::cmdPUT()
 			   				string md5str = packet.getSBody();
 			   				if (md5check(md5str, this->abspath))
 					   		{
-					   			packet.sendSTAT_EOT("Flash transfer is done");
+					   			packet.sendSTAT_EOT("Flash transmission is done");
 					   			return;
 					   		} else {
 					   			//srvDTP.recvFile(this->abspath.c_str());
@@ -798,7 +798,7 @@ void SrvPI::cmdPUT()
    				string md5str = packet.getSBody();
    				if (md5check(md5str, this->abspath))
 		   		{
-		   			packet.sendSTAT_EOT("Flash transfer is done");
+		   			packet.sendSTAT_EOT("Flash transmission is done");
 		   			return;
 		   		} else {
 		   			//srvDTP.recvFile(this->abspath.c_str());
@@ -839,12 +839,12 @@ bool SrvPI::sizecheck(string & sizestr)
        		{
 				return true;
        		} else {
-       			printf("\033[31mSIZE is not valid\033[0m\n");
+       			printf("\033[31msizecheck: this SIZE is not valid\033[0m\n");
        			return false;
        		}
        		
        } else {
-          printf("\033[31mSIZE not exist\033[0m\n");
+          printf("\033[31msizecheck: This SIZE not exist\033[0m\n");
           return false;
        }
     } else {
@@ -1780,9 +1780,9 @@ string SrvPI::getFilename()
 	return this->filename;
 }
 
-unsigned long SrvPI::getFilesize()
+unsigned long long SrvPI::getFilesize()
 {
-	return std::stoul(this->filesize);
+	return std::stoull(this->filesize);
 }
 SrvPI::~SrvPI()
 {
@@ -1794,7 +1794,11 @@ void SrvPI::saveUserState()
 
 	if (fp != NULL)
 	{
-		cout << "close fp in saveUserState\n" << endl;
+		cout << "unlock file and close fp in saveUserState\n" << endl;
+		if( (flock(fileno(fp), LOCK_UN )) < 0 )  
+        {  
+            Error::ret("flock");  
+        }  
 		Fclose(&fp);
 	}
 

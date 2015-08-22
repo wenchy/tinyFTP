@@ -37,14 +37,17 @@ SrvDTP::SrvDTP(Packet * ppacket, SrvPI * psrvPI)
 
 void SrvDTP::insertNewFileMD5SUM(const char * pathname, Database *pdb)
 { 
+	cout << "md5sum(pathname) ... " << endl;
 	string md5str = md5sum(pathname);
 	string sizestr = getFilesize(string(pathname));
-	cout << "md5sumThreadFunc # filepath: " << pathname << "md5str: " << md5str << "sizestr: " << sizestr << endl;
+	cout << "insertNewFileMD5SUM # filepath: " << pathname << "md5str: " << md5str << "sizestr: " << sizestr << endl;
 	
-	string 	ghostPath = GHOSTDIR;
-			ghostPath += getCurrentTime();
-			ghostPath += "_" + md5str + "_";
-			ghostPath += psrvPI->getFilename();
+	string 	ghostfilename;
+			ghostfilename += getCurrentTime();
+			ghostfilename += "_" + md5str + "_";
+			ghostfilename += psrvPI->getFilename();
+	string 	ghostPath = GHOSTDIR + ghostfilename;
+			
 
 	if (!md5str.empty() && !sizestr.empty())
 	{
@@ -57,6 +60,7 @@ void SrvDTP::insertNewFileMD5SUM(const char * pathname, Database *pdb)
 				std::map<string, string> insertParamMap = {    {"MD5SUM", md5str},
 			                                                   {"MD5RAND", "NULL"},
 			                                                   {"ABSPATH", ghostPath.c_str()},
+			                                                   {"FILENAME", ghostfilename.c_str()},
 			                                                   {"SIZE", sizestr} };
 				if (pdb->insert("file", insertParamMap))
 		        {
@@ -102,6 +106,20 @@ void SrvDTP::sendFile(const char *pathname)
 	uint32_t nslice =0, sindex = 0;
 
 	char buf[MAXLINE];
+
+	packet.sendSTAT(STAT_SIZE, getFilesize(string(pathname)));
+	psrvPI->recvOnePacket();
+	if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_ERR) 
+	{
+		return;
+	} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_OK)
+	{
+		;
+	} else {
+		Error::msg("unknown packet");
+		packet.print();
+		return;
+	}
 
 	//if ( (fp = fopen(pathname, "rb")) == NULL)
 	if ( psrvPI->setFp(fopen(pathname, "rb")) == NULL)
@@ -169,86 +187,16 @@ void SrvDTP::sendFile(const char *pathname)
 	packet.sendSTAT_EOF();
 }
 
-// void SrvDTP::recvFile(const char *pathname)
-// {
-// 	Packet & packet = *(this->ppacket);
-// 	char buf[MAXLINE];
-
-// 	if ( psrvPI->setFp(fopen(pathname, "wb")) == NULL)
-// 	{
-// 		// send STAT_ERR Response
-// 		// GNU-specific strerror_r: char *strerror_r(int errnum, char *buf, size_t buflen);
-// 		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
-// 		return;
-// 	} else {
-// 		// send STAT_OK
-// 		packet.sendSTAT_OK();
-// 	}
-	
-// 	printf("Recv file [%s] now\n", pathname);
-
-// 	int m;
-
-// 	int oldProgress = 0, newProgress = 0;
-// 	string hfilesize = size2str(psrvPI->getFilesize());
-
-// 	while (psrvPI->recvOnePacket())
-// 	{
-// 		if(packet.getTagid() == TAG_DATA && packet.getDataid() == DATA_FILE){
-// 			m = fwrite(packet.getBody(), sizeof(char), packet.getBsize(), psrvPI->getFp());
-// 			if (m != packet.getBsize())
-// 			{
-// 				Error::msg("Recieved slice %d/%d: %d vs %d Bytes\n", packet.getSindex(), packet.getNslice(), packet.getBsize(), m);
-// 				return;
-// 			}
-// 			printf("getSindex: %u", packet.getSindex());
-// 			newProgress = (packet.getSindex()*1.0)/packet.getNslice()*100;
-// 			if (newProgress > oldProgress)
-// 			{
-// 				printf("11111~\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
-// 				snprintf(buf, MAXLINE, "\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
-// 				packet.sendSTAT_PGS(buf);
-				
-// 			}
-// 			oldProgress = newProgress;
-
-// 			//printf("Recieved packet %d: %d vs %d Bytes\n", packet.ps->sindex, packet.ps->bsize, m);
-// 		} else if(packet.getTagid() == TAG_STAT) {
-// 			if (packet.getStatid() == STAT_EOF)
-// 			{
-// 				Fclose(&psrvPI->getFp());
-// 				std::cout << packet.getSBody() << std::endl;
-				
-// 				// ThreadArg threadArg;
-// 				// pthread_t tid;
-// 				// threadArg.pdb = psrvPI->getPDB();
-// 				// snprintf(threadArg.buf, MAXLINE, "%s", pathname);
-// 				// Pthread_create(&tid, NULL, &md5sumThreadFunc, &threadArg);
-
-// 				insertNewFileMD5SUM(pathname, psrvPI->getPDB());
-// 				printf("EOF [%s]\n", pathname);
-//    				packet.sendSTAT_EOF();
-// 				return;
-// 				//continue;
-// 			} else if (packet.getStatid() == STAT_EOT){
-// 				std::cout << packet.getSBody() << std::endl;
-// 				return;
-// 			} else {
-// 				Error::msg("SrvDTP::recvFile TAG_STAT: unknown statid %d", packet.getStatid());
-// 				return;
-// 			}
-			
-// 		} else {
-// 			Error::msg("SrvDTP::recvFile: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
-// 			return;
-// 		}
-// 	}
-// }
-
 void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, uint16_t slicecap)
 {
 	Packet & packet = *(this->ppacket);
 	char buf[MAXLINE];
+
+	if (psrvPI->getFilesize() > getDiskAvailable())
+	{
+		packet.sendSTAT_ERR("insufficient disk space");
+		return;
+	}
 	
 
 	if ( psrvPI->setFp(fopen(pathname, "ab")) == NULL)
@@ -258,6 +206,14 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
+
+		if( (flock(fileno(psrvPI->getFp()), LOCK_EX | LOCK_NB)) < 0)  
+        {         
+            Error::ret("flock");  
+            packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+			return;  
+        }
+
 		off64_t n;
 		off64_t curpos = sindex * slicecap;
 		if ( ( n = lseek64(fileno(psrvPI->getFp()), curpos, SEEK_SET)) < 0)
@@ -290,8 +246,7 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 			{
 				//printf("\033[2K\r\033[0m%-40s%10s\t%3d%%", pathname, hfilesize.c_str(), newProgress);
 				snprintf(buf, MAXLINE, "\033[2K\r\033[0m%-40s%10s\t%3d%%", psrvPI->getClipath().c_str(), hfilesize.c_str(), newProgress);
-				packet.sendSTAT_PGS(buf);
-				
+				packet.sendSTAT_PGS(buf);	
 			}
 			oldProgress = newProgress;
 
@@ -299,6 +254,10 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 		} else if(packet.getTagid() == TAG_STAT) {
 			if (packet.getStatid() == STAT_EOF)
 			{
+				if( (flock(fileno(psrvPI->getFp()), LOCK_UN )) < 0 )  
+		        {  
+	                Error::ret("flock");  
+		        }  
 				Fclose(&psrvPI->getFp());
 				std::cout << packet.getSBody() << std::endl;
 
@@ -308,10 +267,18 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 				// snprintf(pthreadArg->buf, MAXLINE, "%s", pathname);
 				// Pthread_create(&tid, NULL, &md5sumThreadFunc, pthreadArg);
 
+				if (psrvPI->getFilesize() > (256 * 1024 *1024)) // > 256M
+				{
+					packet.sendSTAT(STAT_WAIT, "MD5 computing...");
+				}
+
 				insertNewFileMD5SUM(pathname, psrvPI->getPDB());
 
 				printf("EOT [%s]\n", pathname);
    				packet.sendSTAT_EOT();
+
+   				//insertNewFileMD5SUM(pathname, psrvPI->getPDB());
+
 				return;
 				//continue;
 			} else if (packet.getStatid() == STAT_EOT){

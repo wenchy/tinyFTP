@@ -9,6 +9,8 @@
 
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/statfs.h>
+#include <sys/file.h>
 #include <sys/socket.h>
 #include <netinet/in.h>     // sockaddr_in{} and other Internet definitions
 #include <arpa/inet.h>      // inet(3) functions
@@ -46,7 +48,7 @@ using namespace std;
 
 #define DEBUG 1
 
-#define DBFILENAME		"tinyFTPtest.db"
+#define DBFILENAME		"tinyFTP.db"
 #define ROOTDIR			"/home/tinyFTP/"
 #define ROOTDIR_LEN		strlen(ROOTDIR)
 #define KERNELDIR		"/home/tinyFTP/.tinyFTP/"
@@ -212,6 +214,8 @@ typedef enum statID
 	STAT_FAIL, 	// fail
 	STAT_ERR, 	// error
 	STAT_TERM,	// terminate
+	STAT_SIZE,	// size
+	STAT_WAIT,	// wait
 	//STAT_DONE,	// trasaction done
 	STAT_EOF,	// end of file
 	STAT_EOT	// end of transfer
@@ -274,5 +278,6 @@ unsigned long long getFilesize(const char * pathname);
 string getFilesize(string pathname);
 string encryptPassword(string password);
 string getCurrentTime();
+unsigned long long getDiskAvailable();
 
 #endif	/* __TINYFTP_COMMON_H__ */
