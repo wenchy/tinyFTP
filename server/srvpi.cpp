@@ -861,7 +861,15 @@ bool SrvPI::md5check(string & md5str, string newpath)
        vector< map<string ,string> > resultMapVector = db.getResult();
        if (!resultMapVector.empty())
        {
-       		if (resultMapVector[0]["VALID"] == "1")
+       		if (link(resultMapVector[0]["ABSPATH"].c_str(), newpath.c_str()) < 0)
+			{
+				Error::ret("link"); 
+				cerr << resultMapVector[0]["ABSPATH"] << ":" << newpath << endl;
+				return false;
+			} else {
+				return true;
+			}
+       		/*if (resultMapVector[0]["VALID"] == "1")
        		{
        			if (link(resultMapVector[0]["ABSPATH"].c_str(), newpath.c_str()) < 0)
 				{
@@ -874,7 +882,7 @@ bool SrvPI::md5check(string & md5str, string newpath)
        		} else {
        			printf("\033[31mMD5SUM is not valid\033[0m\n");
        			return false;
-       		}
+       		}*/
        		
        } else {
           printf("\033[31mMD5SUM not exist\033[0m\n");
@@ -1090,6 +1098,7 @@ void SrvPI::cmdLS()
 	}
 	struct dirent* e;
 	int cnt = 0;
+	int sindex = 0;
 	string sbody;
 	while( (e = readdir(dir)) )
 	{	
@@ -1136,14 +1145,27 @@ void SrvPI::cmdLS()
 
 		if ( (sbody.size() + strlen(buf)) > SLICECAP)
 		{
-			packet.sendDATA_LIST(0, 0, sbody.size(), sbody.c_str());
+			packet.sendDATA_LIST(0, ++sindex, sbody.size(), sbody.c_str());
 			sbody.clear();
+			recvOnePacket();
+			if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_CTN)
+			{
+				continue;
+			} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_TERM)
+			{
+				break;
+			} else {
+				Error::msg("unkown packet");
+				packet.print();
+				return;
+			}
 		}
 		sbody += buf;
 		
 	}
 	if (!sbody.empty())
 	{
+		sindex = 0;
 		if ( sbody.back() == '\n')
 		{
 			sbody.pop_back(); // remove '\n'

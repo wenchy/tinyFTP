@@ -746,17 +746,46 @@ unsigned long long getDiskAvailable()
 	
 	statfs(ROOTDIR, &diskInfo);
 	unsigned long long blocksize = diskInfo.f_bsize; 
+	unsigned long long availableDisk;
 
-	unsigned long long totalsize = blocksize * diskInfo.f_blocks; 	// Total_size
+	/*unsigned long long totalsize = blocksize * diskInfo.f_blocks; 	// Total_size
 	printf("Total_size = %llu B = %llu KB = %llu MB = %llu GB\n", 
 		totalsize, totalsize>>10, totalsize>>20, totalsize>>30);
 	
 	unsigned long long freeDisk = diskInfo.f_bfree * blocksize;	// Disk_free
-	unsigned long long availableDisk = diskInfo.f_bavail * blocksize; 	// Disk_available
+	availableDisk = diskInfo.f_bavail * blocksize; 	// Disk_available
 	printf("Disk_free = %llu MB = %llu GB\nDisk_available = %llu MB = %llu GB\n", 
-		freeDisk>>20, freeDisk>>30, availableDisk>>20, availableDisk>>30);
+		freeDisk>>20, freeDisk>>30, availableDisk>>20, availableDisk>>30);*/
 
+
+	availableDisk = diskInfo.f_bavail * blocksize;
 	return availableDisk;
+}
+
+static struct termios oldt;
+
+void restore_terminal_settings(void)
+{
+    //Apply saved settings
+    tcsetattr(0, TCSANOW, &oldt); 
+}
+
+//make terminal read 1 char at a time
+void disable_terminal_return(void)
+{
+    struct termios newt;
+    
+    //save terminal settings
+    tcgetattr(0, &oldt); 
+    //init new settings
+    newt = oldt;  
+    //change settings
+    newt.c_lflag &= ~(ICANON | ECHO);
+    //apply settings
+    tcsetattr(0, TCSANOW, &newt);
+    
+    //make sure settings will be restored when program ends
+    atexit(restore_terminal_settings);
 }
 
 

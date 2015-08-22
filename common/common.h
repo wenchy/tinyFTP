@@ -19,7 +19,7 @@
 #include <signal.h>
 #include <dirent.h>
 #include <openssl/md5.h>
-
+#include <termios.h>
 
 #include <unistd.h>
 #include <errno.h>
@@ -213,6 +213,7 @@ typedef enum statID
 	STAT_PGS, 	// progress
 	STAT_FAIL, 	// fail
 	STAT_ERR, 	// error
+	STAT_CTN,	// continue
 	STAT_TERM,	// terminate
 	STAT_SIZE,	// size
 	STAT_WAIT,	// wait
@@ -279,5 +280,8 @@ string getFilesize(string pathname);
 string encryptPassword(string password);
 string getCurrentTime();
 unsigned long long getDiskAvailable();
+
+void restore_terminal_settings(void);
+void disable_terminal_return(void);
 
 #endif	/* __TINYFTP_COMMON_H__ */

@@ -50,13 +50,12 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t 
 		{
 			cerr << packet.getSBody();
 		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_WAIT){
-			cerr << endl << packet.getSBody() << endl;
-			break;
+			cerr << endl << packet.getSBody();
 		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT){
-			cout << packet.getSBody() << endl;
-			//cout << endl;
+			//cout << endl << packet.getSBody() << endl;
+			cout << endl;
 			break;
-		}  else {
+		} else {
 			cout << "unknown packet" << endl;
 			packet.print();
 			break;
@@ -121,7 +120,7 @@ void CliDTP::recvFile(const char *pathname, FILE *fp)
 							Error::msg("insufficient disk space");
 							return;
 						} else {
-							packet.sendSTAT_ERR("sufficient disk space, ok to tranfer");
+							packet.sendSTAT_OK("sufficient disk space, ok to tranfer");
 						}
 						break;
 					}

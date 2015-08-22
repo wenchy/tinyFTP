@@ -1101,14 +1101,42 @@ void CliPI::cmdLS(std::vector<string> & paramVector)
 		Error::msg("unknown tagid %d", packet.getTagid());
 		return;
 	}
-
+	int cnt = 0;
 	while(recvOnePacket()) 
 	{
 		if (packet.getTagid() == TAG_DATA && packet.getDataid() == DATA_LIST) {
-			cout<< packet.getSBody() << endl;
+			++cnt;
+			cerr << packet.getSBody();
+			if (packet.getSindex() == 0)
+			{
+				continue;
+			}
+			
+
+			disable_terminal_return();
+    		char ch;
+		    /* Key reading loop */
+			while(fprintf(stderr, "\n\033[7mpage %d (press j for page down or q to quit)\033[0m", cnt), ch = getc(stdin))
+			{
+				if (ch == 'j')
+				{
+					packet.sendSTAT(STAT_CTN, "continue");
+					fprintf(stderr, "\033[2K\r\033[0m");
+					break;
+				} else if (ch == 'q')
+				{
+					packet.sendSTAT(STAT_TERM, "terminate");
+					break;
+				} else {
+					fprintf(stderr, "error\n");
+					continue;
+				}
+			}
+			restore_terminal_settings();
+
 			
 		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT){
-			cout<< packet.getSBody() << endl;
+			cout << endl << packet.getSBody() << endl;
 			break;
 		} else {
 			Error::msg("unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
