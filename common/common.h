@@ -284,4 +284,6 @@ unsigned long long getDiskAvailable();
 void restore_terminal_settings(void);
 void disable_terminal_return(void);
 
+string getInode(const char * pathname);
+
 #endif	/* __TINYFTP_COMMON_H__ */

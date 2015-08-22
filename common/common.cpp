@@ -787,6 +787,22 @@ void disable_terminal_return(void)
     //make sure settings will be restored when program ends
     atexit(restore_terminal_settings);
 }
+string getInode(const char * pathname)
+{
+	string inode;
+
+	struct stat statBuf; 
+	char buf[MAXLINE];
+    if (stat(pathname, &statBuf) < 0)
+    {
+    	Error::ret("\033[31mstat\033[0m");
+    } else {
+    	snprintf(buf, MAXLINE, "%lu", statBuf.st_ino);
+    	inode = buf;
+    }
+    return inode;
+}
+
 
 
 

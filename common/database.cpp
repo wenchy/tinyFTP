@@ -110,7 +110,7 @@ void Database::traverseFiles(string dirpath)
       {
          string filepath = dirpath + e->d_name;
 
-        
+         string inode = getInode(filepath.c_str());
 
          cout << "\n\nmd5sum: " << filepath << " ..." << endl;
          string md5str = md5sum(filepath.c_str());
@@ -133,8 +133,9 @@ void Database::traverseFiles(string dirpath)
                {
                   std::map<string, string> insertParamMap = {  {"MD5SUM", md5str},
                                                                {"MD5RAND", "NULL"},
-                                                               {"ABSPATH", ghostPath.c_str()},
-                                                               {"FILENAME", ghostfilename.c_str()},
+                                                               {"ABSPATH", ghostPath},
+                                                               {"FILENAME", ghostfilename},
+                                                               {"INODE", inode},
                                                                {"SIZE", sizestr} };
                   if (insert("file", insertParamMap))
                   {
@@ -255,6 +256,7 @@ Database & Database::create()
       "MD5RAND       TEXT                                NOT NULL," \
       "ABSPATH       TEXT                                NOT NULL," \
       "FILENAME      TEXT                                NOT NULL," \
+      "INODE         INTEGER                             NOT NULL," \
       "SIZE          INTEGER                             NOT NULL," \
       "CREATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \
       "UPDATE_AT     DATETIME DEFAULT (datetime('now', 'localtime'))," \

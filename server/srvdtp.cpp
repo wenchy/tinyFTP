@@ -37,7 +37,10 @@ SrvDTP::SrvDTP(Packet * ppacket, SrvPI * psrvPI)
 
 void SrvDTP::insertNewFileMD5SUM(const char * pathname, Database *pdb)
 { 
-	cout << "md5sum(pathname) ... " << endl;
+	
+	string inode = getInode(pathname);
+
+	cout << "md5sum computing... " << endl;
 	string md5str = md5sum(pathname);
 	string sizestr = getFilesize(string(pathname));
 	cout << "insertNewFileMD5SUM # filepath: " << pathname << "md5str: " << md5str << "sizestr: " << sizestr << endl;
@@ -47,7 +50,6 @@ void SrvDTP::insertNewFileMD5SUM(const char * pathname, Database *pdb)
 			ghostfilename += "_" + md5str + "_";
 			ghostfilename += psrvPI->getFilename();
 	string 	ghostPath = GHOSTDIR + ghostfilename;
-			
 
 	if (!md5str.empty() && !sizestr.empty())
 	{
@@ -59,8 +61,9 @@ void SrvDTP::insertNewFileMD5SUM(const char * pathname, Database *pdb)
 			{
 				std::map<string, string> insertParamMap = {    {"MD5SUM", md5str},
 			                                                   {"MD5RAND", "NULL"},
-			                                                   {"ABSPATH", ghostPath.c_str()},
-			                                                   {"FILENAME", ghostfilename.c_str()},
+			                                                   {"ABSPATH", ghostPath},
+			                                                   {"FILENAME", ghostfilename},
+			                                                   {"INODE", inode},
 			                                                   {"SIZE", sizestr} };
 				if (pdb->insert("file", insertParamMap))
 		        {
@@ -102,10 +105,38 @@ void SrvDTP::insertNewFileMD5SUM(const char * pathname, Database *pdb)
 void SrvDTP::sendFile(const char *pathname)
 {
 	Packet & packet = *(this->ppacket);
+	char buf[MAXLINE];
+	Database * pdb = psrvPI->getPDB();
+	string inode = getInode(pathname);
+	std::map<string, string> selectParamMap = {  {"INODE", inode} };
+    if (pdb->select("file", selectParamMap))
+    {
+       vector< map<string ,string> > resultMapVector = pdb->getResult();
+       if (!resultMapVector.empty())
+       {
+       		string dbAccess = resultMapVector[0]["ACCESS"];
+       		unsigned long long access = std::stoull(dbAccess) + 1;
+       		snprintf(buf, MAXLINE, "%llu", access);
+       		dbAccess = buf;
+
+       		std::map<string, string> updateParamMap = { {"ACCESS", dbAccess} };
+       		if (pdb->update("file", resultMapVector[0]["ID"], updateParamMap))
+			{
+				cout << "update ACCESS+1 ok" <<endl;
+			} else {
+				printf("\033[31mupdate ACCESS+1 error\033[0m\n");
+			}
+
+       } else {
+          printf("\033[31mINODE not exist\033[0m\n");
+       }
+    } else {
+       Error::msg("\033[31mDatabase select error\033[0m\n");
+    }   
+
 	int n;
 	uint32_t nslice =0, sindex = 0;
-
-	char buf[MAXLINE];
+	
 
 	packet.sendSTAT(STAT_SIZE, getFilesize(string(pathname)));
 	psrvPI->recvOnePacket();
