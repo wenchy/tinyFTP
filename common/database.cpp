@@ -81,7 +81,7 @@ Database::Database(const char * zDbFilename): dbFilename(zDbFilename)
     fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(pDb));
     exit(0);
     }else{
-       fprintf(stdout, "Open database successfully\n");
+       fprintf(stdout, "Open database successfully: %s\n", (dirString + dbFilename).c_str());
     }
 }
 

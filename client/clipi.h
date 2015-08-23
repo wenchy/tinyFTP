@@ -27,7 +27,7 @@ public:
 	void cmdUSERDEL(std::vector<string> & cmdVector);
 
 	void cmdGET(std::vector<string> & cmdVector);
-	void cmdGET(string srvpath, string clipath);
+	//void cmdGET(string srvpath, string clipath);
 	void cmdRGET(std::vector<string> & cmdVector);
 	void cmdPUT(std::vector<string> & cmdVector);
 	void cmdRPUT(std::vector<string> & cmdVector);

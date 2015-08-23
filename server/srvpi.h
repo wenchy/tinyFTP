@@ -16,6 +16,7 @@ class SrvPI : public PI
 public:
 	SrvPI(string dbFilename, int connfd);
 	bool checkBreakpoint();
+	bool checkGETBreakpoint();
 	bool recvOnePacket();
 	bool sendOnePacketBlocked(PacketStruct * ps, size_t nbytes);
 	bool sendOnePacket(PacketStruct * ps, size_t nbytes);
@@ -28,7 +29,7 @@ public:
 	void cmdUSERDEL();
 
 	void cmdGET();
-	void cmdGET(string pathname);
+	//void cmdGET(string pathname);
 	void RGET_recurse(string srvpath, string clipath);
 	void RGET_iterate(string srvpath, string clipath);
 	void cmdRGET();

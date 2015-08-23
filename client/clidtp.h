@@ -17,7 +17,7 @@ public:
 	void recvOnePacket();
 	//void sendFile(const char *pathname, FILE *fp, uint32_t nslice);
 	void sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t sindex, uint16_t slicecap = SLICECAP);
-	void recvFile(const char *filename, FILE *fp);
+	void recvFile(const char *filename, FILE *fp, uint32_t nslice, uint32_t sindex, uint16_t slicecap = SLICECAP);
 	//int getFileNslice(const char *pathname, uint32_t *pnslice_o );
 	string getFileSizeString(const char *pathname); 
 	void removeFile(const char *pathname);

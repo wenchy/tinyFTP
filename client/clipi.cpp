@@ -404,6 +404,9 @@ void CliPI::cmdGET(std::vector<string> & paramVector)
 	}
 
 	string pathname;
+	uint32_t nslice = 0;
+	uint32_t sindex = 0;
+
 	char buf[MAXLINE];
 	if (paramVector.size() == 1){
 		vector<string> pathVector; 
@@ -412,8 +415,30 @@ void CliPI::cmdGET(std::vector<string> & paramVector)
 	} else if (paramVector.size() == 2){
 		pathname = paramVector[1];
 	}
-	
+
 	if ((access(pathname.c_str(), F_OK)) == 0) {
+		
+		// string md5str = visualmd5sumNslice(pathname, tmp_sindex);
+		// if (md5str.empty())
+		// {
+		// 	printf("md5sum error\n");
+		// 	return;
+		// }
+		// packet.sendSTAT_MD5(md5str);
+		// recvOnePacket();
+		// if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_OK) 
+		// {
+		// 	sindex = tmp_sindex;
+		// 	//cout << packet.getSBody() <<endl;
+		// 	printf("\033[32mBreakpoint resumed: [%s %u/%u]\033[0m\n", pathname, sindex, nslice);
+		// } else if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_FAIL) {
+		// 	cout << packet.getSBody() <<endl;
+		// } else {
+		// 	printf("packet error\n");
+		// 	packet.print();
+		// 	return;
+		// }
+
 		snprintf(buf, MAXLINE, "File [%s] already exists, overwrite ? (y/n) ", pathname.c_str());
 		if(!confirmYN(buf))
 		{
@@ -421,7 +446,7 @@ void CliPI::cmdGET(std::vector<string> & paramVector)
 		}
 	}
 	FILE *fp;
-	if ( (fp = fopen(pathname.c_str(), "wb")) == NULL) {
+	if ( (fp = fopen(pathname.c_str(), "ab")) == NULL) {
 		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
@@ -430,40 +455,122 @@ void CliPI::cmdGET(std::vector<string> & paramVector)
 
     // pathname exist on server? need test
     CliDTP cliDTP(&(this->packet), this);
-	cliDTP.recvFile(pathname.c_str(), fp);
- 
-}
+    cliDTP.recvFile(pathname.c_str(), fp, nslice, sindex);
 
-
-void CliPI::cmdGET(string srvpath, string clipath)
-{
-	//printf("GET request: srvpath:\n");
-	//cout << "GET request: " << "srvpath=" << srvpath << " clipath=" << clipath << endl;
-
-	char buf[MAXLINE];
-	
-	FILE *fp;
-	if ((access(clipath.c_str(), F_OK)) == 0) {
-		snprintf(buf, MAXLINE, "File [%s] already exists, overwrite ? (y/n) ", clipath.c_str());
-		if(!confirmYN(buf))
+	/*while(recvOnePacket())
+	{
+		switch(packet.getTagid())
 		{
-			packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
-			return;
+			case TAG_CMD:
+			{
+				switch(packet.getCmdid())
+				{
+					case GET:
+					{
+						break;
+					}
+					case LMKDIR:
+					{
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown cmdid: %d", packet.getCmdid());
+						break;
+					}
+				}
+				break;
+			}
+			case TAG_STAT:
+			{
+				switch(packet.getStatid())
+				{
+					case STAT_OK:
+					{
+						CliDTP cliDTP(&(this->packet), this);
+						cliDTP.recvFile(pathname.c_str(), fp, nslice, sindex);
+						return;
+					}
+					case STAT_BPR:
+					{
+						//cout << "File size match: " <<packet.getSBody() <<endl;
+						vector<string> paramVector; 
+						split(packet.getSBody(), DELIMITER, paramVector);
+						cout << "File size match: " << paramVector[1] << "/" << paramVector[0] << endl;
+						uint32_t tmp_sindex = std::stoul(paramVector[1]);
+
+						string md5str = visualmd5sumNslice(pathname, tmp_sindex);
+						if (md5str.empty())
+						{
+							printf("md5sum error\n");
+							return;
+						}
+						packet.sendSTAT_MD5(md5str);
+						recvOnePacket();
+						if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_OK) 
+						{
+							sindex = tmp_sindex;
+							//cout << packet.getSBody() <<endl;
+							printf("\033[32mBreakpoint resumed: [%s %u/%u]\033[0m\n", pathname, sindex, nslice);
+						} else if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_FAIL) {
+							cout << packet.getSBody() <<endl;
+						} else {
+							printf("packet error\n");
+							packet.print();
+							return;
+						}
+						break;
+					}
+					case STAT_ERR:
+					{
+						cerr << packet.getSBody() <<endl;
+						return;
+					}
+					case STAT_EOF:
+					{
+						cout << packet.getSBody() <<endl;
+						break;
+					}
+					case STAT_EOT:
+					{
+						cout << packet.getSBody() <<endl;
+						return;
+					}
+					default:
+					{
+						Error::msg("unknown statid: %d", packet.getStatid());
+						break;
+					}
+				}
+				break;
+			}
+			case TAG_DATA:
+			{
+				switch(packet.getDataid())
+				{
+					case DATA_FILE:
+					{
+						cout << "DATA_FILE" << packet.getSBody() <<endl;
+						break;
+					}
+					default:
+					{
+						Error::msg("unknown statid: %d", packet.getStatid());
+						break;
+					}
+				}
+				break;
+			}
+			default:
+			{
+				Error::msg("unknown tagid: %d", packet.getTagid());
+				break;
+			}
 		}
-	}
-
-	if ( (fp = fopen(clipath.c_str(), "wb")) == NULL) {
-		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
-		packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
-		return;
-	} else {
-		packet.sendCMD_GET(srvpath);
-	}
-
-    CliDTP cliDTP(&(this->packet), this);
-	cliDTP.recvFile(clipath.c_str(), fp);
+	}*/
  
 }
+
 
 bool CliPI::confirmYN(const char * prompt)
 {
@@ -620,9 +727,11 @@ void CliPI::cmdRGET(std::vector<string> & paramVector)
 				{
 					case GET:
 					{
+						//cout << packet.getSBody() <<endl;
 						vector<string> paramVector; 
 						split(packet.getSBody(), DELIMITER, paramVector);
-						cmdGET(paramVector[0], paramVector[1]);
+						// cmdGET(paramVector[0], paramVector[1]);
+						cmdGET(paramVector);
 						break;
 					}
 					case LMKDIR:
@@ -993,28 +1102,6 @@ void CliPI::RPUT_iterate(string srvrootpath, string clirootpath)
 		string srvpath = dirPair.first;
 		string clipath = dirPair.second;
 
-		// first create dir on server host
-		// packet.sendCMD_MKDIR(srvpath);
-		// recvOnePacket();
-		// if (packet.getTagid() == TAG_STAT)
-		// {
-		// 	if (packet.getStatid() == STAT_OK)
-		// 	{
-		// 		dirQueue.pop(); // server create dir successfully
-		// 	} else if (packet.getStatid() == STAT_ERR)
-		// 	{
-		// 		cout << packet.getSBody() <<endl;
-		// 		return;
-		// 	} else {
-		// 		Error::msg("unknown statid: %d", packet.getStatid());
-		// 		return;
-		// 	}
-			 
-		// } else {
-		// 	Error::msg("unknown tagid: %d", packet.getTagid());
-		// 	return;
-		// }
-
 		std::vector<string> paramVector = {srvpath};
 		if (cmdMKDIR(paramVector))
 		{
@@ -1022,7 +1109,6 @@ void CliPI::RPUT_iterate(string srvrootpath, string clirootpath)
 		} else {
 			return;
 		}
-
 
 		// then iterate this client dir
 		DIR * dir= opendir(clipath.c_str());
@@ -1058,16 +1144,6 @@ void CliPI::RPUT_iterate(string srvrootpath, string clirootpath)
 			{
 				std::vector<string> paramVector = {clipath + e->d_name, srvpath + e->d_name};
 				cmdPUT(paramVector);
-				// packet.sendCMD(PUT, getEncodedParams(paramVector));
-				// recvOnePacket();
-				// if (packet.getTagid() == TAG_CMD && packet.getCmdid() == PUT)
-				// {
-				// 	cmdPUT(paramVector);
-				// } else {
-				// 	Error::msg("Error: cmdGET unknown tagid with statid");
-				// 	packet.print();
-				// 	return;
-				// }
 			}
 		}
 		closedir(dir);

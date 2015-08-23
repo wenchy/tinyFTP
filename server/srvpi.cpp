@@ -383,11 +383,70 @@ void SrvPI::cmdUSERDEL()
    	}
 }
 
+bool SrvPI::checkGETBreakpoint()
+{
+	std::map<string, string> selectParamMap = { {"USERID", this->userID}, {"SIZE", this->filesize}, {"ABSPATH", this->abspath}, {"VALID", "1"} };
+	std::map<string, string> updateParamMap = { {"VALID", "0"} };
+   	if (db.selectNewest("ifile", selectParamMap))
+   	{
+   		vector< map<string, string> > resultMapVector = db.getResult();
+   		if (!resultMapVector.empty())
+   		{
+			string body = resultMapVector[0]["NSLICE"] + DELIMITER + resultMapVector[0]["SINDEX"];
+			packet.sendSTAT_BPR(body);
+			recvOnePacket();
+   			if(packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_MD5) 
+   			{
+   				string md5str = packet.getSBody();
+   				if (md5str == resultMapVector[0]["MD5SUM"])
+		   		{
+		   			packet.sendSTAT_OK("Bingo! Breakpoint resumed");
+		   			db.update("ifile", resultMapVector[0]["ID"], updateParamMap);
+					SrvDTP srvDTP(&(this->packet), this);
+					srvDTP.recvFile(this->abspath.c_str(), std::stoul(resultMapVector[0]["NSLICE"]), std::stoul(resultMapVector[0]["SINDEX"]));
+					return true;
+		   		} else {
+		   			packet.sendSTAT_FAIL("Breakpoint MD5SUM not match");
+		   			Error::msg("Breakpoint MD5SUM not match:\ncli: %s\nsrv: %s\n", md5str.c_str(), resultMapVector[0]["MD5SUM"].c_str());
+					return false;
+		   		}
+   			} else {
+   				Error::msg("STAT_MD5: unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
+				return false;
+   			}
+
+			
+   		} else {
+			return false;
+   		}
+
+   	}else {
+		Error::msg("checkBreakpoint: Database selectNewest error\n");
+		return false;
+   	}
+}
 void SrvPI::cmdGET()
 {
 	printf("GET request\n");
+	
 	vector<string> paramVector; 
 	split(packet.getSBody(), DELIMITER, paramVector);
+	cout << packet.getSBody() << " : " <<paramVector[0] << endl;
+	string srvpath;
+	if (paramVector.size() == 1)
+	{
+		srvpath = paramVector[0];
+		 //this->filesize = paramVector[1];
+		 //paramVector.erase(paramVector.begin()+1);
+	} else if (paramVector.size() == 2)
+	{
+		srvpath = paramVector[0];
+		//this->filesize = paramVector[2];
+		//paramVector.erase(paramVector.begin()+2);
+	} else {
+		packet.sendSTAT_ERR("GET params error");
+		return;
+	}
 
 	string msg_o;
 	if (combineAndValidatePath(GET, paramVector[0], msg_o, this->abspath) < 0)
@@ -396,28 +455,9 @@ void SrvPI::cmdGET()
 		return;
    	}
 
-	string path = this->abspath;//userRootDir + (userRCWD == "/" ? "/": userRCWD + "/") + paramVector[0];
-	//std::cout << "cmdGET path[" << path << "]" << '\n';
+	string path = this->abspath;
 	SrvDTP srvDTP(&(this->packet), this);
-	srvDTP.sendFile(path.c_str());
-
-	packet.sendSTAT_EOT();
-}
-void SrvPI::cmdGET(string pathname)
-{
-	// printf("SrvPI::cmdGET(string pathname) request\n");
-
-	// string msg_o;
-	// if (!combineAndValidatePath(GET, pathname, msg_o, this->abspath))
- //   	{
- //   		packet.sendSTAT_ERR(pathname + msg_o.c_str());
-	// 	return;
- //   	}
-	// string path = userRootDir + userRCWD + "/" + pathname;
-
-	//std::cout << "cmdGET path[" << path << "]" << '\n';
-	SrvDTP srvDTP(&(this->packet), this);
-	srvDTP.sendFile(pathname.c_str());
+	srvDTP.sendFile(path.c_str(), 0, 0);
 
 	packet.sendSTAT_EOT();
 }
@@ -474,16 +514,17 @@ void SrvPI::RGET_recurse(string srvpath, string clipath)
 			string str = srvpath + e->d_name;
 			str += DELIMITER;
 			str += clipath + e->d_name;
-			packet.sendCMD_GET(str);
-			recvOnePacket();
-			if (packet.getTagid() == TAG_CMD && packet.getCmdid() == GET)
-			{
-				cmdGET(packet.getSBody());
-			} else {
-				Error::msg("Error: cmdGET unknown tagid with statid");
-				packet.print();
-				return;
-			}
+			cmdGET();
+			// packet.sendCMD_GET(str);
+			// recvOnePacket();
+			// if (packet.getTagid() == TAG_CMD && packet.getCmdid() == GET)
+			// {
+			// 	cmdGET(packet.getSBody());
+			// } else {
+			// 	Error::msg("Error: cmdGET unknown tagid with statid");
+			// 	packet.print();
+			// 	return;
+			// }
 		}
 	}
 	closedir(dir);
@@ -560,7 +601,8 @@ void SrvPI::RGET_iterate(string srvrootpath, string clirootpath)
 				recvOnePacket();
 				if (packet.getTagid() == TAG_CMD && packet.getCmdid() == GET)
 				{
-					cmdGET(packet.getSBody());
+					//cmdGET(packet.getSBody());
+					cmdGET();
 				} else {
 					Error::msg("Error: cmdGET unknown tagid with statid");
 					packet.print();
@@ -686,13 +728,10 @@ bool SrvPI::checkBreakpoint()
 
 void SrvPI::cmdPUT()
 {
-	vector<string> paramVector; 
-	split(packet.getSBody(), DELIMITER, paramVector);
-	for (auto it = paramVector.cbegin(); it != paramVector.cend(); ++it)
-           std::cout << it->size() << "paramVector: " << *it << std::endl;
-
 	printf("PUT request\n");
 
+	vector<string> paramVector; 
+	split(packet.getSBody(), DELIMITER, paramVector);
 	if (paramVector.size() == 2)
 	{
 		 this->filesize = paramVector[1];
@@ -1344,7 +1383,7 @@ void SrvPI::cmdMKDIR()
 			packet.sendSTAT_ERR(msg_o.c_str());
    		}else {
 			// send STAT_OK
-			packet.sendSTAT_OK(paramVector[0] + " created");
+			packet.sendSTAT_OK("Dir [" + paramVector[0] + "] created");
 		}
 	}
 }
@@ -1503,21 +1542,23 @@ void SrvPI::cmdSHELL()
 
 int SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & msg_o, string & abspath_o)
 {
+	string newAbsPath;
 	if (userinput.front() == '/')
 	{
-		string newAbsDir = userinput;
-		if (newAbsDir.substr(0, userRootDir.size()) != userRootDir)
+		string newAbsPath = userinput;
+		abspath_o = newAbsPath;
+		if (newAbsPath.substr(0, userRootDir.size()) != userRootDir)
 	   	{
-			//std::cout << "Permission denied: " << newAbsDir << '\n';
-			msg_o = "Permission denied: " + newAbsDir;
+			//std::cout << "Permission denied: " << newAbsPath << '\n';
+			msg_o = "Permission denied: " + newAbsPath;
 			return -1;
 	   	} else { 
-		   	if (cmdid == RMDIR && newAbsDir == userRootDir)
+		   	if (cmdid == RMDIR && newAbsPath == userRootDir)
 		   	{
-		   	 	msg_o = "Permission denied: " + newAbsDir;
+		   	 	msg_o = "Permission denied: " + newAbsPath;
 				return -1;
 		   	} 
-	   		return cmdPathProcess(cmdid, newAbsDir, msg_o);
+	   		return cmdPathProcess(cmdid, newAbsPath, msg_o);
 	   	}
 	}
 	string absCWD = userRootDir + userRCWD;
@@ -1539,7 +1580,6 @@ int SrvPI::combineAndValidatePath(uint16_t cmdid, string userinput, string & msg
     	}
    	}
 
-   	string newAbsPath;
    	for (vector<string>::iterator iter=absCWDVector.begin(); iter!=absCWDVector.end(); ++iter)
    	{
     	newAbsPath += "/" + *iter;

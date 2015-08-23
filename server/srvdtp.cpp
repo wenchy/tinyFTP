@@ -79,7 +79,7 @@ void SrvDTP::insertNewFileMD5SUM(const char * pathname, Database *pdb)
 		           Error::msg("\033[31mDatabase insert error\033[0m");
 		        }   
 			} else {
-				Error::msg("\033[32mThis MD5SUM already exists\033[0m");
+				Error::msg("\033[31mThis MD5SUM already exists\033[0m");
 				/*std::map<string, string> whereParamMap = { {"MD5SUM", md5sum(pathname)} };
 	    		std::map<string, string> updateParamMap = { {"VALID", "1"} };
 
@@ -102,8 +102,9 @@ void SrvDTP::insertNewFileMD5SUM(const char * pathname, Database *pdb)
 		
 	}   
 }
-void SrvDTP::sendFile(const char *pathname)
+void SrvDTP::sendFile(const char *pathname, uint32_t nslice, uint32_t sindex, uint16_t slicecap)
 {
+	//cout << endl  << endl << pathname << endl << endl;
 	Packet & packet = *(this->ppacket);
 	char buf[MAXLINE];
 	Database * pdb = psrvPI->getPDB();
@@ -135,10 +136,28 @@ void SrvDTP::sendFile(const char *pathname)
     }   
 
 	int n;
-	uint32_t nslice =0, sindex = 0;
-	
+	//uint32_t nslice =0, sindex = 0;
 
-	packet.sendSTAT(STAT_SIZE, getFilesize(string(pathname)));
+	// off64_t curpos = sindex * slicecap;
+	// if ( lseek64(fileno(psrvPI->getFp()), curpos, SEEK_SET) < 0)
+	// {
+	// 	packet.sendSTAT_ERR(strerror_r(errno, buf, MAXLINE));
+	// 	return;
+	// } else {
+	// 	printf("Recv file [%s %u/%u] now\n", pathname, sindex, nslice);
+	// 	// send STAT_OK
+	// 	packet.sendSTAT_OK();
+	// }
+	
+	string sizestr = getFilesize(string(pathname));
+	if (sizestr.empty())
+	{
+		packet.sendSTAT_ERR("getFilesize() failed");
+		return;
+	}
+	// confirm enough space to write on client host
+	packet.sendSTAT(STAT_SIZE, sizestr);
+
 	psrvPI->recvOnePacket();
 	if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_ERR) 
 	{
@@ -163,7 +182,7 @@ void SrvDTP::sendFile(const char *pathname)
 		if ( n == 0) {
 			printf("EOF[%s]: 0 bytes\n", pathname);
 			Fclose(&psrvPI->getFp());
-			packet.sendSTAT_OK(getFileSizeString(pathname));
+			packet.sendSTAT_OK();
 			packet.sendDATA_TEXT(getFileSizeString(pathname));
 			packet.sendDATA_FILE(0, 0, 0, NULL);
 			packet.sendSTAT_EOF("EOF: 0 bytes");
@@ -178,7 +197,7 @@ void SrvDTP::sendFile(const char *pathname)
 		return;
 	} else {
 		// send STAT_OK
-		packet.sendSTAT_OK(getFileSizeString(pathname));
+		packet.sendSTAT_OK();
 	}
 
 	packet.sendDATA_TEXT(getFileSizeString(pathname));
@@ -191,27 +210,6 @@ void SrvDTP::sendFile(const char *pathname)
 		packet.sendDATA_FILE(nslice, ++sindex, n, body);
 	}
 	
-	// int			maxfdp1;
-	// fd_set		rset, wset;
-	// int connfd = psrvPI->getConnfd();
-
-	// FD_ZERO(&rset);
-	// while( (n = fread(body, sizeof(char), PBODYCAP, psrvPI->getFp())) >0 ) {
-	// 	FD_SET(connfd, &rset);
-	// 	FD_SET(connfd, &wset);
-	// 	maxfdp1 = connfd + 1;
-	// 	if (select(maxfdp1, &rset, &wset, NULL, NULL) < 0)
-	// 		Error::sys("select error");
-
-	// 	if (FD_ISSET(connfd, &rset)) {	/* socket is readable */
-	// 		psrvPI->recvOnePacket();
-	// 	}
-
-	// 	if (FD_ISSET(connfd, &wset)) {  /* socket is writable */
-	// 		packet.sendDATA_FILE(nslice, ++sindex, n, body);
-	// 	}
-	// }
-	
 	// send EOF
 	Fclose(&psrvPI->getFp());
 	printf("EOF [%s]\n", pathname);
@@ -220,6 +218,7 @@ void SrvDTP::sendFile(const char *pathname)
 
 void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, uint16_t slicecap)
 {
+	cout<< endl <<endl << pathname << endl <<endl;
 	Packet & packet = *(this->ppacket);
 	char buf[MAXLINE];
 
