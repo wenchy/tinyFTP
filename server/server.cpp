@@ -22,7 +22,7 @@ int main(int argc, char **argv)
         db.init();
     }
    
-
+    printf("MAXNSLICE: %lu\n", MAXNSLICE);
     struct sockaddr_in  cliaddr;
     socklen_t len = sizeof(cliaddr);
     char buff[MAXLINE];

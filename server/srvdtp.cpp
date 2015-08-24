@@ -218,7 +218,6 @@ void SrvDTP::sendFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 
 void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, uint16_t slicecap)
 {
-	cout<< endl <<endl << pathname << endl <<endl;
 	Packet & packet = *(this->ppacket);
 	char buf[MAXLINE];
 
@@ -305,7 +304,7 @@ void SrvDTP::recvFile(const char *pathname, uint32_t nslice, uint32_t sindex, ui
 				insertNewFileMD5SUM(pathname, psrvPI->getPDB());
 
 				printf("EOT [%s]\n", pathname);
-   				packet.sendSTAT_EOT();
+   				packet.sendSTAT_EOT(" Done");
 
    				//insertNewFileMD5SUM(pathname, psrvPI->getPDB());
 

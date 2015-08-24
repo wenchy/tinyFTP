@@ -52,8 +52,8 @@ void CliDTP::sendFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t 
 		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_WAIT){
 			cerr << endl << packet.getSBody();
 		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT){
-			//cout << endl << packet.getSBody() << endl;
-			cout << endl;
+			cout << packet.getSBody() << endl;
+			//cout << endl;
 			break;
 		} else {
 			cout << "unknown packet" << endl;
@@ -109,7 +109,9 @@ void CliDTP::recvFile(const char *pathname, FILE *fp, uint32_t nslice, uint32_t 
 					}
 					case STAT_EOF:
 					{
+						//std::cerr << "\n" << packet.getSBody();
 						fclose(fp);
+
 						std::cout << std::endl;
 						//std::cout << "\n" << packet.getSBody() << std::endl;
 						break;

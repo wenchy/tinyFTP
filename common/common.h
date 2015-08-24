@@ -110,9 +110,9 @@ typedef enum packetStoreType
 #define PHEADSIZE		20			// packet header size
 #define	PBODYCAP		512			// packet body capcacity
 #define	SLICECAP		512			// slice capcacity
-#define	SSLICECAP		"512"			// slice capcacity
+#define	SSLICECAP		"512"		// slice capcacity
 #define	MAXNSLICE		4294967295	// max slice count: the maximum positive integer value
-// TCP control packet definition, communication protocol
+// TCP control packet deinition, communication protocol
  #pragma pack(4)
 typedef struct packetStruct
 {
@@ -209,7 +209,7 @@ typedef enum statID
 	STAT_OK = 1,
 	STAT_BPR, 	// breakpoint resume
 	STAT_CFM, 	// confirm
-	STAT_MD5, 	// confirm
+	STAT_MD5, 	// md5sum
 	STAT_PGS, 	// progress
 	STAT_FAIL, 	// fail
 	STAT_ERR, 	// error
@@ -217,7 +217,7 @@ typedef enum statID
 	STAT_TERM,	// terminate
 	STAT_SIZE,	// size
 	STAT_WAIT,	// wait
-	//STAT_DONE,	// trasaction done
+	//STAT_DONE,	// transaction done
 	STAT_EOF,	// end of file
 	STAT_EOT	// end of transfer
 } StatID;

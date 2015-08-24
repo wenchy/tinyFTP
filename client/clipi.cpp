@@ -446,7 +446,7 @@ void CliPI::cmdGET(std::vector<string> & paramVector)
 		}
 	}
 	FILE *fp;
-	if ( (fp = fopen(pathname.c_str(), "ab")) == NULL) {
+	if ( (fp = fopen(pathname.c_str(), "wb")) == NULL) {
 		Error::msg("%s", strerror_r(errno, buf, MAXLINE));
 		return;
 	} else {
@@ -774,7 +774,7 @@ void CliPI::cmdRGET(std::vector<string> & paramVector)
 					// }
 					case STAT_EOT:
 					{
-						cout << packet.getSBody() <<endl;
+						//cout << packet.getSBody() <<endl;
 						return;
 					}
 					default:
@@ -940,6 +940,7 @@ void CliPI::cmdPUT(std::vector<string> & paramVector)
 					case STAT_MD5:
 					{
 						cout << packet.getSBody() <<endl;
+						//cerr << packet.getSBody()
 						string md5str = visualmd5sum(pathname);
 						if (md5str.empty())
 						{
@@ -1087,7 +1088,7 @@ void CliPI::cmdRPUT(std::vector<string> & paramVector)
 			return;
 		}
 	}
-	printf("\033[32mOK to transfer\033[0m\n");
+	//printf("\033[32mEnd of Transfer\033[0m\n");
 	packet.sendSTAT_EOT();	
    
 }
@@ -1212,7 +1213,8 @@ void CliPI::cmdLS(std::vector<string> & paramVector)
 
 			
 		} else if (packet.getTagid() == TAG_STAT && packet.getStatid() == STAT_EOT){
-			cout << endl << packet.getSBody() << endl;
+			//cout << endl << packet.getSBody() << endl;
+			cout << endl;
 			break;
 		} else {
 			Error::msg("unknown tagid %d with statid %d", packet.getTagid(), packet.getStatid());
