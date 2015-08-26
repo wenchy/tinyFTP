@@ -1,6 +1,18 @@
 # tinyFTP
 Implementation of a tiny FTP client and server
 
+## Introduction to tinyFTP
+
+I spent 21 days to finish this project from Aug 3 to Aug 24, 2015 , and very happy to share with you. You can fork from my Github repository [tinyFTP](https://github.com/Wenchy/tinyFTP). Also, you can pull requests if you have any questions. I will continue updating this interesting project, and start to spend some time to finish a more interesting project **tinyHttpd**, a tiny web server just for fun.
+
+> **PDF Online**: [tinyFTP_online](https://mozilla.github.io/pdf.js/web/viewer.html?file=https://wenchy.github.io/misc/2015-08-26-tinyFTP.pdf)
+
+> **PDF Download**: [tinyFTP_download](https://wenchy.github.io/misc/2015-08-26-tinyFTP.pdf)
+
+## Platform
+
+Ubuntu14.04 64bit
+
 ## Basics
 
 ### Commands
